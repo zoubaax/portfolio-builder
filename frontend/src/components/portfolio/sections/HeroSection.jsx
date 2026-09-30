@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ArrowUpRight, Terminal, Sparkles, Mail } from 'lucide-react';
 import { GithubIcon, LinkedinIcon, TwitterIcon } from '../../common/BrandIcons';
 import { EditableText } from '../../common/EditableText';
+import { ImagePickerModal } from '../../common/ImagePickerModal';
 import { usePortfolio } from '../../../context/PortfolioContext';
+import { RiCameraLine } from 'react-icons/ri';
 
 const SocialIcon = ({ platform }) => {
   const p = platform?.toLowerCase();
@@ -13,8 +15,9 @@ const SocialIcon = ({ platform }) => {
 };
 
 export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => {
-  const { updateSectionField } = usePortfolio();
+  const { updateSectionField, isEditMode } = usePortfolio();
   const { badge, name, title, tagline, avatar, primaryCta, secondaryCta, socials } = data || {};
+  const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
 
   // 1. Split Portrait Variant
   if (variant === 'split-portrait') {
@@ -128,18 +131,43 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
             <div className="relative group">
               <div className="absolute -inset-1 rounded-3xl blur-2xl opacity-40 transition duration-500 group-hover:opacity-75"
                    style={{ background: 'radial-gradient(circle, var(--theme-accent), transparent 70%)' }} />
-              <div className="relative w-64 h-64 sm:w-80 sm:h-80 rounded-3xl overflow-hidden border p-2"
-                   style={{
-                     backgroundColor: 'var(--theme-surface)',
-                     borderColor: 'var(--theme-border)'
-                   }}>
+              <div
+                className={`relative w-64 h-64 sm:w-80 sm:h-80 rounded-3xl overflow-hidden border p-2 group/avatar transition-all ${
+                  isEditMode ? 'cursor-pointer hover:border-indigo-500' : ''
+                }`}
+                onClick={() => isEditMode && setIsImagePickerOpen(true)}
+                style={{
+                  backgroundColor: 'var(--theme-surface)',
+                  borderColor: 'var(--theme-border)'
+                }}
+              >
                 <img src={avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
                      alt={name}
                      className="w-full h-full object-cover rounded-2xl filter saturate-[1.05] contrast-[1.02]" />
+
+                {isEditMode && (
+                  <div className="absolute inset-2 rounded-2xl bg-black/60 backdrop-blur-xs opacity-0 group-hover/avatar:opacity-100 flex flex-col items-center justify-center text-white gap-2 transition-all">
+                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white shadow-lg">
+                      <RiCameraLine className="w-5 h-5" />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-wider bg-black/70 px-3 py-1 rounded-full border border-white/20">
+                      Change Photo
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
+
+        {/* Avatar Image Picker Modal */}
+        <ImagePickerModal
+          isOpen={isImagePickerOpen}
+          onClose={() => setIsImagePickerOpen(false)}
+          currentImage={avatar}
+          onSave={(newImg) => updateSectionField(sectionId, 'avatar', newImg)}
+          title="Change Profile Photo"
+        />
       </section>
     );
   }

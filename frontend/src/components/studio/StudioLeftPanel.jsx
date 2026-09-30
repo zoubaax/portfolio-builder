@@ -22,7 +22,10 @@ import {
   RiAppsLine,
   RiDeleteBin6Line,
   RiFileCopyLine,
-  RiPriceTag3Line
+  RiPriceTag3Line,
+  RiHistoryLine,
+  RiRestartLine,
+  RiTimeLine
 } from 'react-icons/ri';
 import { TbLayersLinked, TbChecklist, TbLayoutBoard } from 'react-icons/tb';
 
@@ -50,7 +53,11 @@ export const StudioLeftPanel = () => {
     addSection,
     setThemePreset,
     updateThemeToken,
-    studioTheme
+    studioTheme,
+    versions,
+    rollbackToVersion,
+    fetchVersions,
+    portfolioId
   } = usePortfolio();
 
   const [inputPrompt, setInputPrompt] = useState('');
@@ -137,10 +144,10 @@ export const StudioLeftPanel = () => {
           Studio Workspace
         </p>
 
-        <div className="grid grid-cols-3 gap-1">
+        <div className="grid grid-cols-4 gap-1">
           <button
             onClick={() => setActiveTab('chat')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all ${
               activeTab === 'chat'
                 ? isLight
                   ? 'bg-slate-900 text-white shadow-sm'
@@ -151,12 +158,12 @@ export const StudioLeftPanel = () => {
             }`}
           >
             <RiSparkling2Fill className="w-3.5 h-3.5" />
-            <span>AI Copilot</span>
+            <span className="truncate">AI Copilot</span>
           </button>
 
           <button
             onClick={() => setActiveTab('sections')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all ${
               activeTab === 'sections'
                 ? isLight
                   ? 'bg-slate-900 text-white shadow-sm'
@@ -167,12 +174,12 @@ export const StudioLeftPanel = () => {
             }`}
           >
             <RiLayoutMasonryLine className="w-3.5 h-3.5" />
-            <span>Sections</span>
+            <span className="truncate">Sections</span>
           </button>
 
           <button
             onClick={() => setActiveTab('theme')}
-            className={`flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+            className={`flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all ${
               activeTab === 'theme'
                 ? isLight
                   ? 'bg-slate-900 text-white shadow-sm'
@@ -183,7 +190,30 @@ export const StudioLeftPanel = () => {
             }`}
           >
             <RiPaletteLine className="w-3.5 h-3.5" />
-            <span>Theme</span>
+            <span className="truncate">Theme</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`flex items-center justify-center gap-1 py-2 px-1.5 rounded-xl text-[11px] font-bold transition-all ${
+              activeTab === 'history'
+                ? isLight
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'bg-indigo-600 text-white shadow-sm'
+                : isLight
+                  ? 'text-slate-600 hover:bg-slate-100'
+                  : 'text-zinc-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            <RiHistoryLine className="w-3.5 h-3.5" />
+            <span className="truncate">History</span>
+            {versions.length > 0 && (
+              <span className={`text-[9px] px-1 rounded font-mono ${
+                activeTab === 'history' ? 'bg-white/20 text-white' : 'bg-indigo-500/20 text-indigo-400'
+              }`}>
+                {versions.length}
+              </span>
+            )}
           </button>
         </div>
       </div>
@@ -521,6 +551,111 @@ export const StudioLeftPanel = () => {
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB 4: VERSION HISTORY & ROLLBACK */}
+      {activeTab === 'history' && (
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-inherit">
+            <div>
+              <span className={`text-[11px] font-bold uppercase tracking-wider block ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
+                Cloud Version Snapshots
+              </span>
+              <p className={`text-[10px] ${isLight ? 'text-slate-400' : 'text-zinc-500'}`}>
+                Neon PostgreSQL immutable audit log
+              </p>
+            </div>
+            <button
+              onClick={() => fetchVersions()}
+              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-700"
+              title="Refresh from Neon DB"
+            >
+              Refresh
+            </button>
+          </div>
+
+          {versions.length === 0 ? (
+            <div className={`p-6 rounded-2xl border text-center space-y-3 ${
+              isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'
+            }`}>
+              <div className="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mx-auto">
+                <RiHistoryLine className="w-5 h-5" />
+              </div>
+              <h4 className="text-xs font-bold">No Snapshots Yet</h4>
+              <p className={`text-[11px] leading-relaxed ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
+                Click the <strong className="text-indigo-500">Save</strong> or <strong className="text-indigo-500">Publish</strong> button in the top bar to commit your first snapshot to Neon DB.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {versions.map((ver, idx) => {
+                const dateStr = new Date(ver.createdAt).toLocaleDateString([], {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                });
+                const sectionCount = ver.snapshotData?.sections?.length || 0;
+                const themeName = ver.snapshotData?.theme?.name || 'Default';
+
+                return (
+                  <div
+                    key={ver.id}
+                    className={`p-3.5 rounded-2xl border transition-all ${
+                      idx === 0
+                        ? isLight
+                          ? 'bg-indigo-50/50 border-indigo-200 shadow-xs'
+                          : 'bg-indigo-500/10 border-indigo-500/30'
+                        : isLight
+                          ? 'bg-white hover:bg-slate-50 border-slate-200 shadow-xs'
+                          : 'bg-white/5 hover:bg-white/10 border-white/10'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold">
+                            {ver.promptNote || `Snapshot #${versions.length - idx}`}
+                          </span>
+                          {idx === 0 && (
+                            <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-600 text-white">
+                              Latest
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`flex items-center gap-1 text-[10px] ${isLight ? 'text-slate-400' : 'text-zinc-500'}`}>
+                            <RiTimeLine className="w-3 h-3" />
+                            {dateStr}
+                          </span>
+                          <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                            isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/10 text-zinc-400'
+                          }`}>
+                            {sectionCount} sections • {themeName}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => rollbackToVersion(ver.id)}
+                        className={`p-1.5 rounded-xl border flex items-center gap-1 text-[11px] font-semibold transition-all shrink-0 ${
+                          isLight
+                            ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 hover:text-indigo-600'
+                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300 hover:text-white'
+                        }`}
+                        title="Rollback canvas to this snapshot"
+                      >
+                        <RiRestartLine className="w-3.5 h-3.5 text-indigo-500" />
+                        <span>Rollback</span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
     </aside>

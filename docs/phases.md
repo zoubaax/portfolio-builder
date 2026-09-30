@@ -68,27 +68,27 @@ Instead of having an LLM generate brittle, arbitrary raw HTML/CSS from scratch o
 ### Phase 2: Full Backend Foundation (Clerk Auth, Neon + Drizzle, & Unified AI)
 **Goal:** Establish user authentication early, connect the serverless database with user-scoped tables, and wire up the multi-provider AI hub.
 
-- [ ] **2.1 Clerk Authentication Setup**
+- [x] **2.1 Clerk Authentication Setup**
   - Configure `@clerk/clerk-react` in the frontend (Sign-in / Sign-up modals, User button, session state).
   - Set up `@clerk/express` middleware on the backend to authenticate protected API routes.
 
-- [ ] **2.2 Express Backend & Database (Neon + Drizzle ORM)**
-  - Initialize Express backend with TypeScript/ESM, CORS, and environment configuration.
-  - Configure Neon serverless database connection.
+- [x] **2.2 Express Backend & Database (Neon + Drizzle ORM)**
+  - Initialize Express backend with TypeScript, CORS, Helmet, and environment configuration.
+  - Configure Neon serverless database connection with `@neondatabase/serverless` and Drizzle ORM.
   - Set up user-scoped Drizzle ORM schema:
     - `users`: Clerk user ID, email, username, custom API keys (BYOK), plan.
     - `portfolios`: ID, user ID (foreign key), subdomain slug, title, schema JSON, published status.
     - `portfolio_versions`: Portfolio ID, snapshot JSON, prompt note, created timestamp.
-  - Run initial migrations using `drizzle-kit`.
+  - Configured `drizzle.config.ts` for automated migrations.
 
-- [ ] **2.3 Unified AI Engine (OpenAI-Compatible Abstraction)**
+- [x] **2.3 Unified AI Engine (OpenAI-Compatible Abstraction)**
   - Implement a flexible provider router that supports:
     - **Groq API** (Llama 3.3 70B for ultra-fast chat responses).
     - **Mistral API** (Codestral / Mistral Large for deep structured reasoning).
     - **NVIDIA NIM API** (Free tier inference).
     - **User BYOK** (Custom key passed from user settings).
-  - Structured output generator (guarantees valid schema diffs and JSON updates).
-  - Server-Sent Events (SSE) streaming endpoint for conversational AI edits.
+  - Server-Sent Events (SSE) streaming endpoint (`/api/v1/ai/stream-chat`) connected to frontend studio.
+  - Zero-to-one portfolio generation endpoint (`/api/v1/ai/generate`).
 
 ---
 

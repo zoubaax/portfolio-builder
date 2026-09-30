@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
+import { SignInButton, UserButton, useUser } from '@clerk/react';
 import {
   RiSparkling2Fill,
   RiSearch2Line,
@@ -17,11 +18,16 @@ import {
   RiUploadCloud2Line,
   RiArrowDownSLine,
   RiCheckLine,
-  RiFlashlightLine
+  RiFlashlightLine,
+  RiSave3Line,
+  RiLoader4Line,
+  RiExternalLinkLine,
+  RiCloseLine
 } from 'react-icons/ri';
 import { TbLayersLinked } from 'react-icons/tb';
 
 export const StudioHeader = () => {
+  const { user, isSignedIn } = useUser();
   const {
     portfolio,
     deviceView,
@@ -34,13 +40,36 @@ export const StudioHeader = () => {
     redo,
     canUndo,
     canRedo,
-    loadPresetPortfolio
+    loadPresetPortfolio,
+    savePortfolio,
+    saveStatus,
+    isPublished,
+    portfolioId
   } = usePortfolio();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [publishedUrl, setPublishedUrl] = useState(null);
 
   const isLight = studioTheme === 'light';
+
+  const handleSave = async () => {
+    try {
+      await savePortfolio(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handlePublish = async () => {
+    try {
+      const res = await savePortfolio(true);
+      const slug = res?.subdomainSlug || portfolio.meta?.slug || 'portfolio';
+      setPublishedUrl(`https://${slug}.portfolify.dev`);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
     <header
@@ -309,32 +338,135 @@ export const StudioHeader = () => {
           <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-1.5 right-1.5 ring-2 ring-white" />
         </div>
 
-        {/* Publish Action Button */}
+        {/* Save to Cloud Button */}
         <button
-          onClick={() => {
-            alert(`Ready for Phase 4! In Phase 4, this publishes to ${portfolio.meta?.slug || 'username'}.yourplatform.com via Cloudflare Wildcard routing.`);
-          }}
-          className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
+          onClick={handleSave}
+          disabled={saveStatus === 'saving'}
+          className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+            saveStatus === 'saved'
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
+              : saveStatus === 'saving'
+                ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 opacity-70'
+                : isLight
+                  ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300'
+          }`}
+          title="Save portfolio schema to Neon Database"
         >
-          <RiUploadCloud2Line className="w-4 h-4" />
-          <span>Publish</span>
+          {saveStatus === 'saving' ? (
+            <RiLoader4Line className="w-4 h-4 animate-spin text-indigo-500" />
+          ) : saveStatus === 'saved' ? (
+            <RiCheckLine className="w-4 h-4 text-emerald-500" />
+          ) : (
+            <RiSave3Line className="w-4 h-4 text-indigo-500" />
+          )}
+          <span>
+            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save'}
+          </span>
         </button>
 
-        {/* User Profile Card (Directly inspired by screenshot: "zoubaa STUDENT") */}
-        <div className={`flex items-center gap-2 pl-2 border-l ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
-          <div className="w-8 h-8 rounded-full bg-[#181f30] text-white flex items-center justify-center font-bold text-xs ring-2 ring-indigo-500/30">
-            z
+        {/* Publish Action Button */}
+        <button
+          onClick={handlePublish}
+          disabled={saveStatus === 'saving'}
+          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
+        >
+          <RiUploadCloud2Line className="w-4 h-4" />
+          <span>{isPublished ? 'Update Live' : 'Publish'}</span>
+        </button>
+
+        {/* User Profile / Clerk Authentication */}
+        {isSignedIn ? (
+          <div className={`flex items-center gap-2 pl-2 border-l ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+            <UserButton
+              appearance={{
+                elements: {
+                  avatarBox: 'w-8 h-8 ring-2 ring-indigo-500/30 rounded-full',
+                },
+              }}
+            />
+            <div className="hidden md:block text-left leading-tight">
+              <span className={`block font-bold text-xs ${isLight ? 'text-slate-800' : 'text-white'}`}>
+                {user?.firstName || user?.username || 'zoubaa'}
+              </span>
+              <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">
+                CREATOR
+              </span>
+            </div>
           </div>
-          <div className="hidden md:block text-left leading-tight">
-            <span className={`block font-bold text-xs ${isLight ? 'text-slate-800' : 'text-white'}`}>
-              zoubaa
-            </span>
-            <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">
-              CREATOR
-            </span>
+        ) : (
+          <div className={`pl-2 border-l ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+            <SignInButton mode="modal">
+              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all cursor-pointer">
+                Sign In
+              </button>
+            </SignInButton>
+          </div>
+        )}
+      </div>
+
+      {/* Published Live Modal */}
+      {publishedUrl && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-md rounded-2xl p-6 border shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 ${
+              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#141b2d] border-white/10 text-white'
+            }`}
+          >
+            <button
+              onClick={() => setPublishedUrl(null)}
+              className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-400 hover:text-white"
+            >
+              <RiCloseLine className="w-5 h-5" />
+            </button>
+
+            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-4">
+              <RiUploadCloud2Line className="w-6 h-6" />
+            </div>
+
+            <h3 className="text-lg font-bold">Portfolio is Live!</h3>
+            <p className={`text-xs mt-1 ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
+              Your portfolio has been synchronized to Neon PostgreSQL and is published to your subdomain.
+            </p>
+
+            <div
+              className={`mt-4 p-3 rounded-xl border flex items-center justify-between text-xs font-mono ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-black/30 border-white/10'
+              }`}
+            >
+              <span className="truncate text-indigo-500 font-semibold">{publishedUrl}</span>
+              <a
+                href={publishedUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="p-1 rounded-md text-indigo-600 hover:text-indigo-500"
+              >
+                <RiExternalLinkLine className="w-4 h-4" />
+              </a>
+            </div>
+
+            <div className="mt-6 flex gap-2">
+              <button
+                onClick={() => setPublishedUrl(null)}
+                className={`flex-1 py-2 px-4 rounded-xl text-xs font-bold border ${
+                  isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/10 hover:bg-white/5'
+                }`}
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(publishedUrl);
+                  alert('URL copied to clipboard!');
+                }}
+                className="flex-1 py-2 px-4 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
+              >
+                Copy Link
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </header>
   );
 };

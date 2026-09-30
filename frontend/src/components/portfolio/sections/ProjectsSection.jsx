@@ -1,12 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ArrowUpRight, ExternalLink } from 'lucide-react';
 import { GithubIcon } from '../../common/BrandIcons';
 import { EditableText } from '../../common/EditableText';
+import { ImagePickerModal } from '../../common/ImagePickerModal';
 import { usePortfolio } from '../../../context/PortfolioContext';
+import { RiCameraLine } from 'react-icons/ri';
 
 export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => {
-  const { updateSectionField } = usePortfolio();
+  const { updateSectionField, isEditMode } = usePortfolio();
   const { heading, subheading, projects = [] } = data || {};
+  const [activeImageModalIdx, setActiveImageModalIdx] = useState(null);
 
   const handleProjectUpdate = (projIndex, field, newVal) => {
     const updatedProjects = [...projects];
@@ -58,13 +61,27 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
                    }}>
                 {/* Thumbnail if provided */}
                 {proj.image && (
-                  <div className="relative h-48 sm:h-56 overflow-hidden">
+                  <div
+                    className={`relative h-48 sm:h-56 overflow-hidden group/thumb ${
+                      isEditMode ? 'cursor-pointer' : ''
+                    }`}
+                    onClick={() => isEditMode && setActiveImageModalIdx(idx)}
+                  >
                     <img src={proj.image} alt={proj.title}
                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[var(--theme-surface)] via-transparent to-transparent" />
+
+                    {isEditMode && (
+                      <div className="absolute inset-0 bg-black/50 backdrop-blur-xs opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-all z-20">
+                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/70 border border-white/20 text-white text-xs font-bold shadow-lg">
+                          <RiCameraLine className="w-4 h-4 text-indigo-400" />
+                          <span>Change Cover</span>
+                        </span>
+                      </div>
+                    )}
                     
                     {proj.metrics && (
-                      <div className="absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border shadow"
+                      <div className="absolute top-4 left-4 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md border shadow z-10"
                            style={{
                              backgroundColor: 'rgba(0,0,0,0.6)',
                              borderColor: 'var(--theme-border)',
@@ -222,6 +239,20 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
             </div>
           ))}
         </div>
+      )}
+
+      {/* Project Cover Image Picker Modal */}
+      {activeImageModalIdx !== null && (
+        <ImagePickerModal
+          isOpen={activeImageModalIdx !== null}
+          onClose={() => setActiveImageModalIdx(null)}
+          currentImage={projects[activeImageModalIdx]?.image}
+          onSave={(newImg) => {
+            handleProjectUpdate(activeImageModalIdx, 'image', newImg);
+            setActiveImageModalIdx(null);
+          }}
+          title={`Change Cover: ${projects[activeImageModalIdx]?.title || 'Project'}`}
+        />
       )}
     </section>
   );

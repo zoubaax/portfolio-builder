@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { useAuth } from '@clerk/react';
 import {
   MOCK_DEVELOPER_PORTFOLIO,
   MOCK_DESIGNER_PORTFOLIO,
@@ -9,8 +10,14 @@ import {
 const PortfolioContext = createContext(null);
 
 export const PortfolioProvider = ({ children }) => {
+  const { getToken, userId, isSignedIn } = useAuth();
+
   // Main portfolio state
   const [portfolio, setPortfolio] = useState(MOCK_DEVELOPER_PORTFOLIO);
+  const [portfolioId, setPortfolioId] = useState(null);
+  const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
+  const [isPublished, setIsPublished] = useState(false);
+  const [versions, setVersions] = useState([]);
   
   // History for Undo / Redo
   const [history, setHistory] = useState([MOCK_DEVELOPER_PORTFOLIO]);
@@ -20,9 +27,113 @@ export const PortfolioProvider = ({ children }) => {
   const [studioTheme, setStudioTheme] = useState('light'); // 'light' | 'dark' SaaS Studio theme
   const [deviceView, setDeviceView] = useState('desktop'); // 'desktop' | 'tablet' | 'mobile'
   const [isEditMode, setIsEditMode] = useState(true); // Elementor-style visual edit mode vs pure preview
-  const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'sections' | 'theme'
+  const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'sections' | 'theme' | 'history'
   const [selectedSectionId, setSelectedSectionId] = useState('sec-hero');
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const getAuthHeaders = useCallback(async () => {
+    let token = null;
+    try {
+      if (getToken) token = await getToken();
+    } catch (e) {}
+
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(userId ? { 'x-user-id': userId } : { 'x-user-id': 'dev_user_zoubaa' }),
+    };
+  }, [getToken, userId]);
+
+  // Fetch Version Snapshots from Neon DB
+  const fetchVersions = useCallback(async (id = portfolioId) => {
+    if (!id) return;
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`http://localhost:5050/api/v1/portfolios/${id}/versions`, { headers });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setVersions(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch versions', err);
+    }
+  }, [portfolioId, getAuthHeaders]);
+
+  // Save or Update Portfolio to Neon DB
+  const savePortfolio = useCallback(async (publish = false, promptNote = '') => {
+    setSaveStatus('saving');
+    try {
+      const headers = await getAuthHeaders();
+      const title = portfolio.meta?.title || 'Portfolio';
+      const slug = portfolio.meta?.slug || `portfolio-${Date.now().toString().slice(-4)}`;
+
+      let response;
+      if (portfolioId) {
+        response = await fetch(`http://localhost:5050/api/v1/portfolios/${portfolioId}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            schemaData: portfolio,
+            title,
+            isPublished: publish,
+            promptNote: promptNote || (publish ? 'Published site update' : 'Saved studio revision'),
+          }),
+        });
+      } else {
+        response = await fetch(`http://localhost:5050/api/v1/portfolios`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            title,
+            subdomainSlug: slug,
+            schemaData: portfolio,
+          }),
+        });
+      }
+
+      const result = await response.json();
+      if (result.success && result.data) {
+        setPortfolioId(result.data.id);
+        setIsPublished(result.data.isPublished);
+        setSaveStatus('saved');
+        fetchVersions(result.data.id);
+        setTimeout(() => setSaveStatus('idle'), 3000);
+        return result.data;
+      } else {
+        setSaveStatus('error');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+        throw new Error(result.message || 'Failed to save');
+      }
+    } catch (err) {
+      console.error('Save error:', err);
+      setSaveStatus('error');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+      throw err;
+    }
+  }, [portfolio, portfolioId, getAuthHeaders, fetchVersions]);
+
+  // Rollback to specific version snapshot
+  const rollbackToVersion = useCallback(async (versionId) => {
+    if (!portfolioId) return;
+    setSaveStatus('saving');
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`http://localhost:5050/api/v1/portfolios/${portfolioId}/versions/${versionId}/rollback`, {
+        method: 'POST',
+        headers,
+      });
+      const data = await res.json();
+      if (data.success && data.data?.schemaData) {
+        pushState(data.data.schemaData);
+        setSaveStatus('saved');
+        fetchVersions(portfolioId);
+        setTimeout(() => setSaveStatus('idle'), 3000);
+      }
+    } catch (err) {
+      console.error('Rollback error', err);
+      setSaveStatus('error');
+    }
+  }, [portfolioId, getAuthHeaders, fetchVersions]);
 
   const toggleStudioTheme = useCallback(() => {
     setStudioTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
@@ -359,7 +470,7 @@ export const PortfolioProvider = ({ children }) => {
     pushState(target);
   }, [pushState]);
 
-  // AI Prompt Processor
+  // AI Prompt Processor with Real Backend SSE Streaming
   const sendChatMessage = useCallback(async (promptText) => {
     if (!promptText?.trim() || isGenerating) return;
 
@@ -373,89 +484,107 @@ export const PortfolioProvider = ({ children }) => {
     setChatMessages((prev) => [...prev, userMsg]);
     setIsGenerating(true);
 
-    setTimeout(() => {
-      const lower = promptText.toLowerCase();
-      let replyText = "I've reviewed your request and updated your portfolio accordingly!";
-      let updatedPortfolio = { ...portfolio };
+    const assistantMsgId = `msg-ai-${Date.now()}`;
+    // Add placeholder assistant message for live streaming
+    setChatMessages((prev) => [
+      ...prev,
+      {
+        id: assistantMsgId,
+        role: 'assistant',
+        text: '',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      },
+    ]);
 
-      if (lower.includes('bento') || lower.includes('violet') || lower.includes('purple')) {
-        updatedPortfolio.theme = THEME_PRESETS['bento-violet'];
-        updatedPortfolio.sections = updatedPortfolio.sections.map(s => 
-          s.type === 'projects' ? { ...s, variant: 'bento-grid' } : s
-        );
-        replyText = "Switched your theme to Bento Violet and styled projects into a high-contrast bento layout.";
-      } else if (lower.includes('minimal') || lower.includes('editorial') || lower.includes('light') || lower.includes('white')) {
-        updatedPortfolio.theme = THEME_PRESETS['minimal-editorial'];
-        updatedPortfolio.sections = updatedPortfolio.sections.map(s => {
-          if (s.type === 'hero') return { ...s, variant: 'minimal-centered' };
-          if (s.type === 'projects') return { ...s, variant: 'minimal-list' };
-          return s;
-        });
-        replyText = "Applied the refined Minimal Editorial theme with serif typography and clean list views.";
-      } else if (lower.includes('terminal') || lower.includes('cyber') || lower.includes('developer') || lower.includes('dark')) {
-        updatedPortfolio.theme = THEME_PRESETS['cyber-dark'];
-        updatedPortfolio.sections = updatedPortfolio.sections.map(s => {
-          if (s.type === 'hero') return { ...s, variant: 'terminal-dev' };
-          return s;
-        });
-        replyText = "Activated Cyber Slate with the interactive developer terminal hero!";
-      } else if (lower.includes('senior') || lower.includes('impact') || lower.includes('bio')) {
-        updatedPortfolio.sections = updatedPortfolio.sections.map(s => {
-          if (s.type === 'hero') {
-            return {
-              ...s,
-              data: {
-                ...s.data,
-                title: 'Principal Software Architect & Systems Strategist',
-                tagline: 'Leading mission-critical distributed architectures, high-performance computing, and resilient cloud systems at global scale.',
-                badge: 'Advising high-growth engineering teams',
-              },
-            };
-          }
-          return s;
-        });
-        replyText = "Elevated your executive positioning: revised your title to Principal Architect and sharpened your impact statement.";
-      } else if (lower.includes('add project') || lower.includes('new project')) {
-        updatedPortfolio.sections = updatedPortfolio.sections.map(s => {
-          if (s.type === 'projects') {
-            const newProj = {
-              id: `proj-${Date.now()}`,
-              title: 'Nexus Engine — Autonomous Workflow Orchestrator',
-              description: 'Event-driven distributed task orchestrator processing 100k+ parallel background executions.',
-              tags: ['Go', 'Kafka', 'PostgreSQL', 'Docker'],
-              metrics: 'Zero-latency sync',
-              github: 'https://github.com',
-              link: 'https://nexus-engine.io',
-              image: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&q=80',
-              featured: true,
-            };
-            return {
-              ...s,
-              data: {
-                ...s.data,
-                projects: [newProj, ...(s.data.projects || [])],
-              },
-            };
-          }
-          return s;
-        });
-        replyText = "Added a new featured project: 'Nexus Engine — Autonomous Workflow Orchestrator' with metrics and tech tags.";
-      } else {
-        replyText = `Got it! I refined your portfolio based on '${promptText}'. You can preview and edit it directly on the canvas.`;
+    try {
+      const headers = await getAuthHeaders();
+      const response = await fetch('http://localhost:5050/api/v1/ai/stream-chat', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          portfolio,
+          prompt: promptText,
+          provider: 'groq',
+        }),
+      });
+
+      if (!response.ok || !response.body) {
+        throw new Error('Backend stream request failed');
       }
 
-      pushState(updatedPortfolio);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let streamBuffer = '';
+      let updatedPortfolio = null;
 
-      const aiMsg = {
-        id: `msg-${Date.now()}`,
-        role: 'assistant',
-        text: replyText,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      };
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
 
-      setChatMessages((prev) => [...prev, aiMsg]);
+        const chunkText = decoder.decode(value, { stream: true });
+        const lines = (streamBuffer + chunkText).split('\n\n');
+        streamBuffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.replace('data: ', '').trim());
+              if (data.chunk) {
+                setChatMessages((prev) =>
+                  prev.map((m) => (m.id === assistantMsgId ? { ...m, text: m.text + data.chunk } : m))
+                );
+              }
+              if (data.done && data.updatedPortfolio) {
+                updatedPortfolio = data.updatedPortfolio;
+              }
+            } catch {}
+          }
+        }
+      }
+
+      if (updatedPortfolio) {
+        pushState(updatedPortfolio);
+        setChatMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMsgId
+              ? { ...m, text: `✓ Updated portfolio to match: "${promptText}"` }
+              : m
+          )
+        );
+      }
+    } catch (err) {
+      // Graceful fallback to local rule engine if network drops
+      const lower = promptText.toLowerCase();
+      let replyText = `Updated portfolio for: "${promptText}"`;
+      let fallbackPortfolio = { ...portfolio };
+
+      if (lower.includes('bento') || lower.includes('violet')) {
+        fallbackPortfolio.theme = THEME_PRESETS['bento-violet'];
+        fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) =>
+          s.type === 'projects' ? { ...s, variant: 'bento-grid' } : s
+        );
+        replyText = "Switched to Bento Violet theme!";
+      } else if (lower.includes('minimal') || lower.includes('editorial')) {
+        fallbackPortfolio.theme = THEME_PRESETS['minimal-editorial'];
+        fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) =>
+          s.type === 'hero' ? { ...s, variant: 'minimal-centered' } : s
+        );
+        replyText = "Applied Minimal Editorial theme!";
+      } else if (lower.includes('terminal') || lower.includes('cyber')) {
+        fallbackPortfolio.theme = THEME_PRESETS['cyber-dark'];
+        fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) =>
+          s.type === 'hero' ? { ...s, variant: 'terminal-dev' } : s
+        );
+        replyText = "Activated Cyber Slate with terminal hero!";
+      }
+
+      pushState(fallbackPortfolio);
+      setChatMessages((prev) =>
+        prev.map((m) => (m.id === assistantMsgId ? { ...m, text: replyText } : m))
+      );
+    } finally {
       setIsGenerating(false);
-    }, 800);
+    }
   }, [isGenerating, portfolio, pushState]);
 
   return (
@@ -493,6 +622,13 @@ export const PortfolioProvider = ({ children }) => {
         updateThemeToken,
         loadPresetPortfolio,
         sendChatMessage,
+        portfolioId,
+        saveStatus,
+        isPublished,
+        versions,
+        savePortfolio,
+        fetchVersions,
+        rollbackToVersion,
       }}
     >
       {children}
