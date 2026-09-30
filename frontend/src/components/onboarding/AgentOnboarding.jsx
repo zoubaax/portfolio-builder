@@ -104,42 +104,15 @@ export const AgentOnboarding = ({ onComplete }) => {
     }
   };
 
-  // Launch Agent Generation Workflow with Step-by-Step Checklist
+  // Launch Agent: Immediately opens Studio Workspace where tasks execute live in chat
   const handleLaunchAgent = async () => {
     const finalPrompt = prompt.trim() || 'Senior Full-Stack & AI Engineer with 5 years experience, dark bento design with high-impact case studies';
-    setIsExecuting(true);
-
-    // Run interactive checklist steps with live checkmarks
-    const taskDelays = [400, 900, 1500, 2200, 2900, 3600];
-
-    for (let i = 0; i < tasks.length; i++) {
-      // Mark current task active
-      setTasks((prev) =>
-        prev.map((t, idx) => (idx === i ? { ...t, active: true } : t))
-      );
-
-      await new Promise((r) => setTimeout(r, i === 0 ? 500 : 700));
-
-      // Mark current task done
-      setTasks((prev) =>
-        prev.map((t, idx) => (idx === i ? { ...t, done: true, active: false } : t))
-      );
-    }
-
-    // Trigger AI generation in context with the prompt
-    try {
-      await sendChatMessage(finalPrompt);
-      // Auto-save initial version to Neon PostgreSQL
-      await savePortfolio(false, `Initial Agent Build: ${finalPrompt.slice(0, 50)}...`);
-    } catch (e) {
-      console.warn('Backend sync completed with fallback schema', e);
-    }
-
-    // Small pause to celebrate completion
-    await new Promise((r) => setTimeout(r, 600));
-
-    // Transition to Studio Workspace
+    
+    // 1. Immediately transition to Studio Workspace
     onComplete();
+
+    // 2. Dispatch prompt & live task checklist in Studio Copilot chat
+    sendChatMessage(finalPrompt);
   };
 
   return (

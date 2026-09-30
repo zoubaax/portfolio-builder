@@ -42,14 +42,14 @@ export const getAiClient = (config: AiClientConfig = {}) => {
     };
   }
 
-  // 3. NVIDIA NIM
+  // 3. NVIDIA NIM (Nemotron 3 Ultra 550B & Lightning 30B)
   if (provider === 'nvidia' && process.env.NVIDIA_API_KEY) {
     return {
       client: new OpenAI({
         apiKey: process.env.NVIDIA_API_KEY,
         baseURL: 'https://integrate.api.nvidia.com/v1',
       }),
-      model: 'meta/llama-3.3-70b-instruct',
+      model: config.byokModel || 'nvidia/nemotron-3-ultra-550b-a55b',
       provider: 'nvidia',
     };
   }
@@ -132,13 +132,28 @@ Update the portfolio schema accordingly. Return the complete updated JSON object
     }
   }
 
+  const parsed = extractJson(fullResponse);
+  return parsed || currentPortfolio;
+};
+
+/**
+ * Robust JSON extractor that handles markdown wrappers, preambles, and code blocks
+ */
+function extractJson(text: string): any {
+  if (!text) return null;
   try {
-    const cleanJson = fullResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      const candidate = text.slice(firstBrace, lastBrace + 1);
+      return JSON.parse(candidate);
+    }
+    const cleanJson = text.replace(/```json/gi, '').replace(/```/g, '').trim();
     return JSON.parse(cleanJson);
   } catch {
-    return currentPortfolio;
+    return null;
   }
-};
+}
 
 /**
  * Generates a full portfolio schema from a single natural language description
@@ -177,8 +192,8 @@ Include:
   });
 
   const content = response.choices[0]?.message?.content || '';
-  const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
-  return JSON.parse(cleanJson);
+  const parsed = extractJson(content);
+  return parsed || generateMockInitial(userDescription);
 };
 
 // Fallback Mock Generators

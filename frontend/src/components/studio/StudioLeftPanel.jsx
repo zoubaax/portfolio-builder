@@ -25,7 +25,9 @@ import {
   RiPriceTag3Line,
   RiHistoryLine,
   RiRestartLine,
-  RiTimeLine
+  RiTimeLine,
+  RiCheckLine,
+  RiLoader4Line
 } from 'react-icons/ri';
 import { TbLayersLinked, TbChecklist, TbLayoutBoard } from 'react-icons/tb';
 
@@ -44,6 +46,7 @@ export const StudioLeftPanel = () => {
     setActiveTab,
     chatMessages,
     isGenerating,
+    activeTasks,
     sendChatMessage,
     toggleSectionVisibility,
     changeSectionVariant,
@@ -257,17 +260,36 @@ export const StudioLeftPanel = () => {
                 )}
 
                 <div
-                  className={`max-w-[84%] rounded-2xl p-3.5 ${
+                  className={`max-w-[88%] rounded-2xl p-3.5 ${
                     msg.role === 'user'
-                      ? 'bg-indigo-600 text-white shadow-sm font-medium'
+                      ? 'bg-gradient-to-r from-orange-600 to-[#FF4500] text-white shadow-sm font-medium'
                       : isLight
                         ? 'bg-slate-100 text-slate-800 border border-slate-200/80 shadow-xs'
                         : 'bg-white/5 text-zinc-300 border border-white/10'
                   }`}
                 >
                   <p>{msg.text}</p>
+
+                  {/* Completed Checklist Tasks inside Assistant Message */}
+                  {msg.tasks && (
+                    <div className="mt-3 pt-2.5 border-t border-white/10 space-y-1.5">
+                      <div className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 font-bold mb-1.5 flex items-center gap-1.5">
+                        <RiCheckDoubleLine className="w-3.5 h-3.5" />
+                        <span>Tasks Completed</span>
+                      </div>
+                      {msg.tasks.map((task) => (
+                        <div key={task.id} className="flex items-center gap-2 text-[11px] text-zinc-300">
+                          <div className="w-3.5 h-3.5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                            <RiCheckLine className="w-2.5 h-2.5" />
+                          </div>
+                          <span className="truncate">{task.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <span className={`block mt-1 text-[10px] text-right ${
-                    msg.role === 'user' ? 'text-indigo-200' : isLight ? 'text-slate-400' : 'text-zinc-500'
+                    msg.role === 'user' ? 'text-white/80' : isLight ? 'text-slate-400' : 'text-zinc-500'
                   }`}>
                     {msg.timestamp}
                   </span>
@@ -275,18 +297,75 @@ export const StudioLeftPanel = () => {
               </div>
             ))}
 
-            {isGenerating && (
-              <div className="flex gap-3 text-xs justify-start">
-                <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 animate-spin">
-                  <RiMagicLine className="w-4 h-4" />
+            {/* Live Step-by-Step Task Checklist during AI Generation */}
+            {isGenerating && activeTasks && (
+              <div className="w-full bg-[#121215]/95 backdrop-blur-2xl border border-white/12 rounded-2xl p-4 shadow-xl text-left animate-in fade-in duration-300">
+                <div className="flex items-center gap-2.5 mb-3.5 pb-2.5 border-b border-white/10">
+                  <div className="w-7 h-7 rounded-xl bg-[#FF4500]/20 text-[#FF4500] flex items-center justify-center text-sm animate-spin">
+                    <RiSparkling2Fill />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                      <span>Agentic Architect at Work</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#FF4500] animate-ping" />
+                    </h3>
+                    <p className="text-[10px] text-gray-400">
+                      Synthesizing custom portfolio schema from prompt...
+                    </p>
+                  </div>
                 </div>
-                <div className={`rounded-2xl p-3.5 flex items-center gap-2 border ${
-                  isLight
-                    ? 'bg-indigo-50 text-indigo-900 border-indigo-200'
-                    : 'bg-white/5 text-indigo-300 border-indigo-500/20'
-                }`}>
-                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-ping" />
-                  <span className="font-semibold">Synthesizing portfolio adjustments...</span>
+
+                {/* Step-by-Step Task Checklist */}
+                <div className="space-y-2.5">
+                  {activeTasks.map((task) => (
+                    <div
+                      key={task.id}
+                      className={`flex items-center gap-2.5 text-[11px] transition-all duration-300 ${
+                        task.done
+                          ? 'text-white font-medium'
+                          : task.active
+                            ? 'text-[#FF4500] font-semibold'
+                            : 'text-gray-500'
+                      }`}
+                    >
+                      <div className="shrink-0">
+                        {task.done ? (
+                          <div className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                            <RiCheckLine className="w-3 h-3" />
+                          </div>
+                        ) : task.active ? (
+                          <div className="w-4 h-4 rounded-full bg-[#FF4500]/20 text-[#FF4500] flex items-center justify-center animate-spin">
+                            <RiLoader4Line className="w-3 h-3" />
+                          </div>
+                        ) : (
+                          <div className="w-4 h-4 rounded-full border border-white/20 flex items-center justify-center">
+                            <span className="w-1 h-1 rounded-full bg-white/20" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                        {task.done ? (
+                          <span className="text-emerald-400 font-bold text-[10px] uppercase tracking-wider font-mono">
+                            Done:
+                          </span>
+                        ) : task.active ? (
+                          <span className="text-[#FF4500] font-bold text-[10px] uppercase tracking-wider font-mono animate-pulse">
+                            Building:
+                          </span>
+                        ) : (
+                          <span className="text-gray-500 font-semibold text-[10px] uppercase tracking-wider font-mono">
+                            Queued:
+                          </span>
+                        )}
+                        <span className="truncate">{task.label}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-3.5 pt-2.5 border-t border-white/10 flex items-center justify-between text-[10px] text-gray-400 font-mono">
+                  <span>MODEL: NVIDIA NEMOTRON 3 ULTRA 550B</span>
+                  <span className="text-[#FF4500] animate-pulse">SYNTHESIZING...</span>
                 </div>
               </div>
             )}

@@ -30,6 +30,7 @@ export const PortfolioProvider = ({ children }) => {
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'sections' | 'theme' | 'history'
   const [selectedSectionId, setSelectedSectionId] = useState('sec-hero');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [activeTasks, setActiveTasks] = useState(null);
 
   const getAuthHeaders = useCallback(async () => {
     let token = null;
@@ -470,9 +471,11 @@ export const PortfolioProvider = ({ children }) => {
     pushState(target);
   }, [pushState]);
 
-  // AI Prompt Processor with Real Backend SSE Streaming
+  // AI Prompt Processor with Real Backend SSE Streaming & Live Step-by-Step Task Checklist
   const sendChatMessage = useCallback(async (promptText) => {
     if (!promptText?.trim() || isGenerating) return;
+
+    setActiveTab('chat'); // Auto-switch to chat tab in Studio Left Panel
 
     const userMsg = {
       id: `msg-${Date.now()}`,
@@ -483,6 +486,35 @@ export const PortfolioProvider = ({ children }) => {
 
     setChatMessages((prev) => [...prev, userMsg]);
     setIsGenerating(true);
+
+    // Initialize 6 Architectural Checklist Tasks (Matching user's request)
+    const initialTasks = [
+      { id: 't1', label: 'Analyzing prompt & synthesizing design tokens', done: false, active: true },
+      { id: 't2', label: 'Generating high-impact Hero positioning & tagline', done: false, active: false },
+      { id: 't3', label: 'Crafting About narrative & engineering philosophy', done: false, active: false },
+      { id: 't4', label: 'Curating Projects showcase & bento case studies', done: false, active: false },
+      { id: 't5', label: 'Structuring Skills matrix & Career trajectory', done: false, active: false },
+      { id: 't6', label: 'Compiling responsive schema & saving Neon DB snapshot', done: false, active: false },
+    ];
+    setActiveTasks(initialTasks);
+
+    let currentStep = 0;
+    const taskTimer = setInterval(() => {
+      currentStep++;
+      if (currentStep < initialTasks.length) {
+        setActiveTasks((prev) =>
+          prev
+            ? prev.map((t, idx) =>
+                idx < currentStep
+                  ? { ...t, done: true, active: false }
+                  : idx === currentStep
+                  ? { ...t, active: true, done: false }
+                  : t
+              )
+            : null
+        );
+      }
+    }, 650);
 
     const assistantMsgId = `msg-ai-${Date.now()}`;
     // Add placeholder assistant message for live streaming
@@ -504,7 +536,7 @@ export const PortfolioProvider = ({ children }) => {
         body: JSON.stringify({
           portfolio,
           prompt: promptText,
-          provider: 'groq',
+          provider: 'nvidia',
         }),
       });
 
@@ -544,10 +576,15 @@ export const PortfolioProvider = ({ children }) => {
 
       if (updatedPortfolio) {
         pushState(updatedPortfolio);
+        const finalTasks = initialTasks.map((t) => ({ ...t, done: true, active: false }));
         setChatMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMsgId
-              ? { ...m, text: `✓ Updated portfolio to match: "${promptText}"` }
+              ? {
+                  ...m,
+                  text: `✓ Updated portfolio to match: "${promptText}"`,
+                  tasks: finalTasks,
+                }
               : m
           )
         );
@@ -579,13 +616,24 @@ export const PortfolioProvider = ({ children }) => {
       }
 
       pushState(fallbackPortfolio);
+      const finalTasks = initialTasks.map((t) => ({ ...t, done: true, active: false }));
       setChatMessages((prev) =>
-        prev.map((m) => (m.id === assistantMsgId ? { ...m, text: replyText } : m))
+        prev.map((m) =>
+          m.id === assistantMsgId
+            ? {
+                ...m,
+                text: replyText,
+                tasks: finalTasks,
+              }
+            : m
+        )
       );
     } finally {
+      clearInterval(taskTimer);
+      setActiveTasks(null);
       setIsGenerating(false);
     }
-  }, [isGenerating, portfolio, pushState]);
+  }, [isGenerating, portfolio, pushState, getAuthHeaders]);
 
   return (
     <PortfolioContext.Provider
@@ -605,6 +653,7 @@ export const PortfolioProvider = ({ children }) => {
         setSelectedSectionId,
         chatMessages,
         isGenerating,
+        activeTasks,
         canUndo: historyIndex > 0,
         canRedo: historyIndex < history.length - 1,
         undo,

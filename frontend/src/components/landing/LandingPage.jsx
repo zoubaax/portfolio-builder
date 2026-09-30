@@ -150,49 +150,17 @@ export const LandingPage = ({ onStartStudio }) => {
     }
   };
 
-  // Launch Agent Generation Workflow with Step-by-Step Task Execution
+  // Launch Agent: Immediately opens Studio Workspace where tasks execute live in chat
   const handleLaunchAgent = async () => {
     const finalPrompt = prompt.trim() || 'Senior Full-Stack & AI Engineer with 5 years experience, dark bento design with metrics';
-    setIsExecuting(true);
 
-    // Reset tasks
-    setTasks([
-      { id: 't1', label: 'Analyzing prompt & synthesizing design tokens', done: false, active: false },
-      { id: 't2', label: 'Generating high-impact Hero positioning & tagline', done: false, active: false },
-      { id: 't3', label: 'Crafting About narrative & engineering philosophy', done: false, active: false },
-      { id: 't4', label: 'Curating Projects showcase & bento case studies', done: false, active: false },
-      { id: 't5', label: 'Structuring Skills matrix & Career trajectory', done: false, active: false },
-      { id: 't6', label: 'Compiling responsive schema & saving Neon DB snapshot', done: false, active: false },
-    ]);
-
-    for (let i = 0; i < tasks.length; i++) {
-      // Mark current task active
-      setTasks((prev) =>
-        prev.map((t, idx) => (idx === i ? { ...t, active: true } : t))
-      );
-
-      await new Promise((r) => setTimeout(r, i === 0 ? 500 : 650));
-
-      // Mark current task done
-      setTasks((prev) =>
-        prev.map((t, idx) => (idx === i ? { ...t, done: true, active: false } : t))
-      );
-    }
-
-    // Trigger AI generation in context with the prompt
-    try {
-      await sendChatMessage(finalPrompt);
-      await savePortfolio(false, `Agent Build: ${finalPrompt.slice(0, 50)}...`);
-    } catch (e) {
-      console.warn('Backend sync completed with local schema fallback', e);
-    }
-
-    await new Promise((r) => setTimeout(r, 600));
-    setIsExecuting(false);
-
+    // 1. Immediately transition to Studio Workspace
     if (onStartStudio) {
       onStartStudio();
     }
+
+    // 2. Dispatch prompt & live task checklist in Studio Copilot chat
+    sendChatMessage(finalPrompt);
   };
 
   return (
