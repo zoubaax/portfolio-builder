@@ -22,11 +22,13 @@ import {
   RiSave3Line,
   RiLoader4Line,
   RiExternalLinkLine,
-  RiCloseLine
+  RiCloseLine,
+  RiPaletteLine,
+  RiFileTextLine
 } from 'react-icons/ri';
 import { TbLayersLinked } from 'react-icons/tb';
 
-export const StudioHeader = () => {
+export const StudioHeader = ({ onNewProject }) => {
   const { user, isSignedIn } = useUser();
   const {
     portfolio,
@@ -144,7 +146,10 @@ export const StudioHeader = () => {
                   isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/10 text-zinc-200'
                 }`}
               >
-                <span>💻 Full-Stack & AI Engineer</span>
+                <span className="flex items-center gap-2">
+                  <RiCodeSSlashLine className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Full-Stack & AI Engineer</span>
+                </span>
               </button>
               <button
                 onClick={() => {
@@ -155,7 +160,10 @@ export const StudioHeader = () => {
                   isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/10 text-zinc-200'
                 }`}
               >
-                <span>🎨 Product & Systems Designer</span>
+                <span className="flex items-center gap-2">
+                  <RiPaletteLine className="w-3.5 h-3.5 text-purple-500" />
+                  <span>Product & Systems Designer</span>
+                </span>
               </button>
               <button
                 onClick={() => {
@@ -166,11 +174,30 @@ export const StudioHeader = () => {
                   isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/10 text-zinc-200'
                 }`}
               >
-                <span>🖋️ Minimalist Editorial</span>
+                <span className="flex items-center gap-2">
+                  <RiFileTextLine className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Minimalist Editorial</span>
+                </span>
               </button>
             </div>
           )}
         </div>
+
+        {/* Back to Agent Chat Button */}
+        {onNewProject && (
+          <button
+            onClick={onNewProject}
+            className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+              isLight
+                ? 'bg-orange-50 hover:bg-orange-100 border-orange-200 text-[#FF4500]'
+                : 'bg-[#FF4500]/10 hover:bg-[#FF4500]/20 border-[#FF4500]/30 text-[#FF4500]'
+            }`}
+            title="Prompt AI Agent to regenerate or refine portfolio"
+          >
+            <RiSparkling2Fill className="w-3.5 h-3.5" />
+            <span>Agent Chat</span>
+          </button>
+        )}
       </div>
 
       {/* 2. Middle: Search Bar + Device Switcher + Undo/Redo */}

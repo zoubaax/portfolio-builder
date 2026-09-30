@@ -30,11 +30,11 @@ import {
 import { TbLayersLinked, TbChecklist, TbLayoutBoard } from 'react-icons/tb';
 
 const SUGGESTION_PILLS = [
-  { label: '🟣 Bento Violet Style', prompt: 'Make it a dark bento violet style with high-contrast borders' },
-  { label: '💻 Terminal Dev Hero', prompt: 'Switch to a developer terminal hero and cyber dark theme' },
-  { label: '🖋️ Editorial Minimalist', prompt: 'Apply the refined minimal editorial theme with serif typography' },
-  { label: '🚀 Make Bio More Senior', prompt: 'Rewrite my bio and headline to position me as a Principal Architect' },
-  { label: '✨ Add AI Engine Project', prompt: 'Add a new featured AI orchestrator project to my work section' },
+  { label: 'Bento Violet Style', prompt: 'Make it a dark bento violet style with high-contrast borders' },
+  { label: 'Terminal Dev Hero', prompt: 'Switch to a developer terminal hero and cyber dark theme' },
+  { label: 'Editorial Minimalist', prompt: 'Apply the refined minimal editorial theme with serif typography' },
+  { label: 'Elevate Bio & Headline', prompt: 'Rewrite my bio and headline to position me as a Principal Architect' },
+  { label: 'Add AI Engine Project', prompt: 'Add a new featured AI orchestrator project to my work section' },
 ];
 
 export const StudioLeftPanel = () => {
