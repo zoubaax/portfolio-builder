@@ -3,31 +3,17 @@ import { useUser } from '@clerk/react';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
 import { LandingPage } from './components/landing/LandingPage';
 import { AgentOnboarding } from './components/onboarding/AgentOnboarding';
-import { StudioHeader } from './components/studio/StudioHeader';
-import { StudioLeftPanel } from './components/studio/StudioLeftPanel';
-import { LiveCanvas } from './components/studio/LiveCanvas';
+import { V0ChatPanel } from './components/studio/V0ChatPanel';
+import { V0Canvas } from './components/studio/V0Canvas';
 
 function StudioWorkspace({ onReturnToOnboarding }) {
-  const { studioTheme } = usePortfolio();
-  const isLight = studioTheme === 'light';
-
   return (
-    <div
-      className={`min-h-screen flex flex-col font-sans overflow-hidden transition-colors duration-200 ${
-        isLight ? 'bg-[#f8fafc] text-slate-900' : 'bg-[#090d16] text-white'
-      }`}
-    >
-      {/* SaaS Studio Header */}
-      <StudioHeader onNewProject={onReturnToOnboarding} />
+    <div className="h-screen w-screen flex flex-row overflow-hidden bg-white text-zinc-900 select-none">
+      {/* 1. Left Side: v0 Chat Panel ([ ◫ ] ☆ Project Name ▾ + Message Stream + Input Dock) */}
+      <V0ChatPanel onNewProject={onReturnToOnboarding} />
 
-      {/* Main Studio Split Layout */}
-      <div className="flex-1 flex flex-col md:flex-row min-h-0 overflow-hidden">
-        {/* Left Inspector / AI Copilot / Sections / Theme / History */}
-        <StudioLeftPanel />
-
-        {/* Right Live Preview Canvas */}
-        <LiveCanvas />
-      </div>
+      {/* 2. Right Side: v0 Preview Canvas ([ 🌐 Preview ] + Address Bar + Canvas Placeholder / Live Site) */}
+      <V0Canvas />
     </div>
   );
 }
@@ -37,14 +23,14 @@ function MainFlow() {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [guestMode, setGuestMode] = useState(false);
 
-  // If Clerk is still initializing, show a sleek dark loader
+  // If Clerk is still initializing, show a clean loader
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center text-white font-sans">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 rounded-full border-2 border-[#FF4500] border-t-transparent animate-spin" />
-          <span className="text-xs font-mono tracking-widest text-gray-400 uppercase">
-            Loading Superdesign...
+      <div className="min-h-screen bg-white flex items-center justify-center text-zinc-800 font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-7 h-7 rounded-full border-2 border-black border-t-transparent animate-spin" />
+          <span className="text-xs font-mono text-zinc-400">
+            Loading v0 Studio...
           </span>
         </div>
       </div>
@@ -60,7 +46,7 @@ function MainFlow() {
     );
   }
 
-  // 2. Authenticated Initial State: Show imfa.app-style Agent Onboarding
+  // 2. Authenticated Initial State: Show Agent Onboarding
   if (!hasCompletedOnboarding) {
     return (
       <AgentOnboarding
@@ -69,7 +55,7 @@ function MainFlow() {
     );
   }
 
-  // 3. Post-Onboarding: Full Interactive Elementor Studio
+  // 3. Post-Onboarding: Full Interactive v0 Studio
   return (
     <StudioWorkspace
       onReturnToOnboarding={() => setHasCompletedOnboarding(false)}

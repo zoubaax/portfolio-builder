@@ -1,12 +1,7 @@
 import React, { useState } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
-import { SignInButton, UserButton, useUser } from '@clerk/react';
 import {
   RiSparkling2Fill,
-  RiSearch2Line,
-  RiNotification3Line,
-  RiSunLine,
-  RiMoonLine,
   RiComputerLine,
   RiTabletLine,
   RiSmartphoneLine,
@@ -14,59 +9,54 @@ import {
   RiArrowGoForwardLine,
   RiEdit2Line,
   RiEyeLine,
-  RiCodeSSlashLine,
   RiUploadCloud2Line,
-  RiArrowDownSLine,
   RiCheckLine,
-  RiFlashlightLine,
-  RiSave3Line,
   RiLoader4Line,
   RiExternalLinkLine,
-  RiCloseLine,
-  RiPaletteLine,
-  RiFileTextLine
+  RiCloseLine
 } from 'react-icons/ri';
-import { TbLayersLinked } from 'react-icons/tb';
 
-export const StudioHeader = ({ onNewProject }) => {
-  const { user, isSignedIn } = useUser();
+export const StudioHeader = () => {
   const {
     portfolio,
+    setPortfolio,
     deviceView,
     setDeviceView,
     isEditMode,
     setIsEditMode,
     studioTheme,
-    toggleStudioTheme,
     undo,
     redo,
     canUndo,
     canRedo,
-    loadPresetPortfolio,
     savePortfolio,
     saveStatus,
-    isPublished,
-    portfolioId
+    isPublished
   } = usePortfolio();
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleValue, setTitleValue] = useState(portfolio.meta?.title || 'Zoubaa Portfolio');
   const [publishedUrl, setPublishedUrl] = useState(null);
 
   const isLight = studioTheme === 'light';
 
-  const handleSave = async () => {
-    try {
-      await savePortfolio(false);
-    } catch (e) {
-      console.error(e);
+  const handleTitleSubmit = () => {
+    setIsEditingTitle(false);
+    if (titleValue.trim()) {
+      setPortfolio((curr) => ({
+        ...curr,
+        meta: {
+          ...curr.meta,
+          title: titleValue.trim(),
+        },
+      }));
     }
   };
 
   const handlePublish = async () => {
     try {
       const res = await savePortfolio(true);
-      const slug = res?.subdomainSlug || portfolio.meta?.slug || 'portfolio';
+      const slug = res?.subdomainSlug || portfolio.meta?.slug || 'zoubaa';
       setPublishedUrl(`https://${slug}.portfolify.dev`);
     } catch (e) {
       console.error(e);
@@ -75,422 +65,205 @@ export const StudioHeader = ({ onNewProject }) => {
 
   return (
     <header
-      className={`h-16 px-4 md:px-6 border-b transition-colors duration-200 flex items-center justify-between z-40 select-none ${
+      className={`h-14 px-4 md:px-6 border-b transition-colors duration-200 flex items-center justify-between z-30 select-none ${
         isLight
           ? 'bg-white border-slate-200 text-slate-800'
-          : 'bg-[#0d121f] border-white/10 text-white'
+          : 'bg-[#0b0e17] border-white/10 text-white'
       }`}
     >
-      {/* 1. Left Brand & Breadcrumb */}
-      <div className="flex items-center gap-4">
-        {/* Brand Logo */}
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-            <RiSparkling2Fill className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold tracking-tight text-base">Portfolify</span>
-              <span
-                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
-                  isLight
-                    ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
-                    : 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
-                }`}
-              >
-                Studio Pro
-              </span>
-            </div>
-            <p className={`text-[11px] font-medium leading-none mt-0.5 ${isLight ? 'text-slate-400' : 'text-slate-400'}`}>
-              AI Site Engine • {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-            </p>
-          </div>
+      {/* 1. Left: Brand & Portfolio Title (Inline Editable) */}
+      <div className="flex items-center gap-3.5">
+        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-orange-600 to-[#FF4500] flex items-center justify-center text-white shadow-md shadow-[#FF4500]/20">
+          <RiSparkling2Fill className="w-4 h-4" />
         </div>
 
-        <div className={`h-6 w-px mx-1 hidden lg:block ${isLight ? 'bg-slate-200' : 'bg-white/10'}`} />
-
-        {/* Archetype Preset Selector Dropdown */}
-        <div className="relative hidden md:block">
-          <button
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-              isLight
-                ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-200'
-            }`}
-          >
-            <TbLayersLinked className="w-4 h-4 text-indigo-500" />
-            <span className="truncate max-w-[140px]">
-              {portfolio.meta?.title?.split('—')[0]?.trim() || 'Portfolio'}
-            </span>
-            <RiArrowDownSLine className="w-3.5 h-3.5 opacity-60" />
-          </button>
-
-          {isDropdownOpen && (
-            <div
-              className={`absolute top-full left-0 mt-2 w-64 p-2 rounded-2xl border shadow-xl z-50 transition-all ${
-                isLight
-                  ? 'bg-white border-slate-200 shadow-slate-200/50 text-slate-800'
-                  : 'bg-[#141a29] border-white/10 shadow-2xl text-white'
-              }`}
+        <div className="flex items-center gap-2">
+          {isEditingTitle ? (
+            <input
+              type="text"
+              value={titleValue}
+              onChange={(e) => setTitleValue(e.target.value)}
+              onBlur={handleTitleSubmit}
+              onKeyDown={(e) => e.key === 'Enter' && handleTitleSubmit()}
+              autoFocus
+              className="text-xs font-bold px-2 py-1 rounded bg-white/10 border border-[#FF4500]/40 outline-none text-white w-44"
+            />
+          ) : (
+            <button
+              onClick={() => setIsEditingTitle(true)}
+              className="group flex items-center gap-1.5 text-xs font-bold text-white hover:text-[#FF4500] transition-colors cursor-pointer"
+              title="Click to rename portfolio"
             >
-              <p className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-zinc-400'}`}>
-                Switch Archetype Preset
-              </p>
-              <button
-                onClick={() => {
-                  loadPresetPortfolio('developer');
-                  setIsDropdownOpen(false);
-                }}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center justify-between ${
-                  isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/10 text-zinc-200'
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <RiCodeSSlashLine className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>Full-Stack & AI Engineer</span>
-                </span>
-              </button>
-              <button
-                onClick={() => {
-                  loadPresetPortfolio('designer');
-                  setIsDropdownOpen(false);
-                }}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center justify-between ${
-                  isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/10 text-zinc-200'
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <RiPaletteLine className="w-3.5 h-3.5 text-purple-500" />
-                  <span>Product & Systems Designer</span>
-                </span>
-              </button>
-              <button
-                onClick={() => {
-                  loadPresetPortfolio('minimalist');
-                  setIsDropdownOpen(false);
-                }}
-                className={`w-full text-left px-3 py-2 rounded-xl text-xs font-medium transition-colors flex items-center justify-between ${
-                  isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/10 text-zinc-200'
-                }`}
-              >
-                <span className="flex items-center gap-2">
-                  <RiFileTextLine className="w-3.5 h-3.5 text-amber-500" />
-                  <span>Minimalist Editorial</span>
-                </span>
-              </button>
-            </div>
+              <span>{portfolio.meta?.title || 'Zoubaa Portfolio'}</span>
+              <RiEdit2Line className="w-3 h-3 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+            </button>
           )}
-        </div>
 
-        {/* Back to Agent Chat Button */}
-        {onNewProject && (
-          <button
-            onClick={onNewProject}
-            className={`hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-              isLight
-                ? 'bg-orange-50 hover:bg-orange-100 border-orange-200 text-[#FF4500]'
-                : 'bg-[#FF4500]/10 hover:bg-[#FF4500]/20 border-[#FF4500]/30 text-[#FF4500]'
-            }`}
-            title="Prompt AI Agent to regenerate or refine portfolio"
-          >
-            <RiSparkling2Fill className="w-3.5 h-3.5" />
-            <span>Agent Chat</span>
-          </button>
-        )}
+          {/* Clean Auto-saved indicator */}
+          <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[10px] text-gray-400">
+            {saveStatus === 'saving' ? (
+              <>
+                <RiLoader4Line className="w-2.5 h-2.5 animate-spin text-[#FF4500]" />
+                <span>Saving...</span>
+              </>
+            ) : (
+              <>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                <span>Auto-saved</span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* 2. Middle: Search Bar + Device Switcher + Undo/Redo */}
-      <div className="flex items-center gap-3">
-        {/* SaaS Global Search Bar */}
-        <div className="relative hidden xl:flex items-center">
-          <RiSearch2Line className={`w-4 h-4 absolute left-3 pointer-events-none ${isLight ? 'text-slate-400' : 'text-zinc-500'}`} />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search sections, styles, prompts..."
-            className={`w-64 pl-9 pr-8 py-1.5 text-xs rounded-xl border outline-none transition-all ${
-              isLight
-                ? 'bg-slate-50 focus:bg-white border-slate-200 focus:border-indigo-500 text-slate-800 placeholder-slate-400'
-                : 'bg-white/5 focus:bg-[#121926] border-white/10 focus:border-indigo-500 text-white placeholder-zinc-500'
-            }`}
-          />
-          <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded border absolute right-2.5 ${
-            isLight ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-white/10 border-white/10 text-zinc-400'
-          }`}>
-            ⌘K
-          </span>
-        </div>
-
-        {/* Visual Edit vs Live Preview Toggle */}
+      {/* 2. Center: Minimalist Device Switcher Pill */}
+      <div className="flex items-center bg-white/5 p-1 rounded-xl border border-white/10">
         <button
-          onClick={() => setIsEditMode(!isEditMode)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
-            isEditMode
-              ? isLight
-                ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                : 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
-              : isLight
-                ? 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
-                : 'bg-white/5 text-zinc-400 border-white/10 hover:text-white'
+          onClick={() => setDeviceView('desktop')}
+          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+            deviceView === 'desktop'
+              ? 'bg-[#FF4500] text-white shadow-sm font-semibold'
+              : 'text-gray-400 hover:text-white'
           }`}
-          title={isEditMode ? 'Visual Edit Mode (Elementor style) - click to switch to clean Preview' : 'Preview Mode - click to edit inline'}
+          title="Desktop view (100%)"
         >
-          {isEditMode ? (
-            <>
-              <RiEdit2Line className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Visual Edit</span>
-            </>
-          ) : (
-            <>
-              <RiEyeLine className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Preview</span>
-            </>
-          )}
+          <RiComputerLine className="w-3.5 h-3.5" />
+          <span className="hidden md:inline text-[11px]">Desktop</span>
         </button>
 
-        {/* Device Viewport Segmented Control */}
-        <div className={`flex items-center rounded-xl p-1 border ${
-          isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/10'
-        }`}>
-          <button
-            onClick={() => setDeviceView('desktop')}
-            className={`p-1.5 rounded-lg transition-all ${
-              deviceView === 'desktop'
-                ? isLight
-                  ? 'bg-white text-indigo-600 shadow-sm font-bold'
-                  : 'bg-indigo-600 text-white shadow-sm'
-                : isLight
-                  ? 'text-slate-500 hover:text-slate-900'
-                  : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-            title="Desktop View"
-          >
-            <RiComputerLine className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setDeviceView('tablet')}
-            className={`p-1.5 rounded-lg transition-all ${
-              deviceView === 'tablet'
-                ? isLight
-                  ? 'bg-white text-indigo-600 shadow-sm font-bold'
-                  : 'bg-indigo-600 text-white shadow-sm'
-                : isLight
-                  ? 'text-slate-500 hover:text-slate-900'
-                  : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-            title="Tablet View (768px)"
-          >
-            <RiTabletLine className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setDeviceView('mobile')}
-            className={`p-1.5 rounded-lg transition-all ${
-              deviceView === 'mobile'
-                ? isLight
-                  ? 'bg-white text-indigo-600 shadow-sm font-bold'
-                  : 'bg-indigo-600 text-white shadow-sm'
-                : isLight
-                  ? 'text-slate-500 hover:text-slate-900'
-                  : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-            title="Mobile View (375px)"
-          >
-            <RiSmartphoneLine className="w-4 h-4" />
-          </button>
-        </div>
+        <button
+          onClick={() => setDeviceView('tablet')}
+          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+            deviceView === 'tablet'
+              ? 'bg-[#FF4500] text-white shadow-sm font-semibold'
+              : 'text-gray-400 hover:text-white'
+          }`}
+          title="Tablet view (768px)"
+        >
+          <RiTabletLine className="w-3.5 h-3.5" />
+          <span className="hidden md:inline text-[11px]">Tablet</span>
+        </button>
 
+        <button
+          onClick={() => setDeviceView('mobile')}
+          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+            deviceView === 'mobile'
+              ? 'bg-[#FF4500] text-white shadow-sm font-semibold'
+              : 'text-gray-400 hover:text-white'
+          }`}
+          title="Mobile view (380px)"
+        >
+          <RiSmartphoneLine className="w-3.5 h-3.5" />
+          <span className="hidden md:inline text-[11px]">Mobile</span>
+        </button>
+      </div>
+
+      {/* 3. Right: Undo/Redo + Preview Toggle + Publish Button */}
+      <div className="flex items-center gap-2">
         {/* Undo / Redo */}
-        <div className={`hidden sm:flex items-center rounded-xl p-1 border ${
-          isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/10'
-        }`}>
+        <div className="hidden sm:flex items-center gap-1">
           <button
             onClick={undo}
             disabled={!canUndo}
-            title="Undo (Ctrl+Z)"
-            className={`p-1.5 rounded-lg transition-colors ${
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
               canUndo
-                ? isLight
-                  ? 'text-slate-700 hover:bg-white'
-                  : 'text-zinc-300 hover:text-white hover:bg-white/10'
-                : 'text-zinc-400/40 cursor-not-allowed'
+                ? 'hover:bg-white/10 text-gray-300 hover:text-white'
+                : 'text-gray-600 cursor-not-allowed'
             }`}
+            title="Undo (Cmd+Z)"
           >
-            <RiArrowGoBackLine className="w-4 h-4" />
+            <RiArrowGoBackLine className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={redo}
             disabled={!canRedo}
-            title="Redo (Ctrl+Y)"
-            className={`p-1.5 rounded-lg transition-colors ${
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
               canRedo
-                ? isLight
-                  ? 'text-slate-700 hover:bg-white'
-                  : 'text-zinc-300 hover:text-white hover:bg-white/10'
-                : 'text-zinc-400/40 cursor-not-allowed'
+                ? 'hover:bg-white/10 text-gray-300 hover:text-white'
+                : 'text-gray-600 cursor-not-allowed'
             }`}
+            title="Redo (Cmd+Shift+Z)"
           >
-            <RiArrowGoForwardLine className="w-4 h-4" />
+            <RiArrowGoForwardLine className="w-3.5 h-3.5" />
           </button>
         </div>
-      </div>
 
-      {/* 3. Right: Studio Light/Dark Toggle + Notifications + User Profile (like inspiration screenshot) */}
-      <div className="flex items-center gap-3">
-        {/* Studio Theme Switcher (Sun / Moon) */}
+        <div className="h-4 w-px bg-white/10 mx-1 hidden sm:block" />
+
+        {/* Visual Edit vs Clean Preview Toggle */}
         <button
-          onClick={toggleStudioTheme}
-          title={`Switch to ${isLight ? 'Dark' : 'Light'} Studio Theme`}
-          className={`p-2 rounded-xl border transition-all ${
-            isLight
-              ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-amber-500'
-              : 'bg-white/5 hover:bg-white/10 border-white/10 text-amber-400'
+          onClick={() => setIsEditMode(!isEditMode)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+            isEditMode
+              ? 'bg-white/10 text-white border-white/20'
+              : 'bg-white/5 text-gray-400 hover:text-white border-white/10'
           }`}
+          title={isEditMode ? 'Visual Edit Mode active' : 'Clean Preview active'}
         >
-          {isLight ? <RiMoonLine className="w-4 h-4 text-slate-700" /> : <RiSunLine className="w-4 h-4 text-amber-400" />}
-        </button>
-
-        {/* Notification Bell with Badge */}
-        <div className="relative">
-          <button
-            className={`p-2 rounded-xl border transition-all ${
-              isLight
-                ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-600'
-                : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300'
-            }`}
-          >
-            <RiNotification3Line className="w-4 h-4" />
-          </button>
-          <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-1.5 right-1.5 ring-2 ring-white" />
-        </div>
-
-        {/* Save to Cloud Button */}
-        <button
-          onClick={handleSave}
-          disabled={saveStatus === 'saving'}
-          className={`hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-            saveStatus === 'saved'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500'
-              : saveStatus === 'saving'
-                ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400 opacity-70'
-                : isLight
-                  ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
-                  : 'bg-white/5 hover:bg-white/10 border-white/10 text-zinc-300'
-          }`}
-          title="Save portfolio schema to Neon Database"
-        >
-          {saveStatus === 'saving' ? (
-            <RiLoader4Line className="w-4 h-4 animate-spin text-indigo-500" />
-          ) : saveStatus === 'saved' ? (
-            <RiCheckLine className="w-4 h-4 text-emerald-500" />
+          {isEditMode ? (
+            <>
+              <RiEdit2Line className="w-3.5 h-3.5 text-[#FF4500]" />
+              <span className="hidden md:inline">Edit Mode</span>
+            </>
           ) : (
-            <RiSave3Line className="w-4 h-4 text-indigo-500" />
+            <>
+              <RiEyeLine className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden md:inline">Preview</span>
+            </>
           )}
-          <span>
-            {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save'}
-          </span>
         </button>
 
-        {/* Publish Action Button */}
+        {/* Primary Glowing Action: Publish */}
         <button
           onClick={handlePublish}
           disabled={saveStatus === 'saving'}
-          className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
+          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-600 to-[#FF4500] hover:from-orange-500 hover:to-[#ff5722] text-white shadow-md shadow-[#FF4500]/25 transition-all hover:scale-102 active:scale-98 cursor-pointer"
         >
-          <RiUploadCloud2Line className="w-4 h-4" />
-          <span>{isPublished ? 'Update Live' : 'Publish'}</span>
+          {saveStatus === 'saving' ? (
+            <RiLoader4Line className="w-3.5 h-3.5 animate-spin" />
+          ) : isPublished ? (
+            <RiCheckLine className="w-3.5 h-3.5" />
+          ) : (
+            <RiUploadCloud2Line className="w-3.5 h-3.5" />
+          )}
+          <span>{isPublished ? 'Published' : 'Publish'}</span>
         </button>
-
-        {/* User Profile / Clerk Authentication */}
-        {isSignedIn ? (
-          <div className={`flex items-center gap-2 pl-2 border-l ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
-            <UserButton
-              appearance={{
-                elements: {
-                  avatarBox: 'w-8 h-8 ring-2 ring-indigo-500/30 rounded-full',
-                },
-              }}
-            />
-            <div className="hidden md:block text-left leading-tight">
-              <span className={`block font-bold text-xs ${isLight ? 'text-slate-800' : 'text-white'}`}>
-                {user?.firstName || user?.username || 'zoubaa'}
-              </span>
-              <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wider">
-                CREATOR
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className={`pl-2 border-l ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
-            <SignInButton mode="modal">
-              <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all cursor-pointer">
-                Sign In
-              </button>
-            </SignInButton>
-          </div>
-        )}
       </div>
 
-      {/* Published Live Modal */}
+      {/* Published URL Toast Modal */}
       {publishedUrl && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div
-            className={`w-full max-w-md rounded-2xl p-6 border shadow-2xl relative animate-in fade-in zoom-in-95 duration-200 ${
-              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#141b2d] border-white/10 text-white'
-            }`}
-          >
-            <button
-              onClick={() => setPublishedUrl(null)}
-              className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-400 hover:text-white"
-            >
-              <RiCloseLine className="w-5 h-5" />
-            </button>
-
-            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mb-4">
-              <RiUploadCloud2Line className="w-6 h-6" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-[#121215] border border-white/15 rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-3 text-xl">
+              <RiCheckLine />
             </div>
-
-            <h3 className="text-lg font-bold">Portfolio is Live!</h3>
-            <p className={`text-xs mt-1 ${isLight ? 'text-slate-500' : 'text-zinc-400'}`}>
-              Your portfolio has been synchronized to Neon PostgreSQL and is published to your subdomain.
+            <h3 className="text-base font-bold text-white mb-1">Your Portfolio is Live!</h3>
+            <p className="text-xs text-gray-400 mb-4">
+              Your custom portfolio schema is deployed and publicly accessible.
             </p>
-
-            <div
-              className={`mt-4 p-3 rounded-xl border flex items-center justify-between text-xs font-mono ${
-                isLight ? 'bg-slate-50 border-slate-200' : 'bg-black/30 border-white/10'
-              }`}
-            >
-              <span className="truncate text-indigo-500 font-semibold">{publishedUrl}</span>
+            <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/10 mb-4">
+              <input
+                type="text"
+                readOnly
+                value={publishedUrl}
+                className="flex-1 bg-transparent border-0 outline-none text-xs text-zinc-300 font-mono px-2"
+              />
               <a
                 href={publishedUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="p-1 rounded-md text-indigo-600 hover:text-indigo-500"
+                className="px-3 py-1 rounded-lg bg-[#FF4500] text-white text-xs font-bold flex items-center gap-1 hover:bg-[#ff5722]"
               >
-                <RiExternalLinkLine className="w-4 h-4" />
+                <span>Visit</span>
+                <RiExternalLinkLine className="w-3 h-3" />
               </a>
             </div>
-
-            <div className="mt-6 flex gap-2">
-              <button
-                onClick={() => setPublishedUrl(null)}
-                className={`flex-1 py-2 px-4 rounded-xl text-xs font-bold border ${
-                  isLight ? 'border-slate-200 text-slate-700 hover:bg-slate-50' : 'border-white/10 hover:bg-white/5'
-                }`}
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(publishedUrl);
-                  alert('URL copied to clipboard!');
-                }}
-                className="flex-1 py-2 px-4 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
-              >
-                Copy Link
-              </button>
-            </div>
+            <button
+              onClick={() => setPublishedUrl(null)}
+              className="text-xs text-gray-400 hover:text-white transition-colors cursor-pointer"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

@@ -22,12 +22,12 @@ export const LiveCanvas = () => {
 
   return (
     <main
-      className={`flex-1 relative flex flex-col h-[calc(100vh-4rem)] overflow-hidden transition-colors duration-200 ${
-        isLight ? 'bg-[#f4f6fa]' : 'bg-[#070a12]'
+      className={`flex-1 relative flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden transition-colors duration-200 ${
+        isLight ? 'bg-[#f4f6fa]' : 'bg-[#06080e]'
       }`}
     >
-      {/* Canvas Viewport Scroll Area */}
-      <div className="flex-1 overflow-y-auto flex justify-center items-start p-2 sm:p-6">
+      {/* Canvas Viewport Scroll Area (with pb-40 so floating omnibar never obscures content) */}
+      <div className="flex-1 overflow-y-auto flex justify-center items-start p-2 sm:p-6 pb-44">
         <div className={`transition-all duration-300 origin-top overflow-hidden ${frameWidthClass} ${frameBorderClass}`}>
           {/* Mobile Notch Simulation */}
           {deviceView === 'mobile' && (
@@ -36,7 +36,7 @@ export const LiveCanvas = () => {
             </div>
           )}
 
-          {/* Render Active Portfolio */}
+          {/* Render Active Portfolio with SectionWrapper inline edits */}
           <PortfolioRenderer portfolio={portfolio} isPreview={true} />
         </div>
       </div>

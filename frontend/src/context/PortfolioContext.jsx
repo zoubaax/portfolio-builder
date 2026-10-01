@@ -24,13 +24,18 @@ export const PortfolioProvider = ({ children }) => {
   const [historyIndex, setHistoryIndex] = useState(0);
 
   // Studio UI view state
-  const [studioTheme, setStudioTheme] = useState('light'); // 'light' | 'dark' SaaS Studio theme
+  const [studioTheme, setStudioTheme] = useState('dark'); // Default to sleek Vercel dark mode
   const [deviceView, setDeviceView] = useState('desktop'); // 'desktop' | 'tablet' | 'mobile'
   const [isEditMode, setIsEditMode] = useState(true); // Elementor-style visual edit mode vs pure preview
+  const [viewMode, setViewMode] = useState('preview'); // 'preview' | 'code' (v0 tab toggle)
+  const [isChatCollapsed, setIsChatCollapsed] = useState(false); // v0 1-click fullscreen toggle
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'sections' | 'theme' | 'history'
   const [selectedSectionId, setSelectedSectionId] = useState('sec-hero');
   const [isGenerating, setIsGenerating] = useState(false);
   const [activeTasks, setActiveTasks] = useState(null);
+  const [streamingCode, setStreamingCode] = useState('');
+  const [currentPrompt, setCurrentPrompt] = useState('');
+  const [hasGeneratedFirstPortfolio, setHasGeneratedFirstPortfolio] = useState(false);
 
   const getAuthHeaders = useCallback(async () => {
     let token = null;
@@ -176,6 +181,14 @@ export const PortfolioProvider = ({ children }) => {
       setPortfolio(history[nextIndex]);
     }
   }, [history, historyIndex]);
+
+  // Jump to specific version index (v0 version scrubber: v1, v2, v3)
+  const jumpToHistoryIndex = useCallback((targetIndex) => {
+    if (targetIndex >= 0 && targetIndex < history.length) {
+      setHistoryIndex(targetIndex);
+      setPortfolio(history[targetIndex]);
+    }
+  }, [history]);
 
   // Update Section Data (used by inline text edits and inspector)
   const updateSection = useCallback((sectionId, updater) => {
@@ -486,8 +499,11 @@ export const PortfolioProvider = ({ children }) => {
 
     setChatMessages((prev) => [...prev, userMsg]);
     setIsGenerating(true);
+    setCurrentPrompt(promptText);
+    setStreamingCode('');
+    setViewMode('code'); // Force user to Code tab before starting!
 
-    // Initialize 6 Architectural Checklist Tasks (Matching user's request)
+    // Initialize 6 Architectural Checklist Tasks
     const initialTasks = [
       { id: 't1', label: 'Analyzing prompt & synthesizing design tokens', done: false, active: true },
       { id: 't2', label: 'Generating high-impact Hero positioning & tagline', done: false, active: false },
@@ -517,13 +533,13 @@ export const PortfolioProvider = ({ children }) => {
     }, 650);
 
     const assistantMsgId = `msg-ai-${Date.now()}`;
-    // Add placeholder assistant message for live streaming
+    // Add clean assistant message placeholder (NO raw JSON)
     setChatMessages((prev) => [
       ...prev,
       {
         id: assistantMsgId,
         role: 'assistant',
-        text: '',
+        text: `Synthesizing custom portfolio architecture from prompt...`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       },
     ]);
@@ -561,10 +577,9 @@ export const PortfolioProvider = ({ children }) => {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.replace('data: ', '').trim());
+              // Buffer raw JSON to streamingCode for the Code inspector tab, NOT chat text!
               if (data.chunk) {
-                setChatMessages((prev) =>
-                  prev.map((m) => (m.id === assistantMsgId ? { ...m, text: m.text + data.chunk } : m))
-                );
+                setStreamingCode((prev) => prev + data.chunk);
               }
               if (data.done && data.updatedPortfolio) {
                 updatedPortfolio = data.updatedPortfolio;
@@ -575,47 +590,175 @@ export const PortfolioProvider = ({ children }) => {
       }
 
       if (updatedPortfolio) {
+        // Ensure user's name is applied if mentioned in prompt
+        const nameMatch = promptText.match(/(?:my name is|i am|name:?)\s+([A-Za-z0-9_-]+)/i);
+        if (nameMatch && nameMatch[1]) {
+          const extractedName = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1);
+          updatedPortfolio.meta = { ...updatedPortfolio.meta, title: `${extractedName} Portfolio` };
+          updatedPortfolio.sections = updatedPortfolio.sections.map((s) =>
+            s.type === 'hero' ? { ...s, data: { ...s.data, name: extractedName } } : s
+          );
+        }
+
         pushState(updatedPortfolio);
+        setHasGeneratedFirstPortfolio(true);
         const finalTasks = initialTasks.map((t) => ({ ...t, done: true, active: false }));
         setChatMessages((prev) =>
           prev.map((m) =>
             m.id === assistantMsgId
               ? {
                   ...m,
-                  text: `✓ Updated portfolio to match: "${promptText}"`,
+                  text: `✓ Synthesized custom portfolio layout and theme for: "${promptText}"`,
                   tasks: finalTasks,
                 }
               : m
           )
         );
+        setTimeout(() => {
+          setViewMode('preview');
+        }, 1200);
+      } else {
+        throw new Error('No updated portfolio returned by model');
       }
     } catch (err) {
-      // Graceful fallback to local rule engine if network drops
+      // High-Impact Intelligent Fallback
       const lower = promptText.toLowerCase();
-      let replyText = `Updated portfolio for: "${promptText}"`;
-      let fallbackPortfolio = { ...portfolio };
+      const nameMatch = promptText.match(/(?:my name is|i am|name:?)\s+([A-Za-z0-9_-]+)/i);
+      const personName = nameMatch ? nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1) : 'Zoubaa';
 
-      if (lower.includes('bento') || lower.includes('violet')) {
+      let fallbackPortfolio = { ...portfolio };
+      fallbackPortfolio.meta = {
+        ...fallbackPortfolio.meta,
+        title: `${personName} — DevOps & Platform Engineer`,
+      };
+
+      let replyText = `Synthesized customized portfolio architecture for ${personName}!`;
+
+      if (lower.includes('devops') || lower.includes('cloud') || lower.includes('terminal') || lower.includes('cyber')) {
+        fallbackPortfolio.theme = THEME_PRESETS['cyber-dark'];
+        fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) => {
+          if (s.type === 'hero') {
+            return {
+              ...s,
+              variant: 'terminal-dev',
+              data: {
+                ...s.data,
+                name: personName,
+                title: 'Senior DevOps & Platform Engineer',
+                tagline: 'Automating resilient multi-cloud architecture, zero-downtime GitOps pipelines, and scalable Kubernetes clusters.',
+                terminalCommands: [
+                  { cmd: 'whoami', output: `${personName.toLowerCase()} (Platform Architect)` },
+                  { cmd: 'kubectl get nodes', output: 'STATUS: 12 Nodes Ready • 99.99% Uptime' },
+                  { cmd: 'terraform plan', output: 'Multi-Region AWS Infrastructure: 0 to destroy' },
+                ],
+              },
+            };
+          }
+          if (s.type === 'skills') {
+            return {
+              ...s,
+              data: {
+                ...s.data,
+                heading: 'Core Infrastructure & Tools',
+                categories: [
+                  { name: 'Cloud & Containers', skills: ['Kubernetes (EKS)', 'Docker', 'AWS', 'GCP'] },
+                  { name: 'Infrastructure as Code', skills: ['Terraform', 'Terragrunt', 'OpenTofu'] },
+                  { name: 'CI/CD & GitOps', skills: ['ArgoCD', 'GitHub Actions', 'GitLab CI'] },
+                  { name: 'Observability & SRE', skills: ['Prometheus', 'Grafana', 'Datadog'] },
+                ],
+              },
+            };
+          }
+          if (s.type === 'projects') {
+            return {
+              ...s,
+              variant: 'bento-grid',
+              data: {
+                ...s.data,
+                heading: 'Infrastructure Case Studies',
+                projects: [
+                  {
+                    id: 'case-1',
+                    title: 'Multi-Region EKS Migration',
+                    description: 'Zero-downtime migration of 85 microservices to Kubernetes EKS with active-active failover.',
+                    tags: ['Kubernetes', 'AWS', 'Terraform', 'Istio'],
+                    metrics: '99.995% Uptime • -32% Cloud Costs',
+                    featured: true,
+                  },
+                  {
+                    id: 'case-2',
+                    title: 'GitOps Pipeline with ArgoCD',
+                    description: 'Automated declarative continuous deployment with automated canary analysis.',
+                    tags: ['ArgoCD', 'Helm', 'GitHub Actions'],
+                    metrics: '150+ deploys/day with 0 rollback incidents',
+                    featured: false,
+                  },
+                  {
+                    id: 'case-3',
+                    title: 'Zero-Downtime Multi-Cloud IaC',
+                    description: 'Unified multi-cloud provisioning using Terraform and Terragrunt modules.',
+                    tags: ['Terraform', 'AWS', 'GCP', 'OpenTofu'],
+                    metrics: '100% Declarative State',
+                    featured: false,
+                  },
+                ],
+              },
+            };
+          }
+          return s;
+        });
+        replyText = `Synthesized high-impact DevOps & Platform Engineering portfolio for ${personName} with Cyber Dark & Terminal Hero!`;
+      } else if (lower.includes('bento') || lower.includes('violet')) {
         fallbackPortfolio.theme = THEME_PRESETS['bento-violet'];
-        fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) =>
-          s.type === 'projects' ? { ...s, variant: 'bento-grid' } : s
-        );
-        replyText = "Switched to Bento Violet theme!";
+        fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) => {
+          if (s.type === 'hero') {
+            return { ...s, data: { ...s.data, name: personName } };
+          }
+          if (s.type === 'projects') {
+            return { ...s, variant: 'bento-grid' };
+          }
+          return s;
+        });
+        replyText = `Synthesized Bento Violet layout for ${personName}!`;
       } else if (lower.includes('minimal') || lower.includes('editorial')) {
         fallbackPortfolio.theme = THEME_PRESETS['minimal-editorial'];
-        fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) =>
-          s.type === 'hero' ? { ...s, variant: 'minimal-centered' } : s
-        );
-        replyText = "Applied Minimal Editorial theme!";
-      } else if (lower.includes('terminal') || lower.includes('cyber')) {
+        fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) => {
+          if (s.type === 'hero') {
+            return { ...s, variant: 'minimal-centered', data: { ...s.data, name: personName } };
+          }
+          return s;
+        });
+        replyText = `Synthesized Minimal Editorial portfolio for ${personName}!`;
+      } else if (lower.includes('emerald') || lower.includes('green')) {
+        fallbackPortfolio.theme = THEME_PRESETS['emerald-matrix'];
+        replyText = `Applied Emerald Matrix theme with vivid green accents for ${personName}!`;
+      } else if (lower.includes('orange') || lower.includes('ember') || lower.includes('#ff4500')) {
+        fallbackPortfolio.theme = THEME_PRESETS['superdesign-ember'];
+        replyText = `Applied Superdesign Ember theme with flame orange accents for ${personName}!`;
+      } else if (lower.includes('cyan') || lower.includes('blue')) {
         fallbackPortfolio.theme = THEME_PRESETS['cyber-dark'];
+        replyText = `Applied Cyber Dark theme with cyber cyan accents for ${personName}!`;
+      } else if (lower.match(/#[0-9a-f]{3,6}/i)) {
+        const hex = lower.match(/#[0-9a-f]{3,6}/i)[0];
+        fallbackPortfolio.theme = {
+          ...fallbackPortfolio.theme,
+          palette: {
+            ...fallbackPortfolio.theme.palette,
+            accent: hex,
+            accentHover: hex,
+            accentGlow: `${hex}40`,
+            border: `${hex}30`,
+          },
+        };
+        replyText = `Updated portfolio accent color to ${hex}!`;
+      } else {
         fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) =>
-          s.type === 'hero' ? { ...s, variant: 'terminal-dev' } : s
+          s.type === 'hero' ? { ...s, data: { ...s.data, name: personName } } : s
         );
-        replyText = "Activated Cyber Slate with terminal hero!";
       }
 
       pushState(fallbackPortfolio);
+      setHasGeneratedFirstPortfolio(true);
       const finalTasks = initialTasks.map((t) => ({ ...t, done: true, active: false }));
       setChatMessages((prev) =>
         prev.map((m) =>
@@ -628,6 +771,9 @@ export const PortfolioProvider = ({ children }) => {
             : m
         )
       );
+      setTimeout(() => {
+        setViewMode('preview');
+      }, 1200);
     } finally {
       clearInterval(taskTimer);
       setActiveTasks(null);
@@ -647,6 +793,10 @@ export const PortfolioProvider = ({ children }) => {
         setDeviceView,
         isEditMode,
         setIsEditMode,
+        viewMode,
+        setViewMode,
+        isChatCollapsed,
+        setIsChatCollapsed,
         activeTab,
         setActiveTab,
         selectedSectionId,
@@ -654,10 +804,16 @@ export const PortfolioProvider = ({ children }) => {
         chatMessages,
         isGenerating,
         activeTasks,
+        streamingCode,
+        currentPrompt,
+        hasGeneratedFirstPortfolio,
+        history,
+        historyIndex,
         canUndo: historyIndex > 0,
         canRedo: historyIndex < history.length - 1,
         undo,
         redo,
+        jumpToHistoryIndex,
         updateSection,
         updateSectionField,
         changeSectionVariant,
