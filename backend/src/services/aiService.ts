@@ -1,6 +1,8 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
-import * as jsonpatch from 'fast-json-patch';
+import * as jsonpatchModule from 'fast-json-patch';
+
+const jsonpatch: any = (jsonpatchModule as any).default || jsonpatchModule;
 
 dotenv.config();
 
@@ -50,7 +52,7 @@ export const getAiClient = (config: AiClientConfig = {}) => {
         apiKey: process.env.NVIDIA_API_KEY,
         baseURL: 'https://integrate.api.nvidia.com/v1',
       }),
-      model: config.byokModel || 'nvidia/nemotron-3-ultra-550b-a55b',
+      model: config.byokModel || process.env.NVIDIA_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b',
       provider: 'nvidia',
     };
   }
@@ -75,11 +77,23 @@ const SYSTEM_PORTFOLIO_PROMPT = `
 You are the world's premier AI portfolio design architect and copywriter.
 You manipulate structured portfolio JSON adhering to the Portfolify Schema.
 
-Schema Rules:
-- Keep sections clean, impactful, and realistic.
-- Support theme presets: 'cyber-dark', 'bento-violet', 'minimal-editorial', 'nordic-teal'.
-- Support section types: 'hero', 'about', 'projects', 'skills', 'experience', 'contact'.
-- Return ONLY valid JSON. Do not include extraneous conversational text.
+Schema Definitions:
+1. meta: { title: string, slug: string, description: string }
+2. theme: { id: string ('cyber-dark' | 'bento-violet' | 'minimal-editorial' | 'nordic-teal'), name: string, palette: { bg: string, surface: string, accent: string, textPrimary?: string, textSecondary?: string, border?: string } }
+3. sections: Array of section objects:
+   - hero: { id: 'sec-hero', type: 'hero', variant: 'split-portrait' | 'terminal-dev' | 'minimal-centered', visible: boolean, data: { badge?: string, name: string, title: string, tagline: string, avatar?: string, primaryCta?: { text: string, link: string }, secondaryCta?: { text: string, link: string }, socials?: Array<{ platform: string, url: string }> } }
+   - about: { id: 'sec-about', type: 'about', variant: 'bento' | 'classic-story', visible: boolean, data: { heading: string, subheading?: string, bio: string[] | string, stats?: Array<{ value: string, label: string }>, location?: string } }
+   - projects: { id: 'sec-projects', type: 'projects', variant: 'bento-grid' | 'card-grid' | 'minimal-list', visible: boolean, data: { heading: string, subheading?: string, projects: Array<{ id: string, title: string, description: string, tags: string[], metrics?: string, link?: string, github?: string, image?: string }> } }
+   - skills: { id: 'sec-skills', type: 'skills', variant: 'category-cards' | 'pill-cloud', visible: boolean, data: { heading: string, subheading?: string, categories: Array<{ name: string, skills: string[] }> } }
+   - experience: { id: 'sec-experience', type: 'experience', variant: 'timeline' | 'cards', visible: boolean, data: { heading: string, items: Array<{ period: string, role: string, company: string, description: string }> } }
+   - contact: { id: 'sec-contact', type: 'contact', variant: 'card' | 'split', visible: boolean, data: { title: string, email: string, message?: string } }
+
+Crucial Instructions:
+- For 'projects' section, ALWAYS store projects inside the array property named 'projects' (NOT 'items'). Each project uses 'tags' (array of strings, NOT 'tech').
+- For 'skills' section, ALWAYS use 'categories' with objects having 'name' (string) and 'skills' (array of strings).
+- Respect the requested discipline, student status, and experience level precisely (e.g. if user is an engineering student in DevOps/Cloud Native, set hero title to 'Cloud Native & DevOps Engineer' and student description).
+- When asked to change background color, modify '/theme/palette/bg'.
+- Output ONLY valid JSON RFC 6902 patch operations. No markdown wrappers, no conversational text.
 `;
 
 /**
@@ -147,7 +161,12 @@ Output ONLY the JSON patch array. Do not wrap in markdown or add explanations.
     }
   }
 
-  const patchArray = extractJson(fullResponse);
+  let patchArray = extractJson(fullResponse);
+  
+  // Safeguard: If AI returned a single patch object instead of an array, wrap it
+  if (patchArray && !Array.isArray(patchArray) && typeof patchArray.op === 'string' && typeof patchArray.path === 'string') {
+    patchArray = [patchArray];
+  }
   
   if (Array.isArray(patchArray)) {
     try {
@@ -157,15 +176,21 @@ Output ONLY the JSON patch array. Do not wrap in markdown or add explanations.
       
       for (const patch of patchArray) {
         try {
-          // LLMs often use 'replace' on non-existent properties which violates RFC 6902.
-          // In RFC 6902, 'add' behaves like replace if the key exists, and adds it if it doesn't.
-          if (patch.op === 'replace') {
-            patch.op = 'add'; 
-          }
+          // Attempt operation directly
           jsonpatch.applyOperation(documentCopy, patch);
           successCount++;
         } catch (opError) {
-          console.warn('Skipped invalid patch operation:', patch, opError);
+          // If a 'replace' operation failed because property didn't exist yet, try 'add' (upsert)
+          if (patch.op === 'replace') {
+            try {
+              jsonpatch.applyOperation(documentCopy, { ...patch, op: 'add' });
+              successCount++;
+            } catch (addError) {
+              console.warn('Skipped invalid patch operation:', patch, addError);
+            }
+          } else {
+            console.warn('Skipped invalid patch operation:', patch, opError);
+          }
         }
       }
       
@@ -175,12 +200,16 @@ Output ONLY the JSON patch array. Do not wrap in markdown or add explanations.
       return documentCopy;
     } catch (e) {
       console.error('Failed to apply JSON patch', e);
-      return currentPortfolio;
+      throw e;
     }
   }
   
   // If it's not an array, maybe it ignored instructions and returned the full schema
-  return patchArray || currentPortfolio;
+  if (patchArray && patchArray.sections && patchArray.theme) {
+    return patchArray;
+  }
+
+  return currentPortfolio;
 };
 
 /**
@@ -188,18 +217,35 @@ Output ONLY the JSON patch array. Do not wrap in markdown or add explanations.
  */
 function extractJson(text: string): any {
   if (!text) return null;
+  // First try direct clean parsing
   try {
-    const firstBrace = text.indexOf('{');
-    const lastBrace = text.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-      const candidate = text.slice(firstBrace, lastBrace + 1);
-      return JSON.parse(candidate);
-    }
     const cleanJson = text.replace(/```json/gi, '').replace(/```/g, '').trim();
     return JSON.parse(cleanJson);
-  } catch {
-    return null;
-  }
+  } catch {}
+  
+  // Try extracting array or object bounds
+  try {
+    const firstObj = text.indexOf('{');
+    const firstArr = text.indexOf('[');
+    const lastObj = text.lastIndexOf('}');
+    const lastArr = text.lastIndexOf(']');
+    
+    // Find the very first and very last brackets/braces
+    const startObj = firstObj !== -1 ? firstObj : Infinity;
+    const startArr = firstArr !== -1 ? firstArr : Infinity;
+    const start = Math.min(startObj, startArr);
+    
+    const endObj = lastObj !== -1 ? lastObj : -Infinity;
+    const endArr = lastArr !== -1 ? lastArr : -Infinity;
+    const end = Math.max(endObj, endArr);
+    
+    if (start !== Infinity && end !== -Infinity && end > start) {
+      const candidate = text.slice(start, end + 1);
+      return JSON.parse(candidate);
+    }
+  } catch {}
+  
+  return null;
 }
 
 /**
