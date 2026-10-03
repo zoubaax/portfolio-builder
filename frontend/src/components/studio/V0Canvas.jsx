@@ -67,7 +67,7 @@ export const V0Canvas = () => {
   const handlePublish = async () => {
     try {
       const res = await savePortfolio(true);
-      const slug = res?.subdomainSlug || portfolio.meta?.slug || 'zoubaa';
+      const slug = res?.subdomainSlug || portfolio.meta?.slug || 'portfolio';
       setPublishedUrl(`https://${slug}.portfolify.dev`);
     } catch (e) {
       console.error(e);
@@ -417,7 +417,7 @@ export const V0Canvas = () => {
             <div ref={codeScrollRef} className="flex-1 overflow-y-auto p-4 selection:bg-zinc-800 bg-[#09090b]">
               <pre className="text-xs leading-relaxed text-zinc-300 font-mono">
                 <code>
-                  {streamingCode || JSON.stringify(portfolio, null, 2)}
+                  {isGenerating ? streamingCode : JSON.stringify(portfolio, null, 2)}
                   {isGenerating && (
                     <span className="w-2 h-4 inline-block bg-white ml-0.5 animate-pulse align-middle" />
                   )}

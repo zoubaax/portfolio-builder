@@ -112,10 +112,18 @@ User Instruction: "${userPrompt}"
 
 CRITICAL INSTRUCTION FOR EFFICIENCY: 
 Instead of returning the entire schema, you MUST return a valid RFC 6902 JSON Patch array containing ONLY the operations required to apply the user's instruction to the Current Portfolio Schema.
-Example of expected output format:
+Example of expected output format (ensure it is pretty-printed with 2 spaces indentation for readability):
 [
-  { "op": "replace", "path": "/theme/palette/bg", "value": "#000000" },
-  { "op": "replace", "path": "/sections/0/data/title", "value": "New Title" }
+  {
+    "op": "replace",
+    "path": "/theme/palette/bg",
+    "value": "#000000"
+  },
+  {
+    "op": "replace",
+    "path": "/sections/0/data/title",
+    "value": "New Title"
+  }
 ]
 Output ONLY the JSON patch array. Do not wrap in markdown or add explanations.
 `;

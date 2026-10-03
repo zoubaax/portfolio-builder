@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { useAuth } from '@clerk/react';
+import { useAuth, useUser } from '@clerk/react';
 import {
   MOCK_DEVELOPER_PORTFOLIO,
   MOCK_DESIGNER_PORTFOLIO,
@@ -11,6 +11,8 @@ const PortfolioContext = createContext(null);
 
 export const PortfolioProvider = ({ children }) => {
   const { getToken, userId, isSignedIn } = useAuth();
+  const { user } = useUser();
+  const firstName = user?.firstName || 'Guest';
 
   // Main portfolio state
   const [portfolio, setPortfolio] = useState(MOCK_DEVELOPER_PORTFOLIO);
@@ -46,7 +48,7 @@ export const PortfolioProvider = ({ children }) => {
     return {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(userId ? { 'x-user-id': userId } : { 'x-user-id': 'dev_user_zoubaa' }),
+      ...(userId ? { 'x-user-id': userId } : { 'x-user-id': 'guest_user' }),
     };
   }, [getToken, userId]);
 
@@ -624,7 +626,11 @@ export const PortfolioProvider = ({ children }) => {
       // High-Impact Intelligent Fallback
       const lower = promptText.toLowerCase();
       const nameMatch = promptText.match(/(?:my name is|i am|name:?)\s+([A-Za-z0-9_-]+)/i);
-      const personName = nameMatch ? nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1) : 'Zoubaa';
+      const existingName = portfolio.sections.find(s => s.type === 'hero')?.data?.name;
+      let personName = existingName && existingName !== 'Alex Vance' ? existingName : firstName;
+      if (nameMatch && nameMatch[1]) {
+         personName = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1);
+      }
 
       let fallbackPortfolio = { ...portfolio };
       fallbackPortfolio.meta = {

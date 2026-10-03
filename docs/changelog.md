@@ -38,3 +38,7 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
 ## 🚀 Prochaines Étapes Prévues
 1. **Étape 3 : Tokens de Thèmes** (Amélioration du design system et synchronisation entre IA et UI).
 2. **Étape 4 : UI/UX du Chat** (Raffinement des interactions et animations du panneau).
+
+### 🐛 Correctifs Appliqués (Bugs Signalés)
+- **Bug de l'affichage du code initial :** Dans `V0Canvas.jsx`, l'affichage `streamingCode || JSON.stringify(...)` a été remplacé par `isGenerating ? streamingCode : JSON.stringify(...)` pour empêcher l'ancien JSON de "flasher" (s'afficher d'un coup) au début d'une nouvelle génération. L'écran de code démarre désormais vide comme attendu.
+- **Bug du format du code généré :** L'IA minifiant le tableau de patches sur une seule ligne interminable, le prompt système (`aiService.ts`) a été mis à jour pour exiger un formatage lisible avec 2 espaces d'indentation (pretty-print) afin de garantir une apparence propre et structurée dans le panneau "Code".
