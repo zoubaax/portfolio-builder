@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SignInButton, SignUpButton, useUser } from '@clerk/react';
+import { SignInButton, SignUpButton, UserButton, useUser } from '@clerk/react';
 import {
   RiSparkling2Fill,
   RiArrowRightLine,
@@ -215,13 +215,22 @@ export const LandingPage = ({ onStartStudio }) => {
                 </SignUpButton>
               </>
             ) : (
-              <button
-                onClick={onStartStudio}
-                className="inline-flex items-center justify-center px-5 py-2.5 rounded-full text-xs font-bold bg-[#FF4500] text-black hover:bg-[#ff5714] hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg shadow-[#FF4500]/25 cursor-pointer"
-              >
-                <RiSparkling2Fill className="w-3.5 h-3.5 mr-1.5" />
-                <span>Open Studio</span>
-              </button>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={onStartStudio}
+                  className="inline-flex items-center justify-center px-5 py-2.5 rounded-full text-xs font-bold bg-[#FF4500] text-black hover:bg-[#ff5714] hover:scale-105 active:scale-95 transition-all duration-300 shadow-lg shadow-[#FF4500]/25 cursor-pointer"
+                >
+                  <RiSparkling2Fill className="w-3.5 h-3.5 mr-1.5" />
+                  <span>Open Studio</span>
+                </button>
+                <UserButton
+                  appearance={{
+                    elements: {
+                      avatarBox: 'w-8 h-8 ring-2 ring-[#FF4500]/50 rounded-full',
+                    },
+                  }}
+                />
+              </div>
             )}
           </div>
         </div>

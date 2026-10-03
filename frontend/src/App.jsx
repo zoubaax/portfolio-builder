@@ -1,16 +1,18 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useUser } from '@clerk/react';
+import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
 import { LandingPage } from './components/landing/LandingPage';
 import { AgentOnboarding } from './components/onboarding/AgentOnboarding';
 import { V0ChatPanel } from './components/studio/V0ChatPanel';
 import { V0Canvas } from './components/studio/V0Canvas';
 
-function StudioWorkspace({ onReturnToOnboarding }) {
+function StudioWorkspace() {
+  const navigate = useNavigate();
   return (
     <div className="h-screen w-screen flex flex-row overflow-hidden bg-white text-zinc-900 select-none">
       {/* 1. Left Side: v0 Chat Panel ([ ◫ ] ☆ Project Name ▾ + Message Stream + Input Dock) */}
-      <V0ChatPanel onNewProject={onReturnToOnboarding} />
+      <V0ChatPanel onNewProject={() => navigate('/')} />
 
       {/* 2. Right Side: v0 Preview Canvas ([ 🌐 Preview ] + Address Bar + Canvas Placeholder / Live Site) */}
       <V0Canvas />
@@ -18,10 +20,42 @@ function StudioWorkspace({ onReturnToOnboarding }) {
   );
 }
 
+function StudioRoute() {
+  const { id } = useParams();
+  const { setPortfolioId, fetchVersions } = usePortfolio();
+
+  useEffect(() => {
+    if (id) {
+      setPortfolioId(id);
+      fetchVersions(id);
+      // Future: fetch the portfolio by ID and load it into context
+    }
+  }, [id, setPortfolioId, fetchVersions]);
+
+  return <StudioWorkspace />;
+}
+
+function PreviewRoute() {
+  const { slug } = useParams();
+  const { setPortfolioId, fetchVersions } = usePortfolio();
+
+  useEffect(() => {
+    if (slug) {
+      setPortfolioId(slug);
+      fetchVersions(slug);
+    }
+  }, [slug, setPortfolioId, fetchVersions]);
+
+  return (
+    <div className="h-screen w-screen overflow-hidden bg-white text-zinc-900 select-none">
+      <V0Canvas />
+    </div>
+  );
+}
+
 function MainFlow() {
-  const { isSignedIn, isLoaded } = useUser();
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
-  const [guestMode, setGuestMode] = useState(false);
+  const { isLoaded } = useUser();
+  const navigate = useNavigate();
 
   // If Clerk is still initializing, show a clean loader
   if (!isLoaded) {
@@ -37,29 +71,14 @@ function MainFlow() {
     );
   }
 
-  // 1. Unauthenticated Wall: Show Superdesign Landing Page
-  if (!isSignedIn && !guestMode) {
-    return (
-      <LandingPage
-        onStartStudio={() => setGuestMode(true)}
-      />
-    );
-  }
-
-  // 2. Authenticated Initial State: Show Agent Onboarding
-  if (!hasCompletedOnboarding) {
-    return (
-      <AgentOnboarding
-        onComplete={() => setHasCompletedOnboarding(true)}
-      />
-    );
-  }
-
-  // 3. Post-Onboarding: Full Interactive v0 Studio
   return (
-    <StudioWorkspace
-      onReturnToOnboarding={() => setHasCompletedOnboarding(false)}
-    />
+    <Routes>
+      <Route path="/" element={<LandingPage onStartStudio={() => navigate('/studio')} />} />
+      <Route path="/onboarding" element={<AgentOnboarding onComplete={() => navigate('/studio')} />} />
+      <Route path="/studio" element={<StudioRoute />} />
+      <Route path="/studio/:id" element={<StudioRoute />} />
+      <Route path="/preview/:slug" element={<PreviewRoute />} />
+    </Routes>
   );
 }
 
