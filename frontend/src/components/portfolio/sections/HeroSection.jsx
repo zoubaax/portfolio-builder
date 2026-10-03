@@ -1,23 +1,17 @@
 import React, { useState } from 'react';
 import { ArrowUpRight, Terminal, Sparkles, Mail } from 'lucide-react';
-import { GithubIcon, LinkedinIcon, TwitterIcon } from '../../common/BrandIcons';
+import { getSocialIcon } from '../../common/BrandIcons';
 import { EditableText } from '../../common/EditableText';
 import { ImagePickerModal } from '../../common/ImagePickerModal';
+import { SocialLinksModal } from '../../common/SocialLinksModal';
 import { usePortfolio } from '../../../context/PortfolioContext';
-import { RiCameraLine } from 'react-icons/ri';
-
-const SocialIcon = ({ platform }) => {
-  const p = platform?.toLowerCase();
-  if (p === 'github') return <GithubIcon className="w-4 h-4" />;
-  if (p === 'linkedin') return <LinkedinIcon className="w-4 h-4" />;
-  if (p === 'twitter' || p === 'x') return <TwitterIcon className="w-4 h-4" />;
-  return <Mail className="w-4 h-4" />;
-};
+import { RiCameraLine, RiAddLine } from 'react-icons/ri';
 
 export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => {
   const { updateSectionField, isEditMode } = usePortfolio();
   const { badge, name, title, tagline, avatar, primaryCta, secondaryCta, socials } = data || {};
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
+  const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
 
   // 1. Split Portrait Variant
   if (variant === 'split-portrait') {
@@ -105,23 +99,51 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
               )}
             </div>
 
-            {socials?.length > 0 && (
-              <div className="flex items-center gap-3 pt-4 border-t" style={{ borderColor: 'var(--theme-border)' }}>
+            {(socials?.length > 0 || isEditMode) && (
+              <div className="flex items-center gap-3 pt-4 border-t flex-wrap" style={{ borderColor: 'var(--theme-border)' }}>
                 <span className="text-xs uppercase tracking-wider font-semibold" style={{ color: 'var(--theme-text-secondary)' }}>
                   Connect
                 </span>
-                <div className="flex items-center gap-2">
-                  {socials.map((s, idx) => (
-                    <a key={idx} href={s.url} target="_blank" rel="noopener noreferrer"
-                       className="p-2 rounded-lg border transition-all hover:scale-105"
-                       style={{
-                         backgroundColor: 'var(--theme-surface)',
-                         borderColor: 'var(--theme-border)',
-                         color: 'var(--theme-text-secondary)'
-                       }}>
-                      <SocialIcon platform={s.platform} />
+                <div className="flex items-center gap-2 flex-wrap">
+                  {socials?.map((s, idx) => (
+                    <a
+                      key={idx}
+                      href={isEditMode ? '#' : s.url}
+                      onClick={(e) => {
+                        if (isEditMode) {
+                          e.preventDefault();
+                          setIsSocialModalOpen(true);
+                        }
+                      }}
+                      target={isEditMode ? undefined : "_blank"}
+                      rel="noopener noreferrer"
+                      className="p-2 rounded-lg border transition-all hover:scale-105 cursor-pointer relative group/social"
+                      style={{
+                        backgroundColor: 'var(--theme-surface)',
+                        borderColor: 'var(--theme-border)',
+                        color: 'var(--theme-text-secondary)'
+                      }}
+                      title={isEditMode ? `Manage ${s.platform}` : s.platform}
+                    >
+                      {getSocialIcon(s.platform, 'w-4 h-4')}
                     </a>
                   ))}
+
+                  {isEditMode && (
+                    <button
+                      type="button"
+                      onClick={() => setIsSocialModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-dashed text-xs font-medium transition-all hover:border-indigo-400 hover:text-indigo-400 cursor-pointer"
+                      style={{
+                        borderColor: 'var(--theme-border)',
+                        color: 'var(--theme-text-secondary)',
+                        backgroundColor: 'rgba(255,255,255,0.02)'
+                      }}
+                    >
+                      <RiAddLine className="w-3.5 h-3.5" />
+                      <span>{socials?.length > 0 ? 'Edit Contacts' : 'Add Contact'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -167,6 +189,14 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
           currentImage={avatar}
           onSave={(newImg) => updateSectionField(sectionId, 'avatar', newImg)}
           title="Change Profile Photo"
+        />
+
+        {/* Social & Contact Links Modal */}
+        <SocialLinksModal
+          isOpen={isSocialModalOpen}
+          onClose={() => setIsSocialModalOpen(false)}
+          socials={socials || []}
+          onSave={(newSocials) => updateSectionField(sectionId, 'socials', newSocials)}
         />
       </section>
     );
@@ -244,8 +274,60 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                 $ ping contact
               </a>
             </div>
+
+            {(socials?.length > 0 || isEditMode) && (
+              <div className="pt-3 border-t border-white/5 flex items-center gap-2 flex-wrap text-xs">
+                <span className="opacity-50" style={{ color: 'var(--theme-text-secondary)' }}>$ links:</span>
+                {socials?.map((s, idx) => (
+                  <a
+                    key={idx}
+                    href={isEditMode ? '#' : s.url}
+                    onClick={(e) => {
+                      if (isEditMode) {
+                        e.preventDefault();
+                        setIsSocialModalOpen(true);
+                      }
+                    }}
+                    target={isEditMode ? undefined : "_blank"}
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border transition-all hover:scale-105 cursor-pointer"
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                      borderColor: 'var(--theme-border)',
+                      color: 'var(--theme-accent)'
+                    }}
+                    title={isEditMode ? `Manage ${s.platform}` : s.platform}
+                  >
+                    {getSocialIcon(s.platform, 'w-3.5 h-3.5')}
+                    <span className="capitalize">{s.platform}</span>
+                  </a>
+                ))}
+                {isEditMode && (
+                  <button
+                    type="button"
+                    onClick={() => setIsSocialModalOpen(true)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-dashed text-xs opacity-75 hover:opacity-100 hover:border-indigo-400 hover:text-indigo-400 cursor-pointer transition-all"
+                    style={{
+                      borderColor: 'var(--theme-border)',
+                      color: 'var(--theme-text-secondary)'
+                    }}
+                  >
+                    <RiAddLine className="w-3.5 h-3.5" />
+                    <span>{socials?.length > 0 ? 'Edit Contacts' : 'Add Contact'}</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
+
+        {/* Social & Contact Links Modal */}
+        <SocialLinksModal
+          isOpen={isSocialModalOpen}
+          onClose={() => setIsSocialModalOpen(false)}
+          socials={socials || []}
+          onSave={(newSocials) => updateSectionField(sectionId, 'socials', newSocials)}
+        />
       </section>
     );
   }
@@ -311,6 +393,57 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
           </a>
         )}
       </div>
+
+      {(socials?.length > 0 || isEditMode) && (
+        <div className="flex justify-center items-center gap-3 mt-8 flex-wrap">
+          {socials?.map((s, idx) => (
+            <a
+              key={idx}
+              href={isEditMode ? '#' : s.url}
+              onClick={(e) => {
+                if (isEditMode) {
+                  e.preventDefault();
+                  setIsSocialModalOpen(true);
+                }
+              }}
+              target={isEditMode ? undefined : "_blank"}
+              rel="noopener noreferrer"
+              className="p-2.5 rounded-full border transition-all hover:scale-110 cursor-pointer"
+              style={{
+                backgroundColor: 'var(--theme-surface)',
+                borderColor: 'var(--theme-border)',
+                color: 'var(--theme-text-secondary)'
+              }}
+              title={isEditMode ? `Manage ${s.platform}` : s.platform}
+            >
+              {getSocialIcon(s.platform, 'w-4 h-4')}
+            </a>
+          ))}
+          {isEditMode && (
+            <button
+              type="button"
+              onClick={() => setIsSocialModalOpen(true)}
+              className="p-2.5 rounded-full border border-dashed flex items-center justify-center transition-all hover:border-indigo-400 hover:text-indigo-400 cursor-pointer"
+              style={{
+                backgroundColor: 'var(--theme-surface)',
+                borderColor: 'var(--theme-border)',
+                color: 'var(--theme-text-secondary)'
+              }}
+              title={socials?.length > 0 ? 'Edit Contacts' : 'Add Contact'}
+            >
+              <RiAddLine className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Social & Contact Links Modal */}
+      <SocialLinksModal
+        isOpen={isSocialModalOpen}
+        onClose={() => setIsSocialModalOpen(false)}
+        socials={socials || []}
+        onSave={(newSocials) => updateSectionField(sectionId, 'socials', newSocials)}
+      />
     </section>
   );
 };

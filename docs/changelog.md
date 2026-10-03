@@ -53,6 +53,21 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
   - **Tolérance & Résilience Frontend (`SkillsSection.jsx`, `ProjectsSection.jsx`, `PortfolioRenderer.jsx`) :**
     - `SkillsSection.jsx` supporte désormais `cat.name || cat.label` et `cat.skills || cat.items`.
     - `ProjectsSection.jsx` supporte `projects || items`, `tags || tech`, et normalise les variantes non répertoriées (`cards-detailed` vers `card-grid`).
-    - `PortfolioRenderer.jsx` a remplacé la syntaxe CSS invalide `rgba(var(--theme-bg), 0.8)` par `color-mix(in srgb, var(--theme-bg) 85%, transparent)`, assurant un flou d'en-tête parfait quel que soit le format de la couleur de fond (hex ou nom).
     - `PortfolioContext.jsx` traite désormais `data.error` en dehors du bloc `try/catch` du parser JSON afin de ne plus jamais avaler une erreur API.
+
+### 6. Gestionnaire Interactif de Contacts & Réseaux Sociaux (`HeroSection`)
+- **Composant d'Icônes Vectorielles (`BrandIcons.jsx`) :**
+  - Ajout d'icônes SVG optimisées et légères sans dépendances lourdes pour 11 plateformes majeures : GitHub, LinkedIn, X (Twitter), WhatsApp, Instagram, Telegram, Discord, Email, Téléphone, YouTube, Site web / Lien externe.
+  - Implémentation du helper exporté `getSocialIcon(platform, className)` avec normalisation insensible à la casse.
+- **Modal de Configuration Dédiée (`SocialLinksModal.jsx`) :**
+  - Grille visuelle de sélection de plateforme avec badges thématiques (Social, Messaging, Contact, Media, Web).
+  - Formatage intelligent automatique des saisies : conversion automatique des numéros WhatsApp en lien `https://wa.me/<digits>`, des emails en `mailto:<email>`, des numéros de téléphone en `tel:<number>`, et suppression intelligente du `@` pour les identifiants GitHub / X / Telegram.
+  - Prévisualisation dynamique de l'URL finale en direct au cours de la frappe.
+  - Liste de gestion des liens actifs avec suppression en un clic, modification rapide et confirmation via `onSave`.
+  - Design studio sombre épuré synchronisé avec les variables de thèmes du portfolio (`var(--theme-surface)`, `var(--theme-border)`, `var(--theme-accent)`).
+- **Intégration dans le Hero (`HeroSection.jsx`) :**
+  - Barre de contact interactive visible dès que des liens sont présents ou en mode édition (`isEditMode`).
+  - En mode édition : bouton direct `+ Add Contact` / `Edit Contacts` et clic sur un lien existant pour éditer instantanément.
+  - Prise en charge native et responsive sur les 3 variantes de design (`split-portrait`, `terminal-dev` style console bash, et `minimal-centered`).
+  - Sauvegarde instantanée dans le schéma de données via `updateSectionField(sectionId, 'socials', newSocials)`.
 
