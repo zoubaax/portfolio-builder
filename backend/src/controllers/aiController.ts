@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { streamAiEdit, generatePortfolioFromPrompt } from '../services/aiService.js';
+import { imageService } from '../services/imageService.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
 export const aiController = {
@@ -58,4 +59,24 @@ export const aiController = {
       return sendError(res, 'AI_GEN_FAILED', err.message || 'Failed to generate portfolio', 500);
     }
   },
+
+  /**
+   * Generate an image for a project using FLUX.1-schnell (with resilient fallback)
+   */
+  async generateProjectImage(req: Request, res: Response) {
+    try {
+      const { title, description, tags, prompt } = req.body;
+      const result = await imageService.generateProjectImage({
+        title,
+        description,
+        tags,
+        prompt,
+      });
+
+      return sendSuccess(res, result, 'Project visual generated');
+    } catch (err: any) {
+      return sendError(res, 'IMAGE_GEN_FAILED', err.message || 'Failed to generate visual', 500);
+    }
+  },
 };
+

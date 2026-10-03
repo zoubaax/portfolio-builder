@@ -19,5 +19,6 @@ const aiLimiter = rateLimit({
 
 router.post('/stream-chat', aiLimiter, aiController.streamChat);
 router.post('/generate', aiLimiter, aiController.generateInitial);
+router.post('/generate-project-image', aiLimiter, aiController.generateProjectImage);
 
 export default router;

@@ -13,7 +13,8 @@ import {
   RiCheckLine,
   RiLoader4Line,
   RiExternalLinkLine,
-  RiEdit2Line
+  RiEdit2Line,
+  RiGithubFill
 } from 'react-icons/ri';
 
 export const V0Header = () => {
@@ -145,6 +146,19 @@ export const V0Header = () => {
           >
             <RiCodeSSlashLine className="w-3.5 h-3.5" />
             <span>Code</span>
+          </button>
+
+          <button
+            onClick={() => setViewMode('projects')}
+            className={`px-3 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
+              viewMode === 'projects'
+                ? 'bg-indigo-600 text-white font-medium shadow-xs'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+            title="Importer des projets depuis GitHub"
+          >
+            <RiGithubFill className="w-3.5 h-3.5" />
+            <span>Projets</span>
           </button>
         </div>
 

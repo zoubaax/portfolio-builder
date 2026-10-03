@@ -20,8 +20,10 @@ import {
   RiCheckLine,
   RiCloseLine,
   RiArrowRightLine,
-  RiLoader4Line
+  RiLoader4Line,
+  RiGithubFill
 } from 'react-icons/ri';
+import { GithubProjectsTab } from './GithubProjectsTab';
 
 const QUICK_ACCENT_COLORS = [
   { name: 'Flame Orange', hex: '#FF4500' },
@@ -136,11 +138,18 @@ export const V0Canvas = () => {
             )}
           </button>
 
+          {/* GitHub Projects Tab */}
           <button
-            className="w-7 h-7 rounded-lg hover:bg-zinc-100 text-zinc-400 hover:text-zinc-700 flex items-center justify-center transition-colors cursor-pointer"
-            title="Add tab"
+            onClick={() => setViewMode('projects')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+              viewMode === 'projects'
+                ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200/60 shadow-xs'
+                : 'text-zinc-500 hover:text-zinc-800'
+            }`}
+            title="Importer des projets GitHub"
           >
-            <RiAddLine className="w-4 h-4" />
+            <RiGithubFill className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Projets</span>
           </button>
         </div>
 
@@ -424,6 +433,15 @@ export const V0Canvas = () => {
                 </code>
               </pre>
             </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 3: GITHUB PROJECTS MODE                                              */}
+        {/* ========================================================================= */}
+        {viewMode === 'projects' && (
+          <div className="w-full h-full flex flex-col flex-1 overflow-hidden">
+            <GithubProjectsTab onApplyComplete={() => setViewMode('preview')} />
           </div>
         )}
 
