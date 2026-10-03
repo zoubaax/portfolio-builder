@@ -8,8 +8,15 @@ import { RiCameraLine } from 'react-icons/ri';
 
 export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => {
   const { updateSectionField, isEditMode } = usePortfolio();
-  const { heading, subheading, projects = [] } = data || {};
+  const { heading, subheading } = data || {};
+  const projects = (data?.projects && Array.isArray(data.projects) && data.projects.length > 0)
+    ? data.projects
+    : (Array.isArray(data?.items) ? data.items : []);
   const [activeImageModalIdx, setActiveImageModalIdx] = useState(null);
+
+  const activeVariant = ['bento-grid', 'card-grid', 'minimal-list'].includes(variant)
+    ? variant
+    : 'bento-grid';
 
   const handleProjectUpdate = (projIndex, field, newVal) => {
     const updatedProjects = [...projects];
@@ -46,7 +53,7 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
       </div>
 
       {/* 1. Bento Grid Variant */}
-      {variant === 'bento-grid' && (
+      {activeVariant === 'bento-grid' && (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
           {projects.map((proj, idx) => {
             const isWide = idx === 0 || (idx % 3 === 0);
@@ -136,7 +143,7 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
 
                   {/* Tech stack badges */}
                   <div className="flex flex-wrap gap-2 pt-2">
-                    {proj.tags?.map((tag, tIdx) => (
+                    {(proj.tags || proj.tech || []).map((tag, tIdx) => (
                       <span key={tIdx} className="px-2.5 py-1 rounded-lg text-xs font-medium border"
                             style={{
                               backgroundColor: 'rgba(255,255,255,0.03)',
@@ -155,7 +162,7 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
       )}
 
       {/* 2. Card Grid Variant */}
-      {variant === 'card-grid' && (
+      {activeVariant === 'card-grid' && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((proj, idx) => (
             <div key={proj.id || idx}
@@ -171,8 +178,8 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
                     className="text-lg font-bold block"
                     style={{ color: 'var(--theme-text-primary)' }}
                   />
-                  {proj.link && (
-                    <a href={proj.link} target="_blank" rel="noreferrer" style={{ color: 'var(--theme-accent)' }}>
+                  {(proj.link || proj.links?.demo || proj.links?.repo) && (
+                    <a href={proj.link || proj.links?.demo || proj.links?.repo} target="_blank" rel="noreferrer" style={{ color: 'var(--theme-accent)' }}>
                       <ArrowUpRight className="w-4 h-4" />
                     </a>
                   )}
@@ -186,7 +193,7 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
                 />
               </div>
               <div className="flex flex-wrap gap-1.5 pt-4">
-                {proj.tags?.map((t, i) => (
+                {(proj.tags || proj.tech || []).map((t, i) => (
                   <span key={i} className="text-xs px-2 py-0.5 rounded border"
                         style={{ borderColor: 'var(--theme-border)', color: 'var(--theme-text-secondary)' }}>
                     {t}
@@ -199,7 +206,7 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
       )}
 
       {/* 3. Minimal List Variant */}
-      {variant === 'minimal-list' && (
+      {activeVariant === 'minimal-list' && (
         <div className="divide-y" style={{ borderColor: 'var(--theme-border)' }}>
           {projects.map((proj, idx) => (
             <div key={proj.id || idx}

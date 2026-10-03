@@ -46,7 +46,7 @@ export const PortfolioRenderer = ({ portfolio, isPreview = false }) => {
       {/* Floating Modern Header / Navbar */}
       <header className="sticky top-0 z-30 backdrop-blur-md border-b px-6 py-4 transition-all"
               style={{
-                backgroundColor: 'rgba(var(--theme-bg), 0.8)',
+                backgroundColor: 'color-mix(in srgb, var(--theme-bg) 85%, transparent)',
                 borderColor: 'var(--theme-border)',
               }}>
         <div className="max-w-6xl mx-auto flex items-center justify-between">

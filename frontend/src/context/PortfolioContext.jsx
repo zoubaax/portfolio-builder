@@ -577,17 +577,22 @@ export const PortfolioProvider = ({ children }) => {
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
+            let data;
             try {
-              const data = JSON.parse(line.replace('data: ', '').trim());
-              if (data.error) throw new Error(data.error);
-              // Buffer raw JSON to streamingCode for the Code inspector tab, NOT chat text!
-              if (data.chunk) {
-                setStreamingCode((prev) => prev + data.chunk);
-              }
-              if (data.done && data.updatedPortfolio) {
-                updatedPortfolio = data.updatedPortfolio;
-              }
-            } catch {}
+              data = JSON.parse(line.replace('data: ', '').trim());
+            } catch {
+              continue;
+            }
+            if (data.error) {
+              throw new Error(data.error);
+            }
+            // Buffer raw JSON to streamingCode for the Code inspector tab, NOT chat text!
+            if (data.chunk) {
+              setStreamingCode((prev) => prev + data.chunk);
+            }
+            if (data.done && data.updatedPortfolio) {
+              updatedPortfolio = data.updatedPortfolio;
+            }
           }
         }
       }
@@ -598,9 +603,11 @@ export const PortfolioProvider = ({ children }) => {
         if (nameMatch && nameMatch[1]) {
           const extractedName = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1);
           updatedPortfolio.meta = { ...updatedPortfolio.meta, title: `${extractedName} Portfolio` };
-          updatedPortfolio.sections = updatedPortfolio.sections.map((s) =>
-            s.type === 'hero' ? { ...s, data: { ...s.data, name: extractedName } } : s
-          );
+          if (updatedPortfolio.sections) {
+            updatedPortfolio.sections = updatedPortfolio.sections.map((s) =>
+              s.type === 'hero' ? { ...s, data: { ...s.data, name: extractedName } } : s
+            );
+          }
         }
 
         pushState(updatedPortfolio);
@@ -624,27 +631,23 @@ export const PortfolioProvider = ({ children }) => {
         throw new Error('No updated portfolio returned by model');
       }
     } catch (err) {
-      // Handle explicit backend errors (e.g. rate limits, 500s) instead of masking them
-      if (err.message && err.message !== 'Backend stream request failed' && err.message !== 'No updated portfolio returned by model') {
-        setChatMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMsgId
-              ? {
-                  ...m,
-                  text: `❌ API Error: ${err.message}. Please try again.`,
-                  tasks: initialTasks.map(t => ({ ...t, active: false, done: false }))
-                }
-              : m
-          )
-        );
-        setIsGenerating(false);
-        return;
-      }
-
+      console.error('Portfolio generation error:', err);
+      setChatMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantMsgId
+            ? {
+                ...m,
+                text: `❌ Error: ${err.message || 'Generation failed'}. Please try again.`,
+                tasks: initialTasks.map(t => ({ ...t, active: false, done: false }))
+              }
+            : m
+        )
+      );
+      setIsGenerating(false);
       // High-Impact Intelligent Fallback (only for network crashes or complete LLM failures)
       const lower = promptText.toLowerCase();
       const nameMatch = promptText.match(/(?:my name is|i am|name:?)\s+([A-Za-z0-9_-]+)/i);
-      const existingName = portfolio.sections.find(s => s.type === 'hero')?.data?.name;
+      const existingName = portfolio.sections?.find(s => s.type === 'hero')?.data?.name;
       let personName = existingName && existingName !== 'Alex Vance' ? existingName : firstName;
       if (nameMatch && nameMatch[1]) {
          personName = nameMatch[1].charAt(0).toUpperCase() + nameMatch[1].slice(1);

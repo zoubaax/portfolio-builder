@@ -43,12 +43,12 @@ export const SkillsSection = ({ data, variant = 'category-cards' }) => {
 
                 <h3 className="text-lg font-bold mb-4"
                     style={{ color: 'var(--theme-text-primary)', fontFamily: 'var(--theme-heading-font)' }}>
-                  {cat.name}
+                  {cat.name || cat.label || 'Competencies'}
                 </h3>
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {cat.skills?.map((skill, sIdx) => (
+                {(cat.skills || cat.items || []).map((skill, sIdx) => (
                   <span key={sIdx}
                         className="px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors hover:border-[var(--theme-accent)]"
                         style={{
@@ -68,7 +68,7 @@ export const SkillsSection = ({ data, variant = 'category-cards' }) => {
         /* Pill Cloud Variant */
         <div className="p-8 sm:p-12 rounded-3xl border flex flex-wrap justify-center gap-3 sm:gap-4 max-w-4xl mx-auto"
              style={{ backgroundColor: 'var(--theme-surface)', borderColor: 'var(--theme-border)' }}>
-          {categories.flatMap(cat => cat.skills || []).map((skill, idx) => (
+          {categories.flatMap(cat => cat.skills || cat.items || []).map((skill, idx) => (
             <div key={idx}
                  className="px-5 py-2.5 rounded-full text-sm font-semibold border transition-all duration-200 hover:scale-110 shadow-sm cursor-default"
                  style={{
