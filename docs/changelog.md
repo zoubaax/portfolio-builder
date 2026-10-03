@@ -1,4 +1,4 @@
-# Journal des Modifications - Étape 1 : Routage Web & Navigation URL
+# Journal des Modifications du Projet
 
 ## 📝 Résumé des Actions
 Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisateur (UX) et de logique métier (l'URL qui restait figée sur `/`), nous avons établi un plan d'action en 4 étapes et nous avons complété la première étape.
