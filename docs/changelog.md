@@ -71,3 +71,19 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
   - Prise en charge native et responsive sur les 3 variantes de design (`split-portrait`, `terminal-dev` style console bash, et `minimal-centered`).
   - Sauvegarde instantanée dans le schéma de données via `updateSectionField(sectionId, 'socials', newSocials)`.
 
+### 7. Import Automatique GitHub & Génération d'Images IA (`FLUX.1-schnell`)
+- **Configuration & Clé d'API (`backend/.env`) :**
+  - Ajout de la clé NVIDIA NIM dédiée à la génération visuelle : `NVIDIA_IMAGE_API_KEY`.
+- **Service Backend de Génération d'Images (`imageService.ts`) & Route (`POST /api/v1/ai/generate-project-image`) :**
+  - Connecteur vers le modèle de pointe `black-forest-labs/flux.1-schnell` sur NVIDIA NIM pour générer des mockups 3D et d'interfaces logicielles modernes.
+  - Système de secours intelligent (*smart tech fallback*) : en cas de latence ou de file d'attente élevée sur l'API d'inférence, attribution contextuelle et instantanée de visuels haute définition adaptés aux technologies du projet (DevOps, Cloud, IA, Web, Mobile).
+- **Service Frontend GitHub (`githubService.js`) :**
+  - Récupération des dépôts publics GitHub avec statistiques (stars, forks, langage, topics, URLs de démo et code source).
+  - Détection automatique du pseudo GitHub depuis le compte Clerk connecté (`user.externalAccounts`).
+  - Extraction automatique du contenu des fichiers `README.md` pour alimenter le contexte de l'IA.
+- **Nouvel Onglet Studio "Projets" (`GithubProjectsTab.jsx`, `V0Canvas.jsx`, `V0Header.jsx`) :**
+  - Onglet dédié `[ 🐙 Projets ]` positionné directement à côté de `Preview` et `Code` dans la barre supérieure du Studio.
+  - Interface complète avec barre de recherche en temps réel, cartes interactives avec sélection par case à cocher (*checkbox*).
+  - Barre d'action flottante avec compteur de projets sélectionnés, toggle d'activation de la génération visuelle IA, et bouton de synchronisation automatique.
+  - Injection automatique du prompt enrichi vers le chat de l'IA pour générer et formater instantanément la section `projects` du portfolio avec retour direct sur la prévisualisation.
+
