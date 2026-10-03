@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import dotenv from 'dotenv';
+import * as jsonpatch from 'fast-json-patch';
 
 dotenv.config();
 
@@ -75,11 +76,10 @@ You are the world's premier AI portfolio design architect and copywriter.
 You manipulate structured portfolio JSON adhering to the Portfolify Schema.
 
 Schema Rules:
-- The output MUST be a valid JSON object matching the portfolio schema.
 - Keep sections clean, impactful, and realistic.
 - Support theme presets: 'cyber-dark', 'bento-violet', 'minimal-editorial', 'nordic-teal'.
 - Support section types: 'hero', 'about', 'projects', 'skills', 'experience', 'contact'.
-- Return ONLY valid JSON wrapped in a code fence or as raw JSON. Do not include extraneous conversational text.
+- Return ONLY valid JSON. Do not include extraneous conversational text.
 `;
 
 /**
@@ -110,7 +110,14 @@ ${JSON.stringify(currentPortfolio, null, 2)}
 
 User Instruction: "${userPrompt}"
 
-Update the portfolio schema accordingly. Return the complete updated JSON object.
+CRITICAL INSTRUCTION FOR EFFICIENCY: 
+Instead of returning the entire schema, you MUST return a valid RFC 6902 JSON Patch array containing ONLY the operations required to apply the user's instruction to the Current Portfolio Schema.
+Example of expected output format:
+[
+  { "op": "replace", "path": "/theme/palette/bg", "value": "#000000" },
+  { "op": "replace", "path": "/sections/0/data/title", "value": "New Title" }
+]
+Output ONLY the JSON patch array. Do not wrap in markdown or add explanations.
 `;
 
   const stream = await ai.client.chat.completions.create({
@@ -119,7 +126,7 @@ Update the portfolio schema accordingly. Return the complete updated JSON object
       { role: 'system', content: SYSTEM_PORTFOLIO_PROMPT },
       { role: 'user', content: prompt },
     ],
-    temperature: 0.2,
+    temperature: 0.1,
     stream: true,
   });
 
@@ -132,8 +139,23 @@ Update the portfolio schema accordingly. Return the complete updated JSON object
     }
   }
 
-  const parsed = extractJson(fullResponse);
-  return parsed || currentPortfolio;
+  const patchArray = extractJson(fullResponse);
+  
+  if (Array.isArray(patchArray)) {
+    try {
+      // Create a deep copy to apply patches without mutating the original reference directly
+      const documentCopy = JSON.parse(JSON.stringify(currentPortfolio));
+      const updatedPortfolio = jsonpatch.applyPatch(documentCopy, patchArray).newDocument;
+      return updatedPortfolio;
+    } catch (e) {
+      console.error('Failed to apply JSON patch', e);
+      // Fallback: If patch fails, maybe LLM returned full schema instead of array
+      return patchArray.meta ? patchArray : currentPortfolio;
+    }
+  }
+  
+  // If it's not an array, maybe it ignored instructions and returned the full schema
+  return patchArray || currentPortfolio;
 };
 
 /**

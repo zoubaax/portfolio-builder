@@ -29,7 +29,12 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
 - **Action :** Ajout de l'image de profil de l'utilisateur (`<UserButton />`) à côté du bouton "Open Studio" dans la barre de navigation lorsque l'utilisateur est connecté.
 - **Raison :** Rétablir un élément visuel (l'avatar) qui manquait dans la header de la Landing Page.
 
+### 5. Optimisation de l'IA : Delta Patching (`backend/src/services/aiService.ts`)
+- **Action :** Installation de la librairie `fast-json-patch` sur le backend.
+- **Action :** Modification du prompt système dans `streamAiEdit` pour exiger un tableau de patchs JSON (RFC 6902) au lieu du schéma JSON complet.
+- **Action :** Implémentation de l'application du patch `jsonpatch.applyPatch()` côté serveur avant de renvoyer le résultat mis à jour au frontend.
+- **Raison :** Réduire drastiquement le nombre de tokens générés par l'IA lors des requêtes de modification mineures (ex: changement de couleur ou d'un titre), ce qui accélère la réponse (latence réduite) et réduit les coûts.
+
 ## 🚀 Prochaines Étapes Prévues
-1. **Étape 2 : Patching Delta JSON pour l'IA** (Optimisation des tokens et latence, en évitant de régénérer tout le JSON de la page à chaque petite modification).
-2. **Étape 3 : Tokens de Thèmes** (Amélioration du design system et synchronisation entre IA et UI).
-3. **Étape 4 : UI/UX du Chat** (Raffinement des interactions et animations du panneau).
+1. **Étape 3 : Tokens de Thèmes** (Amélioration du design system et synchronisation entre IA et UI).
+2. **Étape 4 : UI/UX du Chat** (Raffinement des interactions et animations du panneau).
