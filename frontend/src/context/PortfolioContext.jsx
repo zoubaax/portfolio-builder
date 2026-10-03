@@ -579,6 +579,7 @@ export const PortfolioProvider = ({ children }) => {
           if (line.startsWith('data: ')) {
             try {
               const data = JSON.parse(line.replace('data: ', '').trim());
+              if (data.error) throw new Error(data.error);
               // Buffer raw JSON to streamingCode for the Code inspector tab, NOT chat text!
               if (data.chunk) {
                 setStreamingCode((prev) => prev + data.chunk);
@@ -623,7 +624,24 @@ export const PortfolioProvider = ({ children }) => {
         throw new Error('No updated portfolio returned by model');
       }
     } catch (err) {
-      // High-Impact Intelligent Fallback
+      // Handle explicit backend errors (e.g. rate limits, 500s) instead of masking them
+      if (err.message && err.message !== 'Backend stream request failed' && err.message !== 'No updated portfolio returned by model') {
+        setChatMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMsgId
+              ? {
+                  ...m,
+                  text: `❌ API Error: ${err.message}. Please try again.`,
+                  tasks: initialTasks.map(t => ({ ...t, active: false, done: false }))
+                }
+              : m
+          )
+        );
+        setIsGenerating(false);
+        return;
+      }
+
+      // High-Impact Intelligent Fallback (only for network crashes or complete LLM failures)
       const lower = promptText.toLowerCase();
       const nameMatch = promptText.match(/(?:my name is|i am|name:?)\s+([A-Za-z0-9_-]+)/i);
       const existingName = portfolio.sections.find(s => s.type === 'hero')?.data?.name;

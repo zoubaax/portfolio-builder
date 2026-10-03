@@ -153,12 +153,29 @@ Output ONLY the JSON patch array. Do not wrap in markdown or add explanations.
     try {
       // Create a deep copy to apply patches without mutating the original reference directly
       const documentCopy = JSON.parse(JSON.stringify(currentPortfolio));
-      const updatedPortfolio = jsonpatch.applyPatch(documentCopy, patchArray).newDocument;
-      return updatedPortfolio;
+      let successCount = 0;
+      
+      for (const patch of patchArray) {
+        try {
+          // LLMs often use 'replace' on non-existent properties which violates RFC 6902.
+          // In RFC 6902, 'add' behaves like replace if the key exists, and adds it if it doesn't.
+          if (patch.op === 'replace') {
+            patch.op = 'add'; 
+          }
+          jsonpatch.applyOperation(documentCopy, patch);
+          successCount++;
+        } catch (opError) {
+          console.warn('Skipped invalid patch operation:', patch, opError);
+        }
+      }
+      
+      if (successCount === 0 && patchArray.length > 0) {
+        throw new Error('All JSON patch operations failed to apply');
+      }
+      return documentCopy;
     } catch (e) {
       console.error('Failed to apply JSON patch', e);
-      // Fallback: If patch fails, maybe LLM returned full schema instead of array
-      return patchArray.meta ? patchArray : currentPortfolio;
+      return currentPortfolio;
     }
   }
   
