@@ -4,7 +4,7 @@ import { EditableText } from '../../common/EditableText';
 import { usePortfolio } from '../../../context/PortfolioContext';
 
 export const ContactSection = ({ data, variant = 'minimal-card', sectionId }) => {
-  const { updateSectionField } = usePortfolio();
+  const { updateSectionField, isMobileViewport } = usePortfolio();
   const { heading, subheading, text, email, location, buttonText } = data || {};
   const [copied, setCopied] = useState(false);
 
@@ -16,8 +16,8 @@ export const ContactSection = ({ data, variant = 'minimal-card', sectionId }) =>
   };
 
   return (
-    <section id="contact" className="py-20 px-6 md:px-12 max-w-4xl mx-auto">
-      <div className="relative rounded-3xl border overflow-hidden p-8 sm:p-12 text-center"
+    <section id="contact" className={`${isMobileViewport ? 'py-10 px-4' : 'py-20 px-6 md:px-12'} max-w-4xl mx-auto`}>
+      <div className={`relative rounded-2xl sm:rounded-3xl border overflow-hidden ${isMobileViewport ? 'p-6' : 'p-8 sm:p-12'} text-center`}
            style={{
              backgroundColor: 'var(--theme-surface)',
              borderColor: 'var(--theme-border)',
@@ -42,7 +42,7 @@ export const ContactSection = ({ data, variant = 'minimal-card', sectionId }) =>
           value={heading || 'Get In Touch'}
           onSave={(val) => updateSectionField(sectionId, 'heading', val)}
           singleLine
-          className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 block"
+          className={`${isMobileViewport ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl md:text-5xl'} font-extrabold tracking-tight mb-4 block`}
           style={{ fontFamily: 'var(--theme-heading-font)', color: 'var(--theme-text-primary)' }}
         />
 
@@ -55,9 +55,9 @@ export const ContactSection = ({ data, variant = 'minimal-card', sectionId }) =>
         />
 
         {email && (
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className={`flex flex-col ${isMobileViewport ? 'w-full gap-2.5' : 'sm:flex-row items-center justify-center gap-3'}`}>
             <a href={`mailto:${email}`}
-               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-200 shadow-lg hover:scale-105"
+               className={`inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-bold text-sm transition-all duration-200 shadow-lg hover:scale-105 ${isMobileViewport ? 'w-full' : ''}`}
                style={{
                  backgroundColor: 'var(--theme-accent)',
                  color: '#ffffff'
@@ -67,7 +67,7 @@ export const ContactSection = ({ data, variant = 'minimal-card', sectionId }) =>
             </a>
 
             <button type="button" onClick={handleCopy}
-                    className="inline-flex items-center gap-2 px-5 py-3.5 rounded-xl text-sm font-medium border transition-all hover:bg-white/5 active:scale-95"
+                    className={`inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl text-sm font-medium border transition-all hover:bg-white/5 active:scale-95 ${isMobileViewport ? 'w-full' : ''}`}
                     style={{
                       borderColor: 'var(--theme-border)',
                       color: 'var(--theme-text-primary)',

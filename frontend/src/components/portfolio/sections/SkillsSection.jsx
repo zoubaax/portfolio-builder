@@ -1,29 +1,31 @@
 import React from 'react';
 import { Layers, Cpu, Code2, Globe } from 'lucide-react';
+import { usePortfolio } from '../../../context/PortfolioContext';
 
 export const SkillsSection = ({ data, variant = 'category-cards' }) => {
+  const { isMobileViewport } = usePortfolio();
   const { heading, subheading, categories = [] } = data || {};
 
   return (
-    <section id="skills" className="py-16 px-6 md:px-12 max-w-6xl mx-auto">
-      <div className="mb-12">
+    <section id="skills" className={`${isMobileViewport ? 'py-10 px-4' : 'py-16 px-6 md:px-12'} max-w-6xl mx-auto`}>
+      <div className="mb-8 sm:mb-12">
         {subheading && (
           <p className="text-xs uppercase tracking-widest font-bold mb-2"
              style={{ color: 'var(--theme-accent)' }}>
             {subheading}
           </p>
         )}
-        <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight"
+        <h2 className={`${isMobileViewport ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'} font-extrabold tracking-tight`}
             style={{ fontFamily: 'var(--theme-heading-font)', color: 'var(--theme-text-primary)' }}>
           {heading || 'Skills & Technologies'}
         </h2>
       </div>
 
       {variant === 'category-cards' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className={isMobileViewport ? "grid grid-cols-1 gap-4" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"}>
           {categories.map((cat, idx) => (
             <div key={idx}
-                 className="p-6 rounded-3xl border flex flex-col justify-between transition-all hover:scale-[1.02] shadow-sm"
+                 className={`${isMobileViewport ? 'p-5 rounded-2xl' : 'p-6 rounded-3xl'} border flex flex-col justify-between transition-all hover:scale-[1.02] shadow-sm`}
                  style={{
                    backgroundColor: 'var(--theme-surface)',
                    borderColor: 'var(--theme-border)',
@@ -50,7 +52,7 @@ export const SkillsSection = ({ data, variant = 'category-cards' }) => {
               <div className="flex flex-wrap gap-2">
                 {(cat.skills || cat.items || []).map((skill, sIdx) => (
                   <span key={sIdx}
-                        className="px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors hover:border-[var(--theme-accent)]"
+                        className="px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors hover:border-(--theme-accent)"
                         style={{
                           backgroundColor: 'rgba(255,255,255,0.03)',
                           borderColor: 'var(--theme-border)',

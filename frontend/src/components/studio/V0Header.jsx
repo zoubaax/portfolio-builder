@@ -24,6 +24,9 @@ export const V0Header = () => {
     setPortfolio,
     deviceView,
     setDeviceView,
+    simulatedWidth,
+    setSimulatedWidth,
+    isMobileViewport,
     viewMode,
     setViewMode,
     isChatCollapsed,
@@ -170,9 +173,12 @@ export const V0Header = () => {
         {/* Device Switcher (Desktop / Mobile) */}
         <div className="hidden sm:flex items-center bg-zinc-900/90 p-0.5 rounded-lg border border-zinc-800 text-xs">
           <button
-            onClick={() => setDeviceView('desktop')}
+            onClick={() => {
+              setDeviceView('desktop');
+              setSimulatedWidth(null);
+            }}
             className={`p-1.5 rounded-md transition-all cursor-pointer ${
-              deviceView === 'desktop'
+              !isMobileViewport
                 ? 'bg-zinc-800 text-white'
                 : 'text-zinc-500 hover:text-zinc-300'
             }`}
@@ -182,13 +188,16 @@ export const V0Header = () => {
           </button>
 
           <button
-            onClick={() => setDeviceView('mobile')}
+            onClick={() => {
+              setDeviceView('mobile');
+              setSimulatedWidth(390);
+            }}
             className={`p-1.5 rounded-md transition-all cursor-pointer ${
-              deviceView === 'mobile'
+              isMobileViewport
                 ? 'bg-zinc-800 text-white'
                 : 'text-zinc-500 hover:text-zinc-300'
             }`}
-            title="Mobile view"
+            title="Mobile view (390px)"
           >
             <RiSmartphoneLine className="w-3.5 h-3.5" />
           </button>

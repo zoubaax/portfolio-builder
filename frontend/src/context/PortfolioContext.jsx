@@ -52,6 +52,8 @@ export const PortfolioProvider = ({ children }) => {
   // Studio UI view state
   const [studioTheme, setStudioTheme] = useState('dark'); // Default to sleek Vercel dark mode
   const [deviceView, setDeviceView] = useState('desktop'); // 'desktop' | 'tablet' | 'mobile'
+  const [simulatedWidth, setSimulatedWidth] = useState(null); // null (100% desktop) or number in px (e.g. 390)
+  const isMobileViewport = simulatedWidth !== null ? simulatedWidth < 768 : deviceView === 'mobile';
   const [isEditMode, setIsEditMode] = useState(true); // Elementor-style visual edit mode vs pure preview
   const [viewMode, setViewMode] = useState('preview'); // 'preview' | 'code' (v0 tab toggle)
   const [isChatCollapsed, setIsChatCollapsed] = useState(false); // v0 1-click fullscreen toggle
@@ -1145,6 +1147,9 @@ export const PortfolioProvider = ({ children }) => {
         toggleStudioTheme,
         deviceView,
         setDeviceView,
+        simulatedWidth,
+        setSimulatedWidth,
+        isMobileViewport,
         isEditMode,
         setIsEditMode,
         viewMode,

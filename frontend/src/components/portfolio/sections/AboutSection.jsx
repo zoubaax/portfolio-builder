@@ -4,7 +4,7 @@ import { EditableText } from '../../common/EditableText';
 import { usePortfolio } from '../../../context/PortfolioContext';
 
 export const AboutSection = ({ data, variant = 'bento', sectionId }) => {
-  const { updateSectionField, updateSection } = usePortfolio();
+  const { updateSectionField, updateSection, isMobileViewport } = usePortfolio();
   const { heading, subheading, bio, stats, location } = data || {};
 
   const handleBioChange = (newText, index) => {
@@ -24,8 +24,8 @@ export const AboutSection = ({ data, variant = 'bento', sectionId }) => {
   };
 
   return (
-    <section id="about" className="py-16 px-6 md:px-12 max-w-6xl mx-auto">
-      <div className="mb-10">
+    <section id="about" className={`${isMobileViewport ? 'py-10 px-4' : 'py-16 px-6 md:px-12'} max-w-6xl mx-auto`}>
+      <div className="mb-8 sm:mb-10">
         {subheading && (
           <EditableText
             as="p"
@@ -41,15 +41,15 @@ export const AboutSection = ({ data, variant = 'bento', sectionId }) => {
           value={heading || 'About Me'}
           onSave={(val) => updateSectionField(sectionId, 'heading', val)}
           singleLine
-          className="text-3xl sm:text-4xl font-extrabold tracking-tight block"
+          className={`${isMobileViewport ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'} font-extrabold tracking-tight block`}
           style={{ fontFamily: 'var(--theme-heading-font)', color: 'var(--theme-text-primary)' }}
         />
       </div>
 
       {variant === 'bento' ? (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        <div className={isMobileViewport ? "flex flex-col gap-5" : "grid grid-cols-1 md:grid-cols-12 gap-6"}>
           {/* Main Story Bento Card */}
-          <div className="md:col-span-8 p-8 rounded-3xl border flex flex-col justify-between"
+          <div className={`${isMobileViewport ? 'w-full p-5 rounded-2xl' : 'md:col-span-8 p-8 rounded-3xl'} border flex flex-col justify-between`}
                style={{
                  backgroundColor: 'var(--theme-surface)',
                  borderColor: 'var(--theme-border)',
@@ -97,9 +97,9 @@ export const AboutSection = ({ data, variant = 'bento', sectionId }) => {
           </div>
 
           {/* Stats Bento Column */}
-          <div className="md:col-span-4 grid grid-cols-2 md:grid-cols-1 gap-4">
+          <div className={isMobileViewport ? "grid grid-cols-2 gap-3" : "md:col-span-4 grid grid-cols-2 md:grid-cols-1 gap-4"}>
             {stats?.map((stat, idx) => (
-              <div key={idx} className="p-6 rounded-3xl border transition-all hover:scale-[1.02]"
+              <div key={idx} className={`${isMobileViewport ? 'p-4 rounded-2xl' : 'p-6 rounded-3xl'} border transition-all hover:scale-[1.02]`}
                    style={{
                      backgroundColor: 'var(--theme-surface)',
                      borderColor: 'var(--theme-border)',
@@ -109,7 +109,7 @@ export const AboutSection = ({ data, variant = 'bento', sectionId }) => {
                   value={stat.value}
                   onSave={(val) => handleStatChange(val, 'value', idx)}
                   singleLine
-                  className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-1"
+                  className={`${isMobileViewport ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'} font-extrabold tracking-tight mb-1`}
                   style={{ color: 'var(--theme-accent)', fontFamily: 'var(--theme-heading-font)' }}
                 />
                 <EditableText
@@ -126,7 +126,7 @@ export const AboutSection = ({ data, variant = 'bento', sectionId }) => {
         </div>
       ) : (
         /* Classic Story Variant */
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+        <div className={isMobileViewport ? "flex flex-col gap-6 items-start" : "grid grid-cols-1 md:grid-cols-2 gap-8 items-start"}>
           <div className="space-y-4">
             {Array.isArray(bio) ? (
               bio.map((p, idx) => (

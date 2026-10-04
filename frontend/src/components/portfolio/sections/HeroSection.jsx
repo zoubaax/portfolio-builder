@@ -8,7 +8,7 @@ import { usePortfolio } from '../../../context/PortfolioContext';
 import { RiCameraLine, RiAddLine } from 'react-icons/ri';
 
 export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => {
-  const { updateSectionField, isEditMode } = usePortfolio();
+  const { updateSectionField, isEditMode, isMobileViewport } = usePortfolio();
   const { badge, name, title, tagline, avatar, primaryCta, secondaryCta, socials } = data || {};
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
   const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
@@ -16,9 +16,9 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
   // 1. Split Portrait Variant
   if (variant === 'split-portrait') {
     return (
-      <section className="relative py-16 md:py-24 px-6 md:px-12 max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-7 space-y-6">
+      <section className={`relative ${isMobileViewport ? 'py-8 px-4' : 'py-16 md:py-24 px-6 md:px-12'} max-w-6xl mx-auto`}>
+        <div className={`grid grid-cols-1 ${isMobileViewport ? 'gap-8' : 'lg:grid-cols-12 gap-12'} items-center`}>
+          <div className={`${isMobileViewport ? 'col-span-1 space-y-5 text-center sm:text-left' : 'lg:col-span-7 space-y-6'}`}>
             {badge !== undefined && (
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium border"
                    style={{
@@ -42,7 +42,7 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                 value={name}
                 onSave={(val) => updateSectionField(sectionId, 'name', val)}
                 singleLine
-                className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.1] block"
+                className={`${isMobileViewport ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl md:text-6xl'} font-extrabold tracking-tight leading-[1.15] block`}
                 style={{ fontFamily: 'var(--theme-heading-font)', color: 'var(--theme-text-primary)' }}
                 placeholder="Your Name"
               />
@@ -51,7 +51,7 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                 value={title}
                 onSave={(val) => updateSectionField(sectionId, 'title', val)}
                 singleLine
-                className="text-xl sm:text-2xl font-medium block"
+                className={`${isMobileViewport ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} font-medium block`}
                 style={{ color: 'var(--theme-accent)' }}
                 placeholder="Your Professional Title"
               />
@@ -61,12 +61,12 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
               as="p"
               value={tagline}
               onSave={(val) => updateSectionField(sectionId, 'tagline', val)}
-              className="text-base sm:text-lg leading-relaxed max-w-xl block"
+              className={`${isMobileViewport ? 'text-sm' : 'text-base sm:text-lg'} leading-relaxed max-w-xl block ${isMobileViewport ? 'mx-auto sm:mx-0' : ''}`}
               style={{ color: 'var(--theme-text-secondary)', fontFamily: 'var(--theme-body-font)' }}
               placeholder="Your professional tagline or mission..."
             />
 
-            <div className="flex flex-wrap items-center gap-4 pt-2">
+            <div className={`flex flex-wrap items-center gap-3 pt-2 ${isMobileViewport ? 'justify-center sm:justify-start' : ''}`}>
               {primaryCta && (
                 <a href={primaryCta.link || '#projects'}
                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm transition-all duration-200 shadow-lg hover:opacity-90 active:scale-95"
@@ -149,12 +149,12 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
             )}
           </div>
 
-          <div className="lg:col-span-5 flex justify-center">
+          <div className={`${isMobileViewport ? 'col-span-1 order-first sm:order-last' : 'lg:col-span-5'} flex justify-center`}>
             <div className="relative group">
               <div className="absolute -inset-1 rounded-3xl blur-2xl opacity-40 transition duration-500 group-hover:opacity-75"
                    style={{ background: 'radial-gradient(circle, var(--theme-accent), transparent 70%)' }} />
               <div
-                className={`relative w-64 h-64 sm:w-80 sm:h-80 rounded-3xl overflow-hidden border p-2 group/avatar transition-all ${
+                className={`relative ${isMobileViewport ? 'w-48 h-48 sm:w-60 sm:h-60' : 'w-64 h-64 sm:w-80 sm:h-80'} rounded-3xl overflow-hidden border p-2 group/avatar transition-all ${
                   isEditMode ? 'cursor-pointer hover:border-indigo-500' : ''
                 }`}
                 onClick={() => isEditMode && setIsImagePickerOpen(true)}

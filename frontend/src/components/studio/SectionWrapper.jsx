@@ -59,7 +59,7 @@ export const SectionWrapper = ({ section, index, isFirst, isLast, children }) =>
     <div className="relative group/section transition-all my-3">
       {/* Elementor Floating Handle Bar */}
       <div
-        className={`opacity-0 group-hover/section:opacity-100 focus-within:opacity-100 transition-opacity duration-200 absolute -top-5 left-6 z-40 flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs select-none backdrop-blur-md shadow-xl border ${
+        className={`opacity-0 group-hover/section:opacity-100 focus-within:opacity-100 transition-opacity duration-200 absolute -top-5 left-2 sm:left-6 max-w-[95%] overflow-x-auto z-40 flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs select-none backdrop-blur-md shadow-xl border ${
           isLight
             ? 'bg-white/95 border-slate-300 text-slate-800 shadow-slate-300/40'
             : 'bg-[#141b2d] border-indigo-500/40 text-white'

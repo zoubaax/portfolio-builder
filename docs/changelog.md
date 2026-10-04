@@ -232,3 +232,24 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
   - Gestion double des retours (JSON Base64 ou flux binaire ArrayBuffer).
   - Validation complète effectuée avec succès en environnement réel (10 000 neurones gratuits par jour).
 
+### 20. Redimensionnement Interactif en Temps Réel & Adaptation Mobile Totale du Portfolio
+- **Résolution du Problème d'Évaluation Média Desktop/Mobile (`PortfolioContext.jsx`) :**
+  - **Diagnostic :** Dans un canvas simulé sur grand écran PC, les classes Tailwind standard `md:` ou `lg:` évaluent la largeur de la fenêtre physique du navigateur (`window.innerWidth` ≈ 1920px) et non la largeur de la frame mobile (ex: 390px), forçant l'affichage desktop (liens horizontaux serrés, grilles à multiples colonnes comprimées).
+  - **Correction :** Création des états globaux `simulatedWidth`, `setSimulatedWidth`, et du booléen dérivé réactif `isMobileViewport` (`simulatedWidth !== null ? simulatedWidth < 768 : deviceView === 'mobile'`).
+- **Contrôles de Redimensionnement Interactifs (`V0Canvas.jsx`, `V0Header.jsx`) :**
+  - **Poignées de Drag-to-Resize :** Deux poignées bilatérales (gauche et droite) intégrées à la frame avec écouteurs `PointerEvent` et `setPointerCapture` pour un glisser-déplacer ultra-fluide à 60 FPS sans décrochage.
+  - **Barre de Contrôle des Dimensions :**
+    - Presets d'appareils en un clic : `📱 320` (iPhone SE), `📱 375` (iPhone Mini), `📱 390` (iPhone 14/15/16), `📱 428` (iPhone Plus/Max), `📟 768` (iPad Mini), `💻 100%` (Desktop).
+    - Slider continu (320px à 1200px) avec badge de dimension dynamique en temps réel.
+  - **Mockup Réaliste d'Appareil :** Habillage avec Dynamic Island, caméra poinçon et barre d'accueil iOS lorsque la dimension est inférieure à 900px.
+- **Menu Hamburger Mobile (`PortfolioRenderer.jsx`) :**
+  - Sur mobile ou conteneur étroit, la barre de navigation remplace les liens horizontaux compactés par un bouton hamburger tactile fluide avec menu déroulant animé et bouton de contact d'action directe.
+- **Refonte Responsive Complète de Toutes les Sections du Portfolio :**
+  - **`HeroSection.jsx` :** Échelonnage typographique (`text-3xl sm:text-4xl`), marges douces (`py-8 px-4`), disposition empilée de l'avatar et du texte sans débordement.
+  - **`ProjectsSection.jsx` :** Basculement automatique en 1 seule colonne pour les variantes Bento et Cards sur mobile, avec adaptation du ratio des images.
+  - **`AboutSection.jsx` :** Réorganisation de la grille histoire + stats en colonne unifiée sans tassement.
+  - **`SkillsSection.jsx` :** Disposition des cartes de compétences en liste claire et aérée à 1 colonne.
+  - **`ContactSection.jsx` :** Boutons d'action pleine largeur centrés et marges tactiles adaptées.
+  - **`SectionWrapper.jsx` :** Barre d'outils flottante de style Elementor contrainte à `max-w-[95%]` avec défilement horizontal fluide pour ne jamais déborder hors de l'écran mobile.
+
+

@@ -7,7 +7,7 @@ import { usePortfolio } from '../../../context/PortfolioContext';
 import { RiCameraLine } from 'react-icons/ri';
 
 export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => {
-  const { updateSectionField, isEditMode } = usePortfolio();
+  const { updateSectionField, isEditMode, isMobileViewport } = usePortfolio();
   const { heading, subheading } = data || {};
   const projects = (data?.projects && Array.isArray(data.projects) && data.projects.length > 0)
     ? data.projects
@@ -25,8 +25,8 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
   };
 
   return (
-    <section id="projects" className="py-16 px-6 md:px-12 max-w-6xl mx-auto">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-12 gap-4">
+    <section id="projects" className={`${isMobileViewport ? 'py-10 px-4' : 'py-16 px-6 md:px-12'} max-w-6xl mx-auto`}>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 sm:mb-12 gap-4">
         <div>
           {subheading && (
             <EditableText
@@ -54,13 +54,13 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
 
       {/* 1. Bento Grid Variant */}
       {activeVariant === 'bento-grid' && (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+        <div className={`grid ${isMobileViewport ? 'grid-cols-1 gap-5' : 'grid-cols-1 md:grid-cols-12 gap-6'}`}>
           {projects.map((proj, idx) => {
-            const isWide = idx === 0 || (idx % 3 === 0);
+            const isWide = !isMobileViewport && (idx === 0 || (idx % 3 === 0));
             return (
               <div key={proj.id || idx}
                    className={`group relative rounded-3xl border overflow-hidden transition-all duration-300 hover:shadow-2xl ${
-                     isWide ? 'md:col-span-8' : 'md:col-span-4'
+                     isMobileViewport ? 'col-span-1' : (isWide ? 'md:col-span-8' : 'md:col-span-4')
                    }`}
                    style={{
                      backgroundColor: 'var(--theme-surface)',
@@ -163,7 +163,7 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
 
       {/* 2. Card Grid Variant */}
       {activeVariant === 'card-grid' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className={`grid ${isMobileViewport ? 'grid-cols-1 gap-5' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'}`}>
           {projects.map((proj, idx) => (
             <div key={proj.id || idx}
                  className="p-6 rounded-2xl border flex flex-col justify-between transition-all hover:scale-[1.01]"

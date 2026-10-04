@@ -40,6 +40,9 @@ export const V0Canvas = () => {
     portfolio,
     deviceView,
     setDeviceView,
+    simulatedWidth,
+    setSimulatedWidth,
+    isMobileViewport,
     viewMode,
     setViewMode,
     isChatCollapsed,
@@ -57,7 +60,45 @@ export const V0Canvas = () => {
   const [publishedUrl, setPublishedUrl] = useState(null);
   const [showColorPopover, setShowColorPopover] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
+  const [isResizing, setIsResizing] = useState(false);
   const codeScrollRef = useRef(null);
+  const frameContainerRef = useRef(null);
+
+  // Compute active width (null means 100% full-width desktop)
+  const activeWidth = simulatedWidth !== null 
+    ? simulatedWidth 
+    : (deviceView === 'mobile' ? 390 : (deviceView === 'tablet' ? 768 : null));
+
+  // Pointer drag to resize handle
+  const handlePointerDownResize = (e, side) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    const startX = e.clientX;
+    const initialWidth = activeWidth || 1000;
+
+    const onPointerMove = (moveEvent) => {
+      const delta = (moveEvent.clientX - startX) * (side === 'right' ? 2 : -2);
+      const newWidth = Math.max(320, Math.min(1400, Math.round(initialWidth + delta)));
+      setSimulatedWidth(newWidth);
+      if (newWidth < 768) {
+        setDeviceView('mobile');
+      } else if (newWidth < 1024) {
+        setDeviceView('tablet');
+      } else {
+        setDeviceView('desktop');
+      }
+    };
+
+    const onPointerUp = () => {
+      setIsResizing(false);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
 
   // Auto-scroll code editor as streaming tokens arrive
   useEffect(() => {
@@ -82,14 +123,6 @@ export const V0Canvas = () => {
     setCopiedCode(true);
     setTimeout(() => setCopiedCode(false), 2000);
   };
-
-  // Device frame styling
-  let frameWidthClass = 'w-full';
-  let frameBorderClass = 'border-0';
-
-  if (deviceView === 'mobile') {
-    frameWidthClass = 'max-w-[390px] my-6 rounded-[2.5rem] border-[8px] border-zinc-200 shadow-xl';
-  }
 
   return (
     <main className="flex-1 relative flex flex-col h-screen overflow-hidden bg-white text-zinc-900 font-sans">
@@ -165,14 +198,22 @@ export const V0Canvas = () => {
           </button>
 
           <button
-            onClick={() => setDeviceView(deviceView === 'mobile' ? 'desktop' : 'mobile')}
+            onClick={() => {
+              if (activeWidth !== null) {
+                setDeviceView('desktop');
+                setSimulatedWidth(null);
+              } else {
+                setDeviceView('mobile');
+                setSimulatedWidth(390);
+              }
+            }}
             className={`p-0.5 rounded transition-colors cursor-pointer ${
-              deviceView === 'mobile' ? 'text-black font-bold' : 'text-zinc-500 hover:text-zinc-800'
+              activeWidth !== null ? 'text-indigo-600 font-bold' : 'text-zinc-500 hover:text-zinc-800'
             }`}
-            title="Toggle Mobile View"
+            title={activeWidth !== null ? "Passer en vue Plein écran (Desktop)" : "Passer en vue Mobile"}
           >
-            {deviceView === 'mobile' ? (
-              <RiComputerLine className="w-3.5 h-3.5" />
+            {activeWidth !== null ? (
+              <RiComputerLine className="w-3.5 h-3.5 text-indigo-600" />
             ) : (
               <RiSmartphoneLine className="w-3.5 h-3.5" />
             )}
@@ -355,14 +396,151 @@ export const V0Canvas = () => {
 
             {/* STATE C: GENERATED PORTFOLIO */}
             {hasGeneratedFirstPortfolio && !isGenerating && (
-              <div className="w-full h-full overflow-y-auto flex justify-center items-start p-2 sm:p-6">
-                <div className={`transition-all duration-300 origin-top overflow-hidden ${frameWidthClass} ${frameBorderClass}`}>
-                  {deviceView === 'mobile' && (
-                    <div className="h-6 bg-zinc-200 flex items-center justify-center">
-                      <div className="w-20 h-3 bg-black rounded-full" />
+              <div className="w-full h-full flex flex-col overflow-hidden bg-zinc-100/60">
+                {/* 1. Interactive Responsive Dimension Bar */}
+                <div className="w-full bg-white border-b border-zinc-200 px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs select-none shadow-xs shrink-0 z-20">
+                  {/* Presets */}
+                  <div className="flex items-center gap-1 bg-zinc-100 p-0.5 rounded-xl border border-zinc-200/80">
+                    <button
+                      onClick={() => { setDeviceView('mobile'); setSimulatedWidth(320); }}
+                      className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${activeWidth === 320 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
+                      title="iPhone SE (320px)"
+                    >
+                      📱 320
+                    </button>
+                    <button
+                      onClick={() => { setDeviceView('mobile'); setSimulatedWidth(375); }}
+                      className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${activeWidth === 375 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
+                      title="Mobile M (375px)"
+                    >
+                      📱 375
+                    </button>
+                    <button
+                      onClick={() => { setDeviceView('mobile'); setSimulatedWidth(390); }}
+                      className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${activeWidth === 390 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
+                      title="iPhone 14/15 (390px)"
+                    >
+                      📱 390
+                    </button>
+                    <button
+                      onClick={() => { setDeviceView('mobile'); setSimulatedWidth(428); }}
+                      className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${activeWidth === 428 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
+                      title="Mobile L (428px)"
+                    >
+                      📱 428
+                    </button>
+                    <button
+                      onClick={() => { setDeviceView('tablet'); setSimulatedWidth(768); }}
+                      className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${activeWidth === 768 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
+                      title="Tablette iPad (768px)"
+                    >
+                      📟 768
+                    </button>
+                    <button
+                      onClick={() => { setDeviceView('desktop'); setSimulatedWidth(null); }}
+                      className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${activeWidth === null ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
+                      title="Plein écran Desktop (100%)"
+                    >
+                      💻 100%
+                    </button>
+                  </div>
+
+                  {/* Width Slider + Live Pixel Badge */}
+                  <div className="flex items-center gap-3">
+                    <div className="hidden sm:flex items-center gap-2">
+                      <span className="text-[11px] text-zinc-400 font-mono">320px</span>
+                      <input
+                        type="range"
+                        min="320"
+                        max="1280"
+                        step="5"
+                        value={activeWidth || 1280}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          if (val >= 1200) {
+                            setDeviceView('desktop');
+                            setSimulatedWidth(null);
+                          } else {
+                            setSimulatedWidth(val);
+                            setDeviceView(val < 768 ? 'mobile' : 'tablet');
+                          }
+                        }}
+                        className="w-24 sm:w-36 accent-indigo-600 cursor-pointer h-1.5 bg-zinc-200 rounded-lg"
+                      />
+                      <span className="text-[11px] text-zinc-400 font-mono">100%</span>
                     </div>
-                  )}
-                  <PortfolioRenderer portfolio={portfolio} isPreview={true} />
+
+                    <div className="px-3 py-1 rounded-lg bg-zinc-900 text-white font-mono text-xs font-bold shadow-xs flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>{activeWidth ? `${activeWidth}px` : 'Plein écran (100%)'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Scrollable Canvas Area with Drag-to-Resize Frame */}
+                <div className="w-full flex-1 overflow-y-auto overflow-x-auto flex justify-center items-start p-2 sm:p-6 relative">
+                  <div
+                    ref={frameContainerRef}
+                    className="relative transition-[width] duration-75 flex justify-center items-start origin-top shrink-0"
+                    style={{
+                      width: activeWidth ? `${activeWidth}px` : '100%',
+                      maxWidth: '100%',
+                    }}
+                  >
+                    {/* Left Drag Handle */}
+                    {activeWidth !== null && (
+                      <div
+                        onPointerDown={(e) => handlePointerDownResize(e, 'left')}
+                        className={`absolute -left-3.5 top-1/2 -translate-y-1/2 z-40 w-6 h-16 rounded-full flex items-center justify-center cursor-ew-resize transition-all hover:scale-110 active:scale-95 group/handle border shadow-xl select-none ${
+                          isResizing ? 'bg-indigo-600 scale-110 border-indigo-400' : 'bg-zinc-800/90 hover:bg-indigo-600 border-white/20'
+                        }`}
+                        title="Glisser pour redimensionner"
+                      >
+                        <div className="w-1 h-5 bg-white/70 rounded-full group-hover/handle:bg-white" />
+                      </div>
+                    )}
+
+                    {/* Mockup Shell */}
+                    <div
+                      className={`w-full overflow-hidden transition-all ${
+                        activeWidth && activeWidth < 900
+                          ? 'my-3 rounded-[2.8rem] border-[9px] border-zinc-900 shadow-2xl bg-black'
+                          : 'w-full border-0'
+                      }`}
+                    >
+                      {/* iPhone Dynamic Island */}
+                      {activeWidth && activeWidth < 900 && (
+                        <div className="h-7 bg-zinc-900 flex items-center justify-center relative select-none">
+                          <div className="w-24 h-4 bg-black rounded-full flex items-center justify-end px-3">
+                            <div className="w-2.5 h-2.5 rounded-full bg-[#151515] border border-zinc-700/60" />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Content */}
+                      <PortfolioRenderer portfolio={portfolio} isPreview={true} />
+
+                      {/* Home Indicator */}
+                      {activeWidth && activeWidth < 900 && (
+                        <div className="h-6 bg-zinc-900 flex items-center justify-center select-none">
+                          <div className="w-32 h-1 bg-zinc-600 rounded-full" />
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right Drag Handle */}
+                    {activeWidth !== null && (
+                      <div
+                        onPointerDown={(e) => handlePointerDownResize(e, 'right')}
+                        className={`absolute -right-3.5 top-1/2 -translate-y-1/2 z-40 w-6 h-16 rounded-full flex items-center justify-center cursor-ew-resize transition-all hover:scale-110 active:scale-95 group/handle border shadow-xl select-none ${
+                          isResizing ? 'bg-indigo-600 scale-110 border-indigo-400' : 'bg-zinc-800/90 hover:bg-indigo-600 border-white/20'
+                        }`}
+                        title="Glisser pour redimensionner"
+                      >
+                        <div className="w-1 h-5 bg-white/70 rounded-full group-hover/handle:bg-white" />
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
