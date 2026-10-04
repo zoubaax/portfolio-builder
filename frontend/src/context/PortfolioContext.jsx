@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth, useUser } from '@clerk/react';
 import {
   MOCK_DEVELOPER_PORTFOLIO,
@@ -34,6 +34,17 @@ export const PortfolioProvider = ({ children }) => {
 
   // Chat & Multi-session management state
   const [chatMessages, setChatMessages] = useState([DEFAULT_WELCOME_MESSAGE]);
+  const chatMessagesRef = useRef([DEFAULT_WELCOME_MESSAGE]);
+  const portfolioIdRef = useRef(null);
+
+  useEffect(() => {
+    chatMessagesRef.current = chatMessages;
+  }, [chatMessages]);
+
+  useEffect(() => {
+    portfolioIdRef.current = portfolioId;
+  }, [portfolioId]);
+
   const [sessions, setSessions] = useState([]);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -123,15 +134,18 @@ export const PortfolioProvider = ({ children }) => {
 
         if (Array.isArray(item.chatHistory) && item.chatHistory.length > 0) {
           setChatMessages(item.chatHistory);
+          chatMessagesRef.current = item.chatHistory;
         } else {
-          setChatMessages([
+          const fallbackMessages = [
             {
               id: `msg-welcome-${item.id}`,
               role: 'assistant',
               text: `📂 Session "${item.title || 'Portfolio'}" chargée avec succès. Vous pouvez continuer à personnaliser votre portfolio ici.`,
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             },
-          ]);
+          ];
+          setChatMessages(fallbackMessages);
+          chatMessagesRef.current = fallbackMessages;
         }
         setHasGeneratedFirstPortfolio(true);
         fetchVersions(item.id);
@@ -147,10 +161,12 @@ export const PortfolioProvider = ({ children }) => {
   // Start a fresh, clean chat session
   const createNewSession = useCallback(() => {
     setPortfolioId(null);
+    portfolioIdRef.current = null;
     setPortfolio(MOCK_DEVELOPER_PORTFOLIO);
     setHistory([MOCK_DEVELOPER_PORTFOLIO]);
     setHistoryIndex(0);
     setChatMessages([DEFAULT_WELCOME_MESSAGE]);
+    chatMessagesRef.current = [DEFAULT_WELCOME_MESSAGE];
     setHasGeneratedFirstPortfolio(false);
     setVersions([]);
     setIsHistoryOpen(false);
@@ -218,18 +234,23 @@ export const PortfolioProvider = ({ children }) => {
         .replace(/^-|-$/g, '')
         .substring(0, 48) || `port-${Date.now().toString().slice(-6)}`;
 
-      if (portfolioId) {
-        await fetch(`http://localhost:5050/api/v1/portfolios/${portfolioId}`, {
+      const currentId = portfolioIdRef.current || portfolioId;
+      const chatToPersist = Array.isArray(currentChat) && currentChat.length > 0
+        ? currentChat
+        : (chatMessagesRef.current || []);
+
+      if (currentId) {
+        await fetch(`http://localhost:5050/api/v1/portfolios/${currentId}`, {
           method: 'PUT',
           headers,
           body: JSON.stringify({
             schemaData: currentPortfolio,
-            chatHistory: currentChat,
+            chatHistory: chatToPersist,
             title,
             promptNote: promptNote || 'AI Prompt Update',
           }),
         });
-        fetchVersions(portfolioId);
+        fetchVersions(currentId);
         fetchUserSessions();
       } else {
         const res = await fetch(`http://localhost:5050/api/v1/portfolios`, {
@@ -239,13 +260,14 @@ export const PortfolioProvider = ({ children }) => {
             title,
             subdomainSlug: cleanSlug,
             schemaData: currentPortfolio,
-            chatHistory: currentChat,
+            chatHistory: chatToPersist,
           }),
         });
         const data = await res.json();
         if (data.success && data.data?.id) {
           const newId = data.data.id;
           setPortfolioId(newId);
+          portfolioIdRef.current = newId;
           window.history.replaceState(null, '', `/studio/${newId}`);
           fetchVersions(newId);
           fetchUserSessions();
@@ -271,13 +293,14 @@ export const PortfolioProvider = ({ children }) => {
         .substring(0, 48) || `port-${Date.now().toString().slice(-6)}`;
 
       let response;
+      const currentChatHistory = chatMessagesRef.current || chatMessages;
       if (portfolioId) {
         response = await fetch(`http://localhost:5050/api/v1/portfolios/${portfolioId}`, {
           method: 'PUT',
           headers,
           body: JSON.stringify({
             schemaData: portfolio,
-            chatHistory: chatMessages,
+            chatHistory: currentChatHistory,
             title,
             isPublished: publish,
             promptNote: promptNote || (publish ? 'Published site update' : 'Saved studio revision'),
@@ -291,7 +314,7 @@ export const PortfolioProvider = ({ children }) => {
             title,
             subdomainSlug: cleanSlug,
             schemaData: portfolio,
-            chatHistory: chatMessages,
+            chatHistory: currentChatHistory,
           }),
         });
       }
@@ -676,7 +699,7 @@ export const PortfolioProvider = ({ children }) => {
   }, [pushState]);
 
   // AI Prompt Processor with Real Backend SSE Streaming & Live Step-by-Step Task Checklist
-  const sendChatMessage = useCallback(async (promptText) => {
+  const sendChatMessage = useCallback(async (promptText, options = {}) => {
     if (!promptText?.trim() || isGenerating) return;
 
     setActiveTab('chat'); // Auto-switch to chat tab in Studio Left Panel
@@ -684,11 +707,23 @@ export const PortfolioProvider = ({ children }) => {
     const userMsg = {
       id: `msg-${Date.now()}`,
       role: 'user',
-      text: promptText,
+      text: options.displayText || promptText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    setChatMessages((prev) => [...prev, userMsg]);
+    const assistantMsgId = `msg-ai-${Date.now()}`;
+    const initialAssistantMsg = {
+      id: assistantMsgId,
+      role: 'assistant',
+      text: options.assistantPlaceholder || `Synthesizing custom portfolio architecture from prompt...`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    const previousMessages = Array.isArray(chatMessagesRef.current) ? chatMessagesRef.current : [];
+    const activeMessages = [...previousMessages, userMsg, initialAssistantMsg];
+    setChatMessages(activeMessages);
+    chatMessagesRef.current = activeMessages;
+
     setIsGenerating(true);
     setCurrentPrompt(promptText);
     setStreamingCode('');
@@ -722,18 +757,6 @@ export const PortfolioProvider = ({ children }) => {
         );
       }
     }, 650);
-
-    const assistantMsgId = `msg-ai-${Date.now()}`;
-    // Add clean assistant message placeholder (NO raw JSON)
-    setChatMessages((prev) => [
-      ...prev,
-      {
-        id: assistantMsgId,
-        role: 'assistant',
-        text: `Synthesizing custom portfolio architecture from prompt...`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      },
-    ]);
 
     try {
       const headers = await getAuthHeaders();
@@ -812,35 +835,65 @@ export const PortfolioProvider = ({ children }) => {
           }
         }
 
+        // Merge any explicit projectsToAdd to ensure user's imported GitHub projects & mockups are present
+        if (options.projectsToAdd && Array.isArray(options.projectsToAdd) && options.projectsToAdd.length > 0) {
+          if (updatedPortfolio.sections) {
+            updatedPortfolio.sections = updatedPortfolio.sections.map((s) => {
+              if (s.type === 'projects') {
+                const existingList = Array.isArray(s.data?.projects) ? s.data.projects : [];
+                const merged = [...options.projectsToAdd];
+                existingList.forEach((ep) => {
+                  if (!merged.some((m) => (m.github && ep.github && m.github === ep.github) || m.title.toLowerCase() === ep.title.toLowerCase())) {
+                    merged.push(ep);
+                  }
+                });
+                return {
+                  ...s,
+                  data: {
+                    ...s.data,
+                    projects: merged,
+                  },
+                };
+              }
+              return s;
+            });
+          }
+        }
+
         pushState(updatedPortfolio);
         const isFirstGen = !hasGeneratedFirstPortfolio;
         setHasGeneratedFirstPortfolio(true);
         const finalTasks = initialTasks.map((t) => ({ ...t, done: true, active: false }));
-        let finalMessages = [];
-        setChatMessages((prev) => {
-          const updated = prev.map((m) =>
-            m.id === assistantMsgId
-              ? {
-                  ...m,
-                  text: `✓ Architecture et design du portfolio générés avec succès pour : "${promptText}"`,
-                  tasks: finalTasks,
-                }
-              : m
-          );
+        const confirmationText = options.summaryTitle ||
+          (promptText.length > 80
+            ? `✓ Architecture et design du portfolio mis à jour pour : "${promptText.slice(0, 70)}..."`
+            : `✓ Architecture et design du portfolio générés avec succès pour : "${promptText}"`);
 
-          if (isFirstGen) {
-            updated.push({
-              id: `msg-followup-${Date.now()}`,
-              role: 'assistant',
-              text: `🎉 Votre portfolio a été généré avec succès !\n\n💡 Prochaine étape recommandée : Le nouvel onglet [ 🐙 Projets ] vient d'apparaître dans la barre supérieure. Connectez votre GitHub, sélectionnez vos dépôts et générez des mockups IA (FLUX.1-schnell) pour personnaliser votre section projets.`,
-              action: 'open_projects',
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            });
-          }
+        const updatedAssistantMsg = {
+          id: assistantMsgId,
+          role: 'assistant',
+          text: confirmationText,
+          tasks: finalTasks,
+          duration: Math.max(1, currentStep),
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
 
-          finalMessages = updated;
-          return updated;
-        });
+        let finalMessages = activeMessages.map((m) =>
+          m.id === assistantMsgId ? updatedAssistantMsg : m
+        );
+
+        if (isFirstGen) {
+          finalMessages.push({
+            id: `msg-followup-${Date.now()}`,
+            role: 'assistant',
+            text: `🎉 Votre portfolio a été généré avec succès !\n\n💡 Prochaine étape recommandée : Le nouvel onglet [ 🐙 Projets ] vient d'apparaître dans la barre supérieure. Connectez votre GitHub, sélectionnez vos dépôts et générez des mockups IA (FLUX.1-schnell) pour personnaliser votre section projets.`,
+            action: 'open_projects',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          });
+        }
+
+        setChatMessages(finalMessages);
+        chatMessagesRef.current = finalMessages;
 
         // Persist session schema & chat history to Neon DB
         persistSession(updatedPortfolio, finalMessages, promptText);
@@ -880,9 +933,32 @@ export const PortfolioProvider = ({ children }) => {
         title: `${personName} — DevOps & Platform Engineer`,
       };
 
-      let replyText = `Synthesized customized portfolio architecture for ${personName}!`;
+      let replyText = options.summaryTitle || `Synthesized customized portfolio architecture for ${personName}!`;
 
-      if (lower.includes('devops') || lower.includes('cloud') || lower.includes('terminal') || lower.includes('cyber')) {
+      // If explicit projects are being added via GitHub import, preserve/apply them directly
+      if (options.projectsToAdd && Array.isArray(options.projectsToAdd) && options.projectsToAdd.length > 0) {
+        fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) => {
+          if (s.type === 'projects') {
+            const existingList = Array.isArray(s.data?.projects) ? s.data.projects : [];
+            const merged = [...options.projectsToAdd];
+            existingList.forEach((ep) => {
+              if (!merged.some((m) => (m.github && ep.github && m.github === ep.github) || m.title.toLowerCase() === ep.title.toLowerCase())) {
+                merged.push(ep);
+              }
+            });
+            return {
+              ...s,
+              data: {
+                ...s.data,
+                heading: s.data?.heading || 'Featured Projects',
+                projects: merged,
+              },
+            };
+          }
+          return s;
+        });
+        replyText = options.summaryTitle || `✓ Section Projets mise à jour avec ${options.projectsToAdd.length} projet(s) GitHub.`;
+      } else if (lower.includes('devops') || lower.includes('cloud') || lower.includes('terminal') || lower.includes('cyber')) {
         fallbackPortfolio.theme = THEME_PRESETS['cyber-dark'];
         fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) => {
           if (s.type === 'hero') {
@@ -955,7 +1031,7 @@ export const PortfolioProvider = ({ children }) => {
           }
           return s;
         });
-        replyText = `Synthesized high-impact DevOps & Platform Engineering portfolio for ${personName} with Cyber Dark & Terminal Hero!`;
+        replyText = options.summaryTitle || `Synthesized high-impact DevOps & Platform Engineering portfolio for ${personName} with Cyber Dark & Terminal Hero!`;
       } else if (lower.includes('bento') || lower.includes('violet')) {
         fallbackPortfolio.theme = THEME_PRESETS['bento-violet'];
         fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) => {
@@ -967,7 +1043,7 @@ export const PortfolioProvider = ({ children }) => {
           }
           return s;
         });
-        replyText = `Synthesized Bento Violet layout for ${personName}!`;
+        replyText = options.summaryTitle || `Synthesized Bento Violet layout for ${personName}!`;
       } else if (lower.includes('minimal') || lower.includes('editorial')) {
         fallbackPortfolio.theme = THEME_PRESETS['minimal-editorial'];
         fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) => {
@@ -976,16 +1052,16 @@ export const PortfolioProvider = ({ children }) => {
           }
           return s;
         });
-        replyText = `Synthesized Minimal Editorial portfolio for ${personName}!`;
+        replyText = options.summaryTitle || `Synthesized Minimal Editorial portfolio for ${personName}!`;
       } else if (lower.includes('emerald') || lower.includes('green')) {
         fallbackPortfolio.theme = THEME_PRESETS['emerald-matrix'];
-        replyText = `Applied Emerald Matrix theme with vivid green accents for ${personName}!`;
+        replyText = options.summaryTitle || `Applied Emerald Matrix theme with vivid green accents for ${personName}!`;
       } else if (lower.includes('orange') || lower.includes('ember') || lower.includes('#ff4500')) {
         fallbackPortfolio.theme = THEME_PRESETS['superdesign-ember'];
-        replyText = `Applied Superdesign Ember theme with flame orange accents for ${personName}!`;
+        replyText = options.summaryTitle || `Applied Superdesign Ember theme with flame orange accents for ${personName}!`;
       } else if (lower.includes('cyan') || lower.includes('blue')) {
         fallbackPortfolio.theme = THEME_PRESETS['cyber-dark'];
-        replyText = `Applied Cyber Dark theme with cyber cyan accents for ${personName}!`;
+        replyText = options.summaryTitle || `Applied Cyber Dark theme with cyber cyan accents for ${personName}!`;
       } else if (lower.match(/#[0-9a-f]{3,6}/i)) {
         const hex = lower.match(/#[0-9a-f]{3,6}/i)[0];
         fallbackPortfolio.theme = {
@@ -998,7 +1074,7 @@ export const PortfolioProvider = ({ children }) => {
             border: `${hex}30`,
           },
         };
-        replyText = `Updated portfolio accent color to ${hex}!`;
+        replyText = options.summaryTitle || `Updated portfolio accent color to ${hex}!`;
       } else {
         fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) =>
           s.type === 'hero' ? { ...s, data: { ...s.data, name: personName } } : s
@@ -1008,20 +1084,21 @@ export const PortfolioProvider = ({ children }) => {
       pushState(fallbackPortfolio);
       setHasGeneratedFirstPortfolio(true);
       const finalTasks = initialTasks.map((t) => ({ ...t, done: true, active: false }));
-      let finalFallbackMessages = [];
-      setChatMessages((prev) => {
-        const updated = prev.map((m) =>
-          m.id === assistantMsgId
-            ? {
-                ...m,
-                text: replyText,
-                tasks: finalTasks,
-              }
-            : m
-        );
-        finalFallbackMessages = updated;
-        return updated;
-      });
+      const updatedFallbackMsg = {
+        id: assistantMsgId,
+        role: 'assistant',
+        text: options.summaryTitle || replyText,
+        tasks: finalTasks,
+        duration: Math.max(1, currentStep),
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      const finalFallbackMessages = activeMessages.map((m) =>
+        m.id === assistantMsgId ? updatedFallbackMsg : m
+      );
+
+      setChatMessages(finalFallbackMessages);
+      chatMessagesRef.current = finalFallbackMessages;
 
       // Persist fallback session schema & chat history to Neon DB
       persistSession(fallbackPortfolio, finalFallbackMessages, promptText);

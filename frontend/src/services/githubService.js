@@ -101,15 +101,19 @@ export async function fetchRepoReadme(owner, repo) {
     }
     if (res.ok) {
       const text = await res.text();
-      // Strip markdown headers, badges, images to get clean summary
+      // Strip HTML tags, markdown badges, raw URLs, and code blocks to extract clean textual overview
       const cleanText = text
-        .replace(/!\[.*?\]\(.*?\)/g, '') // remove images
-        .replace(/\[.*?\]\(.*?\)/g, '$1') // links to text
-        .replace(/#{1,6}\s+/g, '') // headers
-        .replace(/```[\s\S]*?```/g, '') // code blocks
-        .replace(/\n+/g, ' ')
+        .replace(/<[^>]*>/g, ' ') // Strip all HTML tags (div, p, img, a, span)
+        .replace(/!\[.*?\]\(.*?\)/g, '') // Remove markdown images
+        .replace(/\[!\[.*?\]\(.*?\)\]\(.*?\)/g, '') // Remove linked badges
+        .replace(/\[.*?\]\(.*?\)/g, '$1') // Convert markdown links to plain text
+        .replace(/#{1,6}\s+/g, '') // Remove headers
+        .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+        .replace(/`.*?`/g, '') // Remove inline code
+        .replace(/https?:\/\/[^\s]+/g, '') // Remove raw URLs
+        .replace(/\s+/g, ' ') // Collapse whitespace
         .trim();
-      return cleanText.slice(0, 300);
+      return cleanText.slice(0, 240);
     }
   } catch (e) {
     console.warn(`README not fetched for ${repo}:`, e.message);

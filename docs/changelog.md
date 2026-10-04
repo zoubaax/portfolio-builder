@@ -147,3 +147,27 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
   - L'authentification s'ouvre dans une fenêtre popup centrée élégante sans quitter le Studio ni perdre l'état du portfolio.
   - Dès validation sur GitHub, le Studio détecte la confirmation instantanément, affiche le badge `🟢 @Amine-NAHLI Certifié OAuth`, et synchronise immédiatement tous les dépôts disponibles.
   - Ajout d'un bouton direct `Dissocier` permettant de changer de compte GitHub à tout moment.
+
+### 13. Résolution de la Persistance de l'Historique de Chat Multi-Sessions (`PortfolioContext.jsx`, `V0ChatPanel.jsx`)
+- **Diagnostic de l'Anomalie :**
+  - Lors du chargement d'une session depuis l'historique ou le rechargement d'une URL `/studio/:id`, le portfolio s'affichait fidèlement mais la conversation était remplacée par un message unique *"Session chargée avec succès"*.
+  - En base Neon DB, la colonne `chat_history` contenait `[]`.
+  - **Cause racine identifiée :** Dans `sendChatMessage`, la variable `finalMessages` était assignée dans le callback asynchrone de `setChatMessages(prev => ...)`. L'appel immédiat à `persistSession(..., finalMessages, ...)` s'exécutait avant que React n'exécute le callback, transmettant un tableau vide `[]` qui écrasait l'historique en base de données.
+- **Correctifs Appliqués :**
+  - **Synchronisation par Référence Réactive (`chatMessagesRef`, `portfolioIdRef`) :** Création de `useRef` garantissant un accès instantané et synchrone à la dernière liste complète des messages sans dépendre du cycle de rendu de React.
+  - **Calcul Synchrone des Messages :** `activeMessages` (message utilisateur + placeholder assistant) et `finalMessages` (résultat final, tâches terminées et boutons d'action) sont désormais construits de manière pure et déterministe avant d'être persistés dans Neon DB.
+  - **Assainissement du Rendu (`V0ChatPanel.jsx`) :** L'accordéon `> Worked for Xs` est désormais strictement réservé aux messages ayant fait l'objet d'une génération IA (`tasks` ou `duration`), évitant son affichage indu sur les notifications de session.
+  - **Restauration de l'Historique Existant :** Réparation des messages pour la session active en base Neon DB afin de retrouver instantanément la conversation complète.
+
+### 14. Mockups 3D Product Showcase, Assainissement du Chat & Synchronisation Bidirectionnelle des Projets
+- **Génération Visuelle Haut de Gamme "3D Product Showcase" (`backend/src/services/imageService.ts`) :**
+  - **Refonte des Prompts FLUX.1-schnell :** Élimination définitive des visuels génériques abstraits (code vert de type Matrix, écrans de terminaux illisibles). Le prompt d'image formule désormais une maquette publicitaire 3D de produit SaaS moderne : écran ultra-large affichant un tableau de bord sombre avec métriques et topologie système, entouré de cartes widgets 3D en verre dépoli flottant dans l'espace avec reflets néon cyan (style Octane render 8K).
+  - **Curated Tech Dashboards en Fallback Résilient :** Remplacement des anciennes photos de code stock par une sélection de dashboards d'observabilité, interfaces cloud et consoles de cybersécurité haute résolution. En cas de latence ou d'indisponibilité du service FLUX public, le visuel affiché reste toujours une véritable maquette d'application SaaS professionnelle.
+- **Assainissement Complet des READMEs & Découplage de l'Affichage du Chat (`frontend/src/services/githubService.js`, `frontend/src/context/PortfolioContext.jsx`, `frontend/src/components/studio/V0ChatPanel.jsx`) :**
+  - **Nettoyage Regex des READMEs :** Suppression rigoureuse de toutes les balises HTML brutes (`<div align="center">`, `<img src=.../>`, `<span>`), badges de build GitHub (`[![Build Status]...]`), URLs brutes et blocs de code avant l'envoi à l'IA.
+  - **Découplage de la Charge Technique et du Rendu Utilisateur :** Ajout des options `displayText` et `summaryTitle` dans `sendChatMessage`. Le chat n'affiche plus un pavé technique de 50 lignes, mais un résumé épuré et percutant de style v0 / ChatGPT : `🐙 Importer 1 projet GitHub : Smart Network Mapper`, suivi d'un message d'assistance clair `✓ Section Projets mise à jour avec smart-network-mapper`.
+  - **Rétrocompatibilité d'Affichage :** Le composant `V0ChatPanel` détecte et formate automatiquement les anciens prompts de session volumineux pour préserver l'élégance de la timeline de discussion.
+- **Synchronisation Bidirectionnelle & Maintien de l'État Coché (`frontend/src/components/studio/GithubProjectsTab.jsx`, `frontend/src/context/PortfolioContext.jsx`) :**
+  - **Détection Automatique & Badge de Présence :** Comparaison intelligente en temps réel entre les dépôts GitHub de l'utilisateur et les projets présents dans `sec-projects` du portfolio (via URL GitHub et titre normalisé). Les projets déjà intégrés sont automatiquement pré-cochés à l'ouverture de l'onglet et arborent un badge distinctif `✓ Dans le portfolio`.
+  - **Suppression Instantanée au Décochage ("Si je le décoche, ne s'affiche plus") :** Lorsqu'un utilisateur décoche un projet déjà présent dans son portfolio, l'application le retire immédiatement de la section `projects` du canvas via `updateSection` avec une notification de confirmation éphémère.
+  - **Intégration Déterministe :** Lors du clic sur `Appliquer au Portfolio`, les projets sélectionnés et leurs mockups sont directement appliqués au canvas avec priorité absolue, tout en guidant l'IA pour l'harmonisation globale.

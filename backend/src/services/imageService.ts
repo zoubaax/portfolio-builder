@@ -15,36 +15,44 @@ export interface GenerateImageResult {
 }
 
 /**
- * Curated high-resolution tech/dev mockup images mapped to technology domains
+ * Curated high-resolution tech/dev product mockup images mapped to technology domains (NO generic code/matrix photos)
  */
 const TECH_FALLBACKS: Record<string, string[]> = {
   devops: [
-    'https://images.unsplash.com/photo-1618401471353-b98aedd04e11?auto=format&fit=crop&w=1200&q=80',
-    'https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?auto=format&fit=crop&w=1200&q=80',
+  ],
+  security: [
+    'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
   ],
   ai: [
     'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80',
-    'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1200&q=80',
   ],
   web: [
-    'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
-    'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=1200&q=80',
   ],
   mobile: [
     'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=1200&q=80',
   ],
   cloud: [
     'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
   ],
   default: [
-    'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80',
     'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
   ]
 };
 
 function getSmartFallbackImage(title: string = '', tags: string[] = []): string {
   const combined = `${title} ${tags.join(' ')}`.toLowerCase();
   
+  if (combined.includes('security') || combined.includes('audit') || combined.includes('vulnerability') || combined.includes('scanner') || combined.includes('network')) {
+    return TECH_FALLBACKS.security[Math.floor(Math.random() * TECH_FALLBACKS.security.length)];
+  }
   if (combined.includes('devops') || combined.includes('docker') || combined.includes('k8s') || combined.includes('ci/cd') || combined.includes('pipeline')) {
     return TECH_FALLBACKS.devops[Math.floor(Math.random() * TECH_FALLBACKS.devops.length)];
   }
@@ -55,9 +63,9 @@ function getSmartFallbackImage(title: string = '', tags: string[] = []): string 
     return TECH_FALLBACKS.mobile[0];
   }
   if (combined.includes('cloud') || combined.includes('aws') || combined.includes('azure') || combined.includes('server')) {
-    return TECH_FALLBACKS.cloud[0];
+    return TECH_FALLBACKS.cloud[Math.floor(Math.random() * TECH_FALLBACKS.cloud.length)];
   }
-  if (combined.includes('react') || combined.includes('vue') || combined.includes('frontend') || combined.includes('web') || combined.includes('portfolio')) {
+  if (combined.includes('react') || combined.includes('vue') || combined.includes('frontend') || combined.includes('web') || combined.includes('portfolio') || combined.includes('javascript') || combined.includes('typescript')) {
     return TECH_FALLBACKS.web[Math.floor(Math.random() * TECH_FALLBACKS.web.length)];
   }
   return TECH_FALLBACKS.default[Math.floor(Math.random() * TECH_FALLBACKS.default.length)];
@@ -72,14 +80,25 @@ export class ImageService {
     const { title = 'Tech Project', description = '', tags = [] } = options;
     const apiKey = process.env.NVIDIA_IMAGE_API_KEY || process.env.NVIDIA_API_KEY;
 
+    // Sanitize description: eliminate HTML, markdown badges, raw URLs
+    const cleanDescription = (description || '')
+      .replace(/<[^>]*>?/gm, ' ')
+      .replace(/!\[.*?\]\(.*?\)/g, '')
+      .replace(/\[!\[.*?\]\(.*?\)\]\(.*?\)/g, '')
+      .replace(/\[.*?\]\(.*?\)/g, '$1')
+      .replace(/https?:\/\/[^\s]+/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 180);
+
     const refinedPrompt = options.prompt || 
-      `Sleek 3D isometric modern mockup showcase of software project "${title}": ${description}. Tech stack ${tags.join(', ')}. Minimalist dark glassmorphism UI, glowing neon accents, high resolution digital product render, 16:9 aspect ratio, trending on Dribbble`;
+      `Commercial 3D software product showcase mockup banner for "${title}". Centered sleek modern ultra-wide desktop monitor showing a futuristic dark UI dashboard with data analytics, interactive charts, and system topology for ${cleanDescription || title}. Surrounded by floating frosted glass 3D widget cards with glowing icons for ${tags.join(', ')} connected with subtle neon cyan laser lines. Modern tech workspace desk, ambient dark studio lighting, depth of field, photorealistic 8k render, octane render style, behance tech award winner, no text distortion.`;
 
     if (apiKey) {
       try {
         console.log(`[ImageService] Calling NVIDIA FLUX.1-schnell for project "${title}"...`);
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 18000); // 18s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 35000); // 35s timeout for high-res generation
 
         const response = await fetch('https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell', {
           method: 'POST',

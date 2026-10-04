@@ -81,6 +81,27 @@ export const V0ChatPanel = ({ onNewProject }) => {
     setExpandedWorkSteps((prev) => ({ ...prev, [msgId]: !prev[msgId] }));
   };
 
+  const renderUserMessageContent = (text) => {
+    if (typeof text !== 'string') return text;
+    if (text.includes('Met à jour et enrichis la section Projets de mon portfolio avec mes vrais projets GitHub')) {
+      const names = [...text.matchAll(/\d+\.\s+\*\*([^*]+)\*\*/g)].map((m) => m[1]);
+      return (
+        <div className="space-y-1">
+          <div className="flex items-center gap-1.5 font-semibold text-indigo-700">
+            <span>🐙</span>
+            <span>Importation de {names.length || 1} projet(s) GitHub</span>
+          </div>
+          {names.length > 0 && (
+            <p className="text-[11px] text-zinc-600 font-mono bg-zinc-200/60 px-2 py-0.5 rounded-md">
+              {names.join(', ')}
+            </p>
+          )}
+        </div>
+      );
+    }
+    return <p className="whitespace-pre-line">{text}</p>;
+  };
+
   if (isChatCollapsed) {
     return null;
   }
@@ -142,7 +163,7 @@ export const V0ChatPanel = ({ onNewProject }) => {
               /* User Message (Right-aligned pill with avatar like screenshot) */
               <div className="flex items-start justify-end gap-2">
                 <div className="max-w-[85%] bg-zinc-100 text-zinc-900 rounded-2xl px-3.5 py-2 leading-relaxed text-xs font-normal">
-                  <p>{msg.text}</p>
+                  {renderUserMessageContent(msg.text)}
                 </div>
                 <div className="w-6 h-6 rounded-full bg-zinc-800 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
                   {user?.firstName?.charAt(0) || 'Z'}
@@ -151,24 +172,26 @@ export const V0ChatPanel = ({ onNewProject }) => {
             ) : (
               /* Assistant Message (Matching Screenshot: > Worked for 4s ... + text) */
               <div className="space-y-2 text-zinc-800">
-                {/* Collapsible Step Accordion: > Worked for 4s */}
-                <div className="flex items-center justify-between text-xs text-zinc-500 hover:text-zinc-800 transition-colors py-1">
-                  <button
-                    onClick={() => toggleWorkStep(msg.id)}
-                    className="flex items-center gap-1.5 cursor-pointer font-normal text-zinc-500 hover:text-zinc-800"
-                  >
-                    <RiArrowRightSLine
-                      className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                        expandedWorkSteps[msg.id] ? 'rotate-90' : ''
-                      }`}
-                    />
-                    <span>Worked for {msg.duration || 4}s</span>
-                  </button>
+                {/* Collapsible Step Accordion: > Worked for Xs (only if tasks or duration exist) */}
+                {(msg.tasks?.length > 0 || msg.duration) && (
+                  <div className="flex items-center justify-between text-xs text-zinc-500 hover:text-zinc-800 transition-colors py-1">
+                    <button
+                      onClick={() => toggleWorkStep(msg.id)}
+                      className="flex items-center gap-1.5 cursor-pointer font-normal text-zinc-500 hover:text-zinc-800"
+                    >
+                      <RiArrowRightSLine
+                        className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                          expandedWorkSteps[msg.id] ? 'rotate-90' : ''
+                        }`}
+                      />
+                      <span>Worked for {msg.duration || 4}s</span>
+                    </button>
 
-                  <button className="text-zinc-400 hover:text-zinc-700 p-1 rounded cursor-pointer">
-                    <RiMoreFill className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                    <button className="text-zinc-400 hover:text-zinc-700 p-1 rounded cursor-pointer">
+                      <RiMoreFill className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
 
                 {/* Expanded Task Checklist Details if opened */}
                 {expandedWorkSteps[msg.id] && msg.tasks && (
@@ -189,7 +212,7 @@ export const V0ChatPanel = ({ onNewProject }) => {
                 <div className="text-xs text-zinc-800 leading-relaxed font-normal pl-5">
                   <p className="whitespace-pre-line">
                     {msg.text?.trim().startsWith('{') || msg.text?.trim().startsWith('"')
-                      ? 'Tudo certo — estou funcionando.'
+                      ? '✓ Modifications appliquées avec succès au portfolio.'
                       : msg.text}
                   </p>
 

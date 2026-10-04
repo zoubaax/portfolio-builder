@@ -31,7 +31,7 @@ import {
 export const GithubProjectsTab = ({ onApplyComplete }) => {
   const { user } = useUser();
   const { openUserProfile } = useClerk();
-  const { sendChatMessage, sendMessage, setViewMode, studioTheme, portfolio } = usePortfolio();
+  const { sendChatMessage, sendMessage, setViewMode, studioTheme, portfolio, updateSection } = usePortfolio();
   const isLight = studioTheme === 'light';
 
   // State for direct Neon DB linked GitHub account
@@ -59,6 +59,28 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
   const [generateAiImages, setGenerateAiImages] = useState(true);
   const [isApplying, setIsApplying] = useState(false);
   const [applyStep, setApplyStep] = useState('');
+
+  // Extract current projects in portfolio to detect sync state
+  const currentPortfolioProjects = portfolio?.sections?.find((s) => s.type === 'projects')?.data?.projects || [];
+
+  // Helper: check if a GitHub repo is already displayed in the portfolio
+  const isRepoInPortfolio = (repo) => {
+    if (!repo || !currentPortfolioProjects.length) return false;
+    const cleanRepoName = repo.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanRepoUrl = (repo.url || '').toLowerCase().replace(/\/+$/, '');
+    return currentPortfolioProjects.some((p) => {
+      if (p.github && cleanRepoUrl && p.github.toLowerCase().replace(/\/+$/, '') === cleanRepoUrl) {
+        return true;
+      }
+      if (p.title) {
+        const cleanTitle = p.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (cleanTitle === cleanRepoName || cleanTitle.includes(cleanRepoName) || cleanRepoName.includes(cleanTitle)) {
+          return true;
+        }
+      }
+      return false;
+    });
+  };
 
   // 1. Fetch linked GitHub account status from Neon DB
   useEffect(() => {
@@ -110,11 +132,18 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
 
     setIsLoading(true);
     setError(null);
-    setSelectedRepoIds(new Set());
 
     try {
       const data = await fetchUserRepos(userToFetch, user?.id);
       setRepos(data);
+      // Pre-select all repos that are already in the portfolio
+      const matched = new Set();
+      data.forEach((repo) => {
+        if (isRepoInPortfolio(repo)) {
+          matched.add(repo.id);
+        }
+      });
+      setSelectedRepoIds(matched);
     } catch (err) {
       setError(err.message || 'Impossible de récupérer les dépôts.');
       setRepos([]);
@@ -122,6 +151,25 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
       setIsLoading(false);
     }
   };
+
+  // Automatically sync selected repositories whenever repos or portfolio change
+  useEffect(() => {
+    if (repos.length > 0) {
+      setSelectedRepoIds((prev) => {
+        const next = new Set(prev);
+        let changed = false;
+        repos.forEach((repo) => {
+          if (isRepoInPortfolio(repo)) {
+            if (!next.has(repo.id)) {
+              next.add(repo.id);
+              changed = true;
+            }
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [repos, portfolio]);
 
   // Automatically fetch verified repositories when OAuth account is present
   useEffect(() => {
@@ -181,20 +229,72 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     }
   };
 
-  const handleToggleSelect = (repoId) => {
-    setSelectedRepoIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(repoId)) {
-        next.delete(repoId);
-      } else {
-        next.add(repoId);
+  // Toggle selection with immediate bidirectional portfolio sync
+  const handleToggleSelect = (repo) => {
+    const isCurrentlySelected = selectedRepoIds.has(repo.id);
+    const inPortfolio = isRepoInPortfolio(repo);
+
+    if (isCurrentlySelected) {
+      // User is unchecking this repo
+      setSelectedRepoIds((prev) => {
+        const next = new Set(prev);
+        next.delete(repo.id);
+        return next;
+      });
+
+      // "si je le decoche ne saffiche plus"
+      // If it exists in the portfolio projects section, remove it immediately from sec-projects!
+      if (inPortfolio && updateSection) {
+        const cleanRepoName = repo.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanRepoUrl = (repo.url || '').toLowerCase().replace(/\/+$/, '');
+        updateSection('sec-projects', (prevData) => {
+          const existingList = Array.isArray(prevData?.projects) ? prevData.projects : [];
+          const remaining = existingList.filter((p) => {
+            if (p.github && cleanRepoUrl && p.github.toLowerCase().replace(/\/+$/, '') === cleanRepoUrl) {
+              return false;
+            }
+            if (p.title) {
+              const cleanTitle = p.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+              if (cleanTitle === cleanRepoName || cleanTitle.includes(cleanRepoName) || cleanRepoName.includes(cleanTitle)) {
+                return false;
+              }
+            }
+            return true;
+          });
+          return {
+            ...prevData,
+            projects: remaining,
+          };
+        });
+        setSuccessNotice(`Projet "${repo.name}" retiré de votre portfolio.`);
+        setTimeout(() => setSuccessNotice(null), 3500);
       }
-      return next;
-    });
+    } else {
+      // User is checking this repo
+      setSelectedRepoIds((prev) => new Set(prev).add(repo.id));
+    }
   };
 
   const handleSelectAllFiltered = (filteredList) => {
     if (selectedRepoIds.size === filteredList.length) {
+      // Deselect all and remove from portfolio if present
+      filteredList.forEach((repo) => {
+        if (isRepoInPortfolio(repo) && updateSection) {
+          const cleanRepoName = repo.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+          const cleanRepoUrl = (repo.url || '').toLowerCase().replace(/\/+$/, '');
+          updateSection('sec-projects', (prevData) => ({
+            ...prevData,
+            projects: (prevData?.projects || []).filter((p) => {
+              if (p.github && cleanRepoUrl && p.github.toLowerCase().replace(/\/+$/, '') === cleanRepoUrl) return false;
+              if (p.title) {
+                const cleanTitle = p.title.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (cleanTitle === cleanRepoName || cleanTitle.includes(cleanRepoName) || cleanRepoName.includes(cleanTitle)) return false;
+              }
+              return true;
+            }),
+          }));
+        }
+      });
       setSelectedRepoIds(new Set());
     } else {
       setSelectedRepoIds(new Set(filteredList.map((r) => r.id)));
@@ -212,7 +312,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     );
   });
 
-  // Action: Apply selected projects to portfolio
+  // Action: Apply selected projects to portfolio with FLUX 3D commercial mockups
   const handleApplyToPortfolio = async () => {
     const selectedList = repos.filter((r) => selectedRepoIds.has(r.id));
     if (selectedList.length === 0) return;
@@ -221,7 +321,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     setApplyStep('Lecture des READMEs et extraction des fonctionnalités...');
 
     try {
-      // 1. Fetch README snippets in parallel
+      // 1. Fetch README snippets in parallel (fully stripped of raw HTML, badges, URLs)
       const enrichedProjects = await Promise.all(
         selectedList.map(async (repo) => {
           const readmeSnippet = await fetchRepoReadme(repo.owner, repo.name);
@@ -232,10 +332,10 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
         })
       );
 
-      // 2. Generate or assign images
+      // 2. Generate or assign images (Commercial 3D Product Showcase Mockups)
       let projectImages = {};
       if (generateAiImages) {
-        setApplyStep('Génération des mockups avec FLUX.1-schnell...');
+        setApplyStep('Génération des mockups 3D avec FLUX.1-schnell...');
         for (const proj of enrichedProjects) {
           const tags = [proj.language, ...(proj.topics || [])].filter(Boolean);
           const imgUrl = await generateProjectImageAi({
@@ -247,14 +347,48 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
         }
       }
 
-      // 3. Construct structured prompt for AI Copilot
-      setApplyStep('Mise à jour de la section Projets via l\'IA...');
+      // 3. Build structured project objects
+      const projectsToAdd = enrichedProjects.map((p, idx) => ({
+        id: `proj-gh-${p.id || Date.now() + idx}`,
+        title: p.name.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+        description: p.readmeSnippet ? p.readmeSnippet.slice(0, 160) + '...' : (p.description || 'Projet open-source certifié GitHub'),
+        tags: [p.language, ...(p.topics || [])].filter(Boolean).slice(0, 4),
+        metrics: `${p.stars || 0} Stars • GitHub Certified`,
+        github: p.url,
+        link: p.homepage || p.url,
+        image: projectImages[p.name] || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
+        featured: idx === 0,
+      }));
+
+      // Directly update projects section immediately for zero-delay canvas rendering
+      if (updateSection) {
+        updateSection('sec-projects', (prevData) => {
+          const existingList = Array.isArray(prevData?.projects) ? [...prevData.projects] : [];
+          const merged = [...projectsToAdd];
+          existingList.forEach((ep) => {
+            if (!merged.some((m) => (m.github && ep.github && m.github === ep.github) || m.title.toLowerCase() === ep.title.toLowerCase())) {
+              merged.push(ep);
+            }
+          });
+          return {
+            ...prevData,
+            heading: prevData?.heading || 'Projets Réalisés',
+            projects: merged,
+          };
+        });
+      }
+
+      // 4. Construct prompt and clean display messages
+      setApplyStep('Harmonisation du portfolio...');
+      const projectNames = selectedList.map((r) => r.name);
+      const displaySummary = `🐙 Importer ${selectedList.length} projet${selectedList.length > 1 ? 's' : ''} GitHub : ${projectNames.join(', ')}`;
+      const summaryTitle = `✓ Section Projets mise à jour avec ${projectNames.join(', ')}`;
 
       const projectsPromptList = enrichedProjects
         .map((p, idx) => {
           const tech = [p.language, ...(p.topics || [])].filter(Boolean).join(', ');
           const img = projectImages[p.name] ? `\n- Image: ${projectImages[p.name]}` : '';
-          return `${idx + 1}. **${p.name}**\n- Description: ${p.description}\n- Technologies: ${tech || 'Modern Web'}\n- GitHub: ${p.url}${p.homepage ? `\n- Demo: ${p.homepage}` : ''}${p.readmeSnippet ? `\n- Résumé README: ${p.readmeSnippet}` : ''}${img}`;
+          return `${idx + 1}. **${p.name}**\n- Description: ${p.description}\n- Technologies: ${tech || 'Modern Web'}\n- GitHub: ${p.url}${p.homepage ? `\n- Demo: ${p.homepage}` : ''}${p.readmeSnippet ? `\n- Résumé: ${p.readmeSnippet}` : ''}${img}`;
         })
         .join('\n\n');
 
@@ -266,10 +400,15 @@ ${projectsPromptList}
 
 Génère une présentation professionnelle de haut niveau pour chacun de ces projets.`;
 
-      // 4. Send to Copilot and switch back to preview
+      // 5. Send to Copilot with clean displayText and projectsToAdd payload
       const sendFn = sendChatMessage || sendMessage;
       if (typeof sendFn === 'function') {
-        await sendFn(fullPrompt);
+        await sendFn(fullPrompt, {
+          displayText: displaySummary,
+          summaryTitle,
+          assistantPlaceholder: `Intégration et mise en valeur de ${projectNames.join(', ')}...`,
+          projectsToAdd,
+        });
       } else {
         throw new Error('Le service de chat Copilot n\'est pas disponible');
       }
@@ -508,10 +647,11 @@ Génère une présentation professionnelle de haut niveau pour chacun de ces pro
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {filteredRepos.map((repo) => {
               const isSelected = selectedRepoIds.has(repo.id);
+              const inPortfolio = isRepoInPortfolio(repo);
               return (
                 <div
                   key={repo.id}
-                  onClick={() => handleToggleSelect(repo.id)}
+                  onClick={() => handleToggleSelect(repo)}
                   className={`p-5 rounded-2xl border transition-all cursor-pointer relative group flex flex-col justify-between ${
                     isSelected
                       ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-500/5'
@@ -521,11 +661,11 @@ Génère une présentation professionnelle de haut niveau pour chacun de ces pro
                   }`}
                 >
                   <div className="space-y-2.5">
-                    {/* Top row: Checkbox, Name, External Link */}
+                    {/* Top row: Checkbox, Name, Status Badge, External Link */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <div
-                          className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${
+                          className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors shrink-0 ${
                             isSelected
                               ? 'bg-indigo-600 text-white'
                               : isLight
@@ -540,16 +680,25 @@ Génère une présentation professionnelle de haut niveau pour chacun de ces pro
                         </h3>
                       </div>
 
-                      <a
-                        href={repo.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1 rounded opacity-40 hover:opacity-100 hover:text-indigo-400 transition-all"
-                        title="Voir sur GitHub"
-                      >
-                        <RiExternalLinkLine className="w-4 h-4" />
-                      </a>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {inPortfolio && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <RiCheckLine className="w-3 h-3 stroke-3" />
+                            <span>Dans le portfolio</span>
+                          </span>
+                        )}
+
+                        <a
+                          href={repo.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1 rounded opacity-40 hover:opacity-100 hover:text-indigo-400 transition-all"
+                          title="Voir sur GitHub"
+                        >
+                          <RiExternalLinkLine className="w-4 h-4" />
+                        </a>
+                      </div>
                     </div>
 
                     {/* Description */}
