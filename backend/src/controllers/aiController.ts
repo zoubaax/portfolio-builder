@@ -65,12 +65,13 @@ export const aiController = {
    */
   async generateProjectImage(req: Request, res: Response) {
     try {
-      const { title, description, tags, prompt } = req.body;
+      const { title, description, tags, prompt, currentImageUrl } = req.body;
       const result = await imageService.generateProjectImage({
         title,
         description,
         tags,
         prompt,
+        currentImageUrl,
       });
 
       return sendSuccess(res, result, 'Project visual generated');

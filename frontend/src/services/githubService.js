@@ -124,28 +124,29 @@ export async function fetchRepoReadme(owner, repo) {
 /**
  * Calls backend to generate AI image for a project via FLUX.1-schnell
  */
-export async function generateProjectImageAi({ title, description, tags = [] }) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/v1/ai/generate-project-image`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        title,
-        description,
-        tags,
-      }),
-    });
+export async function generateProjectImageAi({ title, description, tags = [], currentImageUrl }) {
+  const res = await fetch(`${API_BASE_URL}/api/v1/ai/generate-project-image`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      title,
+      description,
+      tags,
+      currentImageUrl,
+    }),
+  });
 
-    if (res.ok) {
-      const json = await res.json();
-      return json.data?.imageUrl;
-    }
-  } catch (err) {
-    console.warn('Failed to call AI image generator:', err.message);
+  if (!res.ok) {
+    const errorJson = await res.json().catch(() => ({}));
+    throw new Error(errorJson.message || errorJson.error || `Erreur du serveur IA (${res.status})`);
   }
 
-  // Fallback to high-res devops / web tech image
-  return 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80';
+  const json = await res.json();
+  if (!json.success || !json.data?.imageUrl) {
+    throw new Error(json.error || "L'IA n'a retourné aucune image.");
+  }
+
+  return json.data.imageUrl;
 }

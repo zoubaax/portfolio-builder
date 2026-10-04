@@ -171,3 +171,54 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
   - **Détection Automatique & Badge de Présence :** Comparaison intelligente en temps réel entre les dépôts GitHub de l'utilisateur et les projets présents dans `sec-projects` du portfolio (via URL GitHub et titre normalisé). Les projets déjà intégrés sont automatiquement pré-cochés à l'ouverture de l'onglet et arborent un badge distinctif `✓ Dans le portfolio`.
   - **Suppression Instantanée au Décochage ("Si je le décoche, ne s'affiche plus") :** Lorsqu'un utilisateur décoche un projet déjà présent dans son portfolio, l'application le retire immédiatement de la section `projects` du canvas via `updateSection` avec une notification de confirmation éphémère.
   - **Intégration Déterministe :** Lors du clic sur `Appliquer au Portfolio`, les projets sélectionnés et leurs mockups sont directement appliqués au canvas avec priorité absolue, tout en guidant l'IA pour l'harmonisation globale.
+
+### 15. Séparation des Projets Actifs & Gestion Unitaire (Régénération d'Image IA 3D et Suppression)
+- **Séparation Structurelle en Deux Listes Distinctes (`frontend/src/components/studio/GithubProjectsTab.jsx`) :**
+  - **Section Supérieure ("Projets Actifs dans le Portfolio") :** Affiche de façon isolée et prestigieuse les projets déjà intégrés et publiés dans le portfolio de l'utilisateur, avec leur visuel haute définition, métriques, tags et liens.
+  - **Section Inférieure ("Dépôts GitHub Disponibles à Importer") :** Liste filtrée contenant uniquement les dépôts GitHub qui ne figurent pas encore dans le portfolio, munie d'une barre de recherche par mot-clé/technologie, de cases à cocher, et de la barre flottante de validation.
+- **Boutons d'Actions Dédiés sur Chaque Projet Actif :**
+  - **Bouton "Refaire l'image" :** Interroge le générateur IA FLUX.1-schnell avec le contexte technique extrait du README pour produire une nouvelle maquette 3D publicitaire ultra-réaliste. Un état de chargement visuel avec spinner est affiché sur la carte concernée, et la couverture est mise à jour instantanément dans le portfolio (`sec-projects`).
+  - **Bouton "Supprimer" :** Retire immédiatement le projet du portfolio actif via `updateSection`. Le projet quitte aussitôt la liste active et son dépôt GitHub réapparaît immédiatement dans la liste des dépôts disponibles à l'importation.
+- **Assainissement Rétroactif des Messages du Chat (`frontend/src/components/studio/V0ChatPanel.jsx`) :**
+  - Nettoyage automatique des messages de sessions antérieures contenant les longs prompts de mise à jour GitHub (`Met à jour et enrichis la section Projets...`) pour un affichage épuré, professionnel et élégant.
+
+### 16. Résolution de l'Ajout Non Destructif & Moteur d'Images Sémantique et Thématique
+- **Préservation Intégrale des Projets Déjà Existants (« Ajouter, pas écraser ») :**
+  - **Correction dans `GithubProjectsTab.jsx` :** La fonction `handleApplyToPortfolio` initialise la liste finale avec tous les projets déjà présents dans le portfolio (`existingList`), puis y ajoute les dépôts nouvellement sélectionnés en vérifiant l'unicité par URL GitHub et titre. Les projets précédents ne peuvent plus être effacés.
+  - **Protection Côté Contexte (`PortfolioContext.jsx`) :** Dans `sendChatMessage`, la fusion des projets préserve explicitement l'état antérieur `portfolio` avant le lancement du stream IA, garantissant que même si l'IA génère un patch partiel, la totalité des projets existants (`Smart Network Mapper`, etc.) reste intacte.
+  - **Restauration de Données :** Rétablissement des projets `Smart Network Mapper` et `Transport Yolo Robot` en direct dans la base de données Neon PostgreSQL pour la session active.
+- **Moteur Visuel Sémantique Dédié (« Comprendre le projet au premier coup d'œil ») :**
+  - **Suppression des visuels génériques déconnectés :** Élimination définitive des photos de laptops avec graphiques comptables ou financiers pour les projets techniques.
+  - **Classificateur Sémantique par Mots-Clés (`backend/src/services/imageService.ts`) :** Détection automatique du domaine fonctionnel parmi 11 univers techniques (Robotique/Vision YOLO, Cybersécurité/Scanner Réseau, Médical/Santé, Cloud DevOps, Mobile, IA, IoT, Gaming, etc.).
+  - **Visuels Thématiques Haute Définition :**
+    - Pour *Transport Yolo Robot* : Robotique industrielle autonome (AGV) avec capteurs optiques et vision par ordinateur.
+    - Pour *Smart Network Mapper* : Baies de serveurs datacenter avec câbles réseaux optiques lumineux et topologie cybernétique.
+    - Pour *Cabinet Médical* : Interface tactile médicale moderne et console de diagnostic clinique.
+  - **Alternance Intelligente sur `Refaire l'image` :** Le bouton régénère ou fait défiler les images de la même catégorie sémantique pour offrir un choix varié tout en restant 100% fidèle au thème du projet.
+
+### 17. Suppression de tout Thème Hardcodé & Prompt Universel Piloté par le README
+- **Élimination de tout Thème Hardcodé (`backend/src/services/imageService.ts`) :**
+  - Suppression intégrale des catalogues statiques de domaines et dictionnaires préconçus.
+  - Chaque projet est désormais traité de façon universelle et dynamique à partir de son **vrai README extrait de GitHub**.
+- **Prompt Général Universel Envoyé à l'IA Générative :**
+  - Le système extrait et nettoie la documentation du projet (README réel) et formule un prompt généraliste tout-terrain :
+    `"High-quality 3D commercial visual concept and product showcase banner representing the software project \"{title}\". Directly illustrating the core functionality and real-world domain described in its project overview: \"{cleanReadme}\". Key technologies: {tags}..."`
+  - Ce prompt est transmis directement au moteur IA de génération d'image.
+- **Correction Immédiate pour « Morocco Medication API » :**
+  - L'image inadaptée (baie de serveurs) a été corrigée. Le projet affiche désormais un visuel pharmaceutique et médical fidèle à 100% à son README (laboratoire de médecine, gélules et gélules pharmaceutiques haute définition).
+### 18. Génération 100% API, Gestion des Erreurs et Intégration du Formulaire d'Ajout Manuel
+- **Suppression Totale des Images de Remplacement / Fallbacks Statiques (`backend/src/services/imageService.ts`) :**
+  - Élimination intégrale des liens statiques Unsplash et des fallbacks par défaut.
+  - Toutes les images de projets proviennent obligatoirement et exclusivement de l'API de génération d'image IA (FLUX.1-schnell via NVIDIA).
+  - En cas d'erreur API, d'indisponibilité ou de dépassement de délai (timeout à 12s), le service backend lève immédiatement une exception explicite au lieu de renvoyer une image préfabriquée.
+- **Modal de Confirmation en Cas d'Erreur IA (`frontend/src/components/studio/GithubProjectsTab.jsx`) :**
+  - Lorsqu'une erreur survient lors de la génération IA (à l'ajout d'un projet ou lors d'un clic sur `Refaire l'image`), une boîte de dialogue dédiée s'affiche instantanément à l'utilisateur :
+    - Notification claire de l'erreur API avec le nom du projet concerné.
+    - Question explicite : *« L'API n'a pas pu générer l'image. Voulez-vous annuler l'ajout de ce projet ou ajouter l'image vous-même ? »*
+- **Choix de l'Utilisateur : Annulation ou Formulaire d'Ajout Manuel :**
+  - **Option 1 ("Oui, annuler l'ajout") :** Ferme la fenêtre et annule immédiatement l'ajout du projet au portfolio (aucun projet n'est inséré).
+  - **Option 2 ("Non, ajouter moi-même") :** Ouvre directement le formulaire d'image existant (`ImagePickerModal`) :
+    - Téléversement de fichier local par glisser-déposer ou explorateur de fichiers.
+    - Récupération de l'avatar GitHub.
+    - Saisie d'une URL d'image personnalisée.
+  - Dès validation de l'image par l'utilisateur, le projet est ajouté avec succès dans son portfolio avec son image personnalisée.

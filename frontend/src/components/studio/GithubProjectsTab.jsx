@@ -26,7 +26,12 @@ import {
   RiLockPasswordLine,
   RiUserSettingsLine,
   RiLogoutBoxRLine,
+  RiDeleteBin6Line,
+  RiAlertLine,
+  RiUploadCloud2Line,
+  RiCloseLine,
 } from 'react-icons/ri';
+import { ImagePickerModal } from '../common/ImagePickerModal';
 
 export const GithubProjectsTab = ({ onApplyComplete }) => {
   const { user } = useUser();
@@ -59,8 +64,13 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
   const [generateAiImages, setGenerateAiImages] = useState(true);
   const [isApplying, setIsApplying] = useState(false);
   const [applyStep, setApplyStep] = useState('');
+  const [regeneratingId, setRegeneratingId] = useState(null);
 
-  // Extract current projects in portfolio to detect sync state
+  // Modal states for AI image error handling & manual image picker
+  const [imageErrorPrompt, setImageErrorPrompt] = useState(null);
+  const [pickerModalConfig, setPickerModalConfig] = useState(null);
+
+  // Extract current projects in portfolio
   const currentPortfolioProjects = portfolio?.sections?.find((s) => s.type === 'projects')?.data?.projects || [];
 
   // Helper: check if a GitHub repo is already displayed in the portfolio
@@ -81,6 +91,20 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
       return false;
     });
   };
+
+  // Repositories not yet added to the portfolio
+  const availableRepos = repos.filter((r) => !isRepoInPortfolio(r));
+
+  // Filtered available repositories based on search
+  const filteredAvailableRepos = availableRepos.filter((r) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      r.name.toLowerCase().includes(q) ||
+      (r.description && r.description.toLowerCase().includes(q)) ||
+      (r.language && r.language.toLowerCase().includes(q)) ||
+      (r.topics && r.topics.some((t) => t.toLowerCase().includes(q)))
+    );
+  });
 
   // 1. Fetch linked GitHub account status from Neon DB
   useEffect(() => {
@@ -132,18 +156,11 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
 
     setIsLoading(true);
     setError(null);
+    setSelectedRepoIds(new Set());
 
     try {
       const data = await fetchUserRepos(userToFetch, user?.id);
       setRepos(data);
-      // Pre-select all repos that are already in the portfolio
-      const matched = new Set();
-      data.forEach((repo) => {
-        if (isRepoInPortfolio(repo)) {
-          matched.add(repo.id);
-        }
-      });
-      setSelectedRepoIds(matched);
     } catch (err) {
       setError(err.message || 'Impossible de récupérer les dépôts.');
       setRepos([]);
@@ -151,25 +168,6 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
       setIsLoading(false);
     }
   };
-
-  // Automatically sync selected repositories whenever repos or portfolio change
-  useEffect(() => {
-    if (repos.length > 0) {
-      setSelectedRepoIds((prev) => {
-        const next = new Set(prev);
-        let changed = false;
-        repos.forEach((repo) => {
-          if (isRepoInPortfolio(repo)) {
-            if (!next.has(repo.id)) {
-              next.add(repo.id);
-              changed = true;
-            }
-          }
-        });
-        return changed ? next : prev;
-      });
-    }
-  }, [repos, portfolio]);
 
   // Automatically fetch verified repositories when OAuth account is present
   useEffect(() => {
@@ -229,99 +227,207 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     }
   };
 
-  // Toggle selection with immediate bidirectional portfolio sync
-  const handleToggleSelect = (repo) => {
-    const isCurrentlySelected = selectedRepoIds.has(repo.id);
-    const inPortfolio = isRepoInPortfolio(repo);
+  // Method: Regenerate 3D mockup image for a project already in portfolio
+  const handleRegenerateImage = async (proj) => {
+    if (!proj || regeneratingId) return;
+    const targetKey = proj.id || proj.title;
+    setRegeneratingId(targetKey);
+    setError(null);
 
-    if (isCurrentlySelected) {
-      // User is unchecking this repo
-      setSelectedRepoIds((prev) => {
-        const next = new Set(prev);
-        next.delete(repo.id);
-        return next;
+    try {
+      const matchingRepo = repos.find((r) => {
+        const cleanProjUrl = (proj.github || '').toLowerCase().replace(/\/+$/, '');
+        const cleanRepoUrl = (r.url || '').toLowerCase().replace(/\/+$/, '');
+        if (cleanProjUrl && cleanRepoUrl && cleanProjUrl === cleanRepoUrl) return true;
+        const cleanRepoName = (r.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const cleanProjTitle = (proj.title || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        return cleanRepoName && (cleanProjTitle === cleanRepoName || cleanProjTitle.includes(cleanRepoName) || cleanRepoName.includes(cleanProjTitle));
       });
 
-      // "si je le decoche ne saffiche plus"
-      // If it exists in the portfolio projects section, remove it immediately from sec-projects!
-      if (inPortfolio && updateSection) {
-        const cleanRepoName = repo.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-        const cleanRepoUrl = (repo.url || '').toLowerCase().replace(/\/+$/, '');
+      let readmeSnippet = '';
+      if (matchingRepo) {
+        readmeSnippet = await fetchRepoReadme(matchingRepo.owner, matchingRepo.name);
+      }
+
+      const tags = Array.isArray(proj.tags)
+        ? proj.tags
+        : matchingRepo
+        ? [matchingRepo.language, ...(matchingRepo.topics || [])].filter(Boolean)
+        : [];
+
+      const newImageUrl = await generateProjectImageAi({
+        title: proj.title,
+        description: readmeSnippet || proj.description,
+        tags,
+        currentImageUrl: proj.image,
+      });
+
+      if (newImageUrl && updateSection) {
         updateSection('sec-projects', (prevData) => {
-          const existingList = Array.isArray(prevData?.projects) ? prevData.projects : [];
-          const remaining = existingList.filter((p) => {
-            if (p.github && cleanRepoUrl && p.github.toLowerCase().replace(/\/+$/, '') === cleanRepoUrl) {
-              return false;
-            }
-            if (p.title) {
-              const cleanTitle = p.title.toLowerCase().replace(/[^a-z0-9]/g, '');
-              if (cleanTitle === cleanRepoName || cleanTitle.includes(cleanRepoName) || cleanRepoName.includes(cleanTitle)) {
-                return false;
-              }
-            }
-            return true;
-          });
+          const existing = Array.isArray(prevData?.projects) ? prevData.projects : [];
           return {
             ...prevData,
-            projects: remaining,
+            projects: existing.map((p) => {
+              if ((p.id && proj.id && p.id === proj.id) || p.title === proj.title) {
+                return { ...p, image: newImageUrl };
+              }
+              return p;
+            }),
           };
         });
-        setSuccessNotice(`Projet "${repo.name}" retiré de votre portfolio.`);
-        setTimeout(() => setSuccessNotice(null), 3500);
+        setSuccessNotice(`✨ Nouvelle image IA générée avec succès pour "${proj.title}" !`);
+        setTimeout(() => setSuccessNotice(null), 4000);
       }
-    } else {
-      // User is checking this repo
-      setSelectedRepoIds((prev) => new Set(prev).add(repo.id));
+    } catch (err) {
+      console.error('Failed to regenerate image:', err);
+      setImageErrorPrompt({
+        project: proj,
+        isRegeneration: true,
+        error: err.message,
+      });
+    } finally {
+      setRegeneratingId(null);
     }
   };
 
-  const handleSelectAllFiltered = (filteredList) => {
-    if (selectedRepoIds.size === filteredList.length) {
-      // Deselect all and remove from portfolio if present
-      filteredList.forEach((repo) => {
-        if (isRepoInPortfolio(repo) && updateSection) {
-          const cleanRepoName = repo.name.toLowerCase().replace(/[^a-z0-9]/g, '');
-          const cleanRepoUrl = (repo.url || '').toLowerCase().replace(/\/+$/, '');
-          updateSection('sec-projects', (prevData) => ({
-            ...prevData,
-            projects: (prevData?.projects || []).filter((p) => {
-              if (p.github && cleanRepoUrl && p.github.toLowerCase().replace(/\/+$/, '') === cleanRepoUrl) return false;
-              if (p.title) {
-                const cleanTitle = p.title.toLowerCase().replace(/[^a-z0-9]/g, '');
-                if (cleanTitle === cleanRepoName || cleanTitle.includes(cleanRepoName) || cleanRepoName.includes(cleanTitle)) return false;
-              }
-              return true;
-            }),
-          }));
-        }
-      });
+  // Method: Remove a project from portfolio
+  const handleRemovePortfolioProject = (proj) => {
+    if (!proj || !updateSection) return;
+    const cleanProjTitle = proj.title;
+    updateSection('sec-projects', (prevData) => {
+      const existingList = Array.isArray(prevData?.projects) ? prevData.projects : [];
+      return {
+        ...prevData,
+        projects: existingList.filter((p) => {
+          if (proj.id && p.id) return p.id !== proj.id;
+          return p.title !== proj.title;
+        }),
+      };
+    });
+    setSuccessNotice(`Projet "${cleanProjTitle}" retiré de votre portfolio.`);
+    setTimeout(() => setSuccessNotice(null), 3500);
+  };
+
+  // Toggle selection on available repo
+  const handleToggleSelectAvailable = (repoId) => {
+    setSelectedRepoIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(repoId)) {
+        next.delete(repoId);
+      } else {
+        next.add(repoId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllAvailable = (list) => {
+    if (selectedRepoIds.size === list.length && list.length > 0) {
       setSelectedRepoIds(new Set());
     } else {
-      setSelectedRepoIds(new Set(filteredList.map((r) => r.id)));
+      setSelectedRepoIds(new Set(list.map((r) => r.id)));
     }
   };
 
-  // Filtered repositories based on search
-  const filteredRepos = repos.filter((r) => {
-    const q = searchQuery.toLowerCase();
-    return (
-      r.name.toLowerCase().includes(q) ||
-      (r.description && r.description.toLowerCase().includes(q)) ||
-      (r.language && r.language.toLowerCase().includes(q)) ||
-      (r.topics && r.topics.some((t) => t.toLowerCase().includes(q)))
-    );
-  });
+  // Helper: Finalize adding enriched projects with their images to the portfolio
+  const finalizeProjectAddition = async (enrichedProjects, projectImages) => {
+    // Build structured project objects
+    const projectsToAdd = enrichedProjects.map((p, idx) => ({
+      id: `proj-gh-${p.id || Date.now() + idx}`,
+      title: p.name.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      description: p.readmeSnippet ? p.readmeSnippet.slice(0, 160) + '...' : (p.description || 'Projet open-source certifié GitHub'),
+      tags: [p.language, ...(p.topics || [])].filter(Boolean).slice(0, 4),
+      metrics: `${p.stars || 0} Stars • GitHub Certified`,
+      github: p.url,
+      link: p.homepage || p.url,
+      image: projectImages[p.name] || '',
+      featured: false,
+    }));
 
-  // Action: Apply selected projects to portfolio with FLUX 3D commercial mockups
+    // Directly update projects section immediately: MUST PRESERVE ALL EXISTING PROJECTS!
+    if (updateSection) {
+      updateSection('sec-projects', (prevData) => {
+        const existingList = Array.isArray(prevData?.projects) ? [...prevData.projects] : [];
+        const merged = [...existingList];
+        projectsToAdd.forEach((np) => {
+          const npUrl = (np.github || '').toLowerCase().replace(/\/+$/, '');
+          const npTitle = (np.title || '').toLowerCase().trim();
+          const exists = merged.some((ep) => {
+            const epUrl = (ep.github || '').toLowerCase().replace(/\/+$/, '');
+            const epTitle = (ep.title || '').toLowerCase().trim();
+            return (npUrl && epUrl && npUrl === epUrl) || (npTitle && epTitle && npTitle === epTitle);
+          });
+          if (!exists) {
+            merged.push(np);
+          }
+        });
+        return {
+          ...prevData,
+          heading: prevData?.heading || 'Projets Réalisés',
+          projects: merged,
+        };
+      });
+    }
+
+    // Clear selection
+    setSelectedRepoIds(new Set());
+    setSuccessNotice(`Projet(s) ajouté(s) avec succès au portfolio !`);
+    setTimeout(() => setSuccessNotice(null), 3500);
+
+    if (onApplyComplete) {
+      onApplyComplete();
+    } else {
+      setViewMode('preview');
+    }
+  };
+
+  // Helper: Sequentially generate AI images for projects, prompting the user immediately if any error occurs
+  const generateImagesAndFinalize = async (enrichedProjects, currentImages, index) => {
+    if (index >= enrichedProjects.length) {
+      await finalizeProjectAddition(enrichedProjects, currentImages);
+      setIsApplying(false);
+      setApplyStep('');
+      return;
+    }
+
+    const proj = enrichedProjects[index];
+    setApplyStep(`Génération de l'image IA pour "${proj.name}"...`);
+    const tags = [proj.language, ...(proj.topics || [])].filter(Boolean);
+
+    try {
+      const imgUrl = await generateProjectImageAi({
+        title: proj.name,
+        description: proj.readmeSnippet || proj.description,
+        tags,
+      });
+      const updatedImages = { ...currentImages, [proj.name]: imgUrl };
+      await generateImagesAndFinalize(enrichedProjects, updatedImages, index + 1);
+    } catch (err) {
+      console.warn(`Échec de la génération IA pour ${proj.name}:`, err.message);
+      setIsApplying(false);
+      setApplyStep('');
+      // Prompt user: Cancel addition or upload/choose an image manually
+      setImageErrorPrompt({
+        project: proj,
+        enrichedProjects,
+        projectImages: currentImages,
+        currentIndex: index,
+        error: err.message,
+        isRegeneration: false,
+      });
+    }
+  };
+
+  // Action: Apply selected available projects to portfolio with AI images generated from README
   const handleApplyToPortfolio = async () => {
-    const selectedList = repos.filter((r) => selectedRepoIds.has(r.id));
+    const selectedList = availableRepos.filter((r) => selectedRepoIds.has(r.id));
     if (selectedList.length === 0) return;
 
     setIsApplying(true);
-    setApplyStep('Lecture des READMEs et extraction des fonctionnalités...');
+    setApplyStep('Lecture des READMEs GitHub...');
 
     try {
-      // 1. Fetch README snippets in parallel (fully stripped of raw HTML, badges, URLs)
+      // 1. Fetch README snippets in parallel
       const enrichedProjects = await Promise.all(
         selectedList.map(async (repo) => {
           const readmeSnippet = await fetchRepoReadme(repo.owner, repo.name);
@@ -332,99 +438,67 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
         })
       );
 
-      // 2. Generate or assign images (Commercial 3D Product Showcase Mockups)
-      let projectImages = {};
+      // 2. Generate images via AI if enabled
       if (generateAiImages) {
-        setApplyStep('Génération des mockups 3D avec FLUX.1-schnell...');
-        for (const proj of enrichedProjects) {
-          const tags = [proj.language, ...(proj.topics || [])].filter(Boolean);
-          const imgUrl = await generateProjectImageAi({
-            title: proj.name,
-            description: proj.readmeSnippet || proj.description,
-            tags,
-          });
-          projectImages[proj.name] = imgUrl;
-        }
-      }
-
-      // 3. Build structured project objects
-      const projectsToAdd = enrichedProjects.map((p, idx) => ({
-        id: `proj-gh-${p.id || Date.now() + idx}`,
-        title: p.name.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-        description: p.readmeSnippet ? p.readmeSnippet.slice(0, 160) + '...' : (p.description || 'Projet open-source certifié GitHub'),
-        tags: [p.language, ...(p.topics || [])].filter(Boolean).slice(0, 4),
-        metrics: `${p.stars || 0} Stars • GitHub Certified`,
-        github: p.url,
-        link: p.homepage || p.url,
-        image: projectImages[p.name] || 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80',
-        featured: idx === 0,
-      }));
-
-      // Directly update projects section immediately for zero-delay canvas rendering
-      if (updateSection) {
-        updateSection('sec-projects', (prevData) => {
-          const existingList = Array.isArray(prevData?.projects) ? [...prevData.projects] : [];
-          const merged = [...projectsToAdd];
-          existingList.forEach((ep) => {
-            if (!merged.some((m) => (m.github && ep.github && m.github === ep.github) || m.title.toLowerCase() === ep.title.toLowerCase())) {
-              merged.push(ep);
-            }
-          });
-          return {
-            ...prevData,
-            heading: prevData?.heading || 'Projets Réalisés',
-            projects: merged,
-          };
-        });
-      }
-
-      // 4. Construct prompt and clean display messages
-      setApplyStep('Harmonisation du portfolio...');
-      const projectNames = selectedList.map((r) => r.name);
-      const displaySummary = `🐙 Importer ${selectedList.length} projet${selectedList.length > 1 ? 's' : ''} GitHub : ${projectNames.join(', ')}`;
-      const summaryTitle = `✓ Section Projets mise à jour avec ${projectNames.join(', ')}`;
-
-      const projectsPromptList = enrichedProjects
-        .map((p, idx) => {
-          const tech = [p.language, ...(p.topics || [])].filter(Boolean).join(', ');
-          const img = projectImages[p.name] ? `\n- Image: ${projectImages[p.name]}` : '';
-          return `${idx + 1}. **${p.name}**\n- Description: ${p.description}\n- Technologies: ${tech || 'Modern Web'}\n- GitHub: ${p.url}${p.homepage ? `\n- Demo: ${p.homepage}` : ''}${p.readmeSnippet ? `\n- Résumé: ${p.readmeSnippet}` : ''}${img}`;
-        })
-        .join('\n\n');
-
-      const fullPrompt = `Met à jour et enrichis la section Projets de mon portfolio avec mes vrais projets GitHub sélectionnés ci-dessous. 
-Pour chaque projet, crée un titre accrocheur, une description percutante basée sur les détails, les bons tags technologiques, et conserve les liens GitHub et démo fournis.
-
-Voici mes projets GitHub :
-${projectsPromptList}
-
-Génère une présentation professionnelle de haut niveau pour chacun de ces projets.`;
-
-      // 5. Send to Copilot with clean displayText and projectsToAdd payload
-      const sendFn = sendChatMessage || sendMessage;
-      if (typeof sendFn === 'function') {
-        await sendFn(fullPrompt, {
-          displayText: displaySummary,
-          summaryTitle,
-          assistantPlaceholder: `Intégration et mise en valeur de ${projectNames.join(', ')}...`,
-          projectsToAdd,
-        });
+        await generateImagesAndFinalize(enrichedProjects, {}, 0);
       } else {
-        throw new Error('Le service de chat Copilot n\'est pas disponible');
-      }
-
-      if (onApplyComplete) {
-        onApplyComplete();
-      } else {
-        setViewMode('preview');
+        await finalizeProjectAddition(enrichedProjects, {});
+        setIsApplying(false);
+        setApplyStep('');
       }
     } catch (err) {
       console.error('Error applying projects:', err);
       setError(err.message || 'Erreur lors de l\'intégration des projets. Veuillez réessayer.');
-    } finally {
       setIsApplying(false);
       setApplyStep('');
     }
+  };
+
+  // Handler for manual image picker save (triggered when user chooses "Ajouter moi-même")
+  const handleManualImageSave = async (customImageUrl) => {
+    if (!pickerModalConfig) return;
+    const promptData = pickerModalConfig.promptData;
+    setPickerModalConfig(null);
+
+    if (!customImageUrl) return;
+
+    if (promptData?.isRegeneration) {
+      // Updating an existing project in portfolio
+      if (updateSection) {
+        updateSection('sec-projects', (prevData) => {
+          const existing = Array.isArray(prevData?.projects) ? prevData.projects : [];
+          return {
+            ...prevData,
+            projects: existing.map((p) => {
+              if ((p.id && promptData.project.id && p.id === promptData.project.id) || p.title === promptData.project.title) {
+                return { ...p, image: customImageUrl };
+              }
+              return p;
+            }),
+          };
+        });
+        setSuccessNotice(`Image personnalisée enregistrée pour "${promptData.project.title}" !`);
+        setTimeout(() => setSuccessNotice(null), 3500);
+      }
+    } else if (promptData) {
+      // Adding project(s) to portfolio
+      const updatedImages = {
+        ...(promptData.projectImages || {}),
+        [promptData.project.name]: customImageUrl,
+      };
+      setIsApplying(true);
+      await generateImagesAndFinalize(
+        promptData.enrichedProjects,
+        updatedImages,
+        (promptData.currentIndex || 0) + 1
+      );
+    }
+  };
+
+  const handleClosePicker = () => {
+    setPickerModalConfig(null);
+    setIsApplying(false);
+    setApplyStep('');
   };
 
   return (
@@ -594,166 +668,330 @@ Génère une présentation professionnelle de haut niveau pour chacun de ces pro
             <span>{error}</span>
           </div>
         )}
-
-        {/* Controls Bar: Search & Select All */}
-        {repos.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-            <div className="relative w-full sm:w-72">
-              <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Filtrer par nom ou techno..."
-                className="w-full pl-9 pr-3 py-1.5 rounded-lg border text-xs bg-transparent outline-none focus:border-indigo-500"
-                style={{ borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)' }}
-              />
-            </div>
-
-            <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
-              <span className="text-xs opacity-60">
-                {repos.length} dépôt{repos.length > 1 ? 's' : ''} trouvé{repos.length > 1 ? 's' : ''}
-              </span>
-              <button
-                type="button"
-                onClick={() => handleSelectAllFiltered(filteredRepos)}
-                className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
-              >
-                {selectedRepoIds.size === filteredRepos.length ? 'Tout désélectionner' : 'Tout sélectionner'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Repositories Grid */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-6">
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className="p-5 rounded-2xl border animate-pulse space-y-3"
-                style={{
-                  backgroundColor: isLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
-                  borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.06)',
-                }}
-              >
-                <div className="w-1/3 h-5 bg-indigo-500/20 rounded" />
-                <div className="w-full h-4 bg-white/10 rounded" />
-                <div className="w-2/3 h-4 bg-white/10 rounded" />
+        {currentPortfolioProjects.length > 0 && (
+          <div className="space-y-4 pt-2">
+            <div
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3"
+              style={{ borderColor: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)' }}
+            >
+              <div className="flex items-center gap-2.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <h2 className="text-lg sm:text-xl font-bold tracking-tight">
+                  Projets Actifs dans le Portfolio
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  {currentPortfolioProjects.length} projet{currentPortfolioProjects.length > 1 ? 's' : ''} en ligne
+                </span>
               </div>
-            ))}
-          </div>
-        ) : repos.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredRepos.map((repo) => {
-              const isSelected = selectedRepoIds.has(repo.id);
-              const inPortfolio = isRepoInPortfolio(repo);
-              return (
-                <div
-                  key={repo.id}
-                  onClick={() => handleToggleSelect(repo)}
-                  className={`p-5 rounded-2xl border transition-all cursor-pointer relative group flex flex-col justify-between ${
-                    isSelected
-                      ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-500/5'
-                      : isLight
-                      ? 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
-                      : 'bg-[#10141f] border-white/10 hover:border-white/20'
-                  }`}
-                >
-                  <div className="space-y-2.5">
-                    {/* Top row: Checkbox, Name, Status Badge, External Link */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div
-                          className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors shrink-0 ${
-                            isSelected
-                              ? 'bg-indigo-600 text-white'
-                              : isLight
-                              ? 'border border-slate-300 text-transparent'
-                              : 'border border-white/20 text-transparent'
-                          }`}
-                        >
-                          <RiCheckLine className="w-3.5 h-3.5 stroke-3" />
+              <p className="text-xs opacity-60">
+                Visible sur votre site public
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {currentPortfolioProjects.map((proj, idx) => {
+                const isRegenerating = regeneratingId === (proj.id || proj.title);
+                return (
+                  <div
+                    key={proj.id || idx}
+                    className={`rounded-2xl border overflow-hidden transition-all flex flex-col justify-between ${
+                      isLight
+                        ? 'bg-white border-slate-200 shadow-sm hover:border-slate-300'
+                        : 'bg-[#10141f] border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    {/* Visual Banner Thumbnail */}
+                    <div className="relative h-44 sm:h-48 w-full overflow-hidden bg-slate-900 group">
+                      {proj.image ? (
+                        <img
+                          src={proj.image}
+                          alt={proj.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-indigo-950/40 text-indigo-400 text-xs">
+                          Aucune image de couverture
                         </div>
-                        <h3 className="font-bold text-base truncate tracking-tight group-hover:text-indigo-400 transition-colors">
-                          {repo.name}
-                        </h3>
+                      )}
+
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+
+                      {/* Status Badge */}
+                      <div className="absolute top-3 left-3 flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/90 text-white backdrop-blur-md shadow-md">
+                          <RiCheckLine className="w-3.5 h-3.5 stroke-3" />
+                          <span>Dans le portfolio</span>
+                        </span>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        {inPortfolio && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            <RiCheckLine className="w-3 h-3 stroke-3" />
-                            <span>Dans le portfolio</span>
-                          </span>
-                        )}
-
+                      {/* GitHub Link if available */}
+                      {proj.github && (
                         <a
-                          href={repo.url}
+                          href={proj.github}
                           target="_blank"
                           rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="p-1 rounded opacity-40 hover:opacity-100 hover:text-indigo-400 transition-all"
+                          className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/60 hover:bg-black/90 text-white backdrop-blur-md transition-all shadow"
                           title="Voir sur GitHub"
                         >
                           <RiExternalLinkLine className="w-4 h-4" />
                         </a>
+                      )}
+
+                      {/* Regenerating Overlay */}
+                      {isRegenerating && (
+                        <div className="absolute inset-0 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center gap-2 text-white z-30 animate-in fade-in duration-200">
+                          <RiRefreshLine className="w-7 h-7 animate-spin text-indigo-400" />
+                          <span className="text-xs font-bold tracking-wide">Génération Maquette 3D...</span>
+                          <span className="text-[10px] opacity-70">FLUX.1-schnell IA</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card Content */}
+                    <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between space-y-3">
+                      <div>
+                        <h3 className="font-bold text-base tracking-tight truncate" title={proj.title}>
+                          {proj.title}
+                        </h3>
+                        <p className="text-xs opacity-70 line-clamp-2 mt-1 leading-relaxed">
+                          {proj.description || 'Projet open-source certifié GitHub'}
+                        </p>
+                      </div>
+
+                      {/* Tags */}
+                      {proj.tags && proj.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {proj.tags.slice(0, 4).map((tag, tIdx) => (
+                            <span
+                              key={tIdx}
+                              className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Action Buttons Toolbar */}
+                      <div
+                        className="pt-3 border-t flex items-center gap-2"
+                        style={{ borderColor: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }}
+                      >
+                        {/* Button Refaire l'image */}
+                        <button
+                          type="button"
+                          disabled={isRegenerating}
+                          onClick={() => handleRegenerateImage(proj)}
+                          className="flex-1 py-2 px-3 rounded-xl text-xs font-bold bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99]"
+                          title="Générer une nouvelle maquette 3D publicitaire pour ce projet"
+                        >
+                          <RiSparkling2Fill className={`w-3.5 h-3.5 ${isRegenerating ? 'animate-spin' : 'text-amber-400'}`} />
+                          <span>{isRegenerating ? 'Génération...' : "Refaire l'image"}</span>
+                        </button>
+
+                        {/* Button Supprimer */}
+                        <button
+                          type="button"
+                          disabled={isRegenerating}
+                          onClick={() => handleRemovePortfolioProject(proj)}
+                          className="py-2 px-3.5 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+                          title="Supprimer ce projet du portfolio"
+                        >
+                          <RiDeleteBin6Line className="w-3.5 h-3.5" />
+                          <span>Supprimer</span>
+                        </button>
                       </div>
                     </div>
-
-                    {/* Description */}
-                    <p className="text-xs leading-relaxed opacity-75 line-clamp-2">
-                      {repo.description}
-                    </p>
                   </div>
-
-                  {/* Bottom Stats & Language */}
-                  <div className="flex items-center justify-between pt-4 mt-3 border-t text-xs opacity-60"
-                       style={{ borderColor: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }}>
-                    <div className="flex items-center gap-3">
-                      {repo.language && (
-                        <span className="inline-flex items-center gap-1 font-semibold text-indigo-400">
-                          <span className="w-2 h-2 rounded-full bg-indigo-400" />
-                          {repo.language}
-                        </span>
-                      )}
-                      {repo.stars > 0 && (
-                        <span className="inline-flex items-center gap-1">
-                          <RiStarLine className="w-3.5 h-3.5 text-amber-400" />
-                          {repo.stars}
-                        </span>
-                      )}
-                      {repo.forks > 0 && (
-                        <span className="inline-flex items-center gap-1">
-                          <RiGitForkLine className="w-3.5 h-3.5" />
-                          {repo.forks}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-1 text-[10px]">
-                      <RiTimeLine className="w-3 h-3" />
-                      <span>{new Date(repo.updatedAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          !isLoading && (
-            <div
-              className={`p-12 text-center rounded-3xl border ${
-                isLight ? 'bg-white border-slate-200' : 'bg-[#10141f] border-white/10'
-              }`}
-            >
-              <RiGithubFill className="w-12 h-12 mx-auto mb-3 opacity-30 text-indigo-400" />
-              <h3 className="font-bold text-lg mb-1">Aucun dépôt GitHub chargé</h3>
-              <p className="text-xs opacity-60 max-w-sm mx-auto">
-                Indiquez votre pseudo GitHub ci-dessus pour récupérer instantanément vos projets publics.
-              </p>
+                );
+              })}
             </div>
-          )
+          </div>
+        )}
+
+        {/* SECTION 2: DÉPÔTS GITHUB DISPONIBLES À IMPORTER */}
+        {repos.length > 0 && (
+          <div className="space-y-4 pt-6 border-t" style={{ borderColor: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)' }}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <RiGithubFill className="w-5 h-5 text-indigo-400" />
+                  <h2 className="text-lg sm:text-xl font-bold tracking-tight">
+                    Dépôts GitHub Disponibles à Importer
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    {availableRepos.length} disponible{availableRepos.length > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <p className="text-xs opacity-60 mt-0.5">
+                  Cochez les dépôts que vous souhaitez enrichir avec l'IA et ajouter à votre portfolio.
+                </p>
+              </div>
+
+              {/* Search & Select All */}
+              {availableRepos.length > 0 && (
+                <div className="flex items-center gap-3">
+                  <div className="relative w-full sm:w-64">
+                    <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 opacity-40" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Filtrer par nom ou techno..."
+                      className="w-full pl-9 pr-3 py-1.5 rounded-lg border text-xs bg-transparent outline-none focus:border-indigo-500"
+                      style={{ borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)' }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleSelectAllAvailable(filteredAvailableRepos)}
+                    className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer shrink-0"
+                  >
+                    {selectedRepoIds.size === filteredAvailableRepos.length && filteredAvailableRepos.length > 0
+                      ? 'Tout désélectionner'
+                      : 'Tout sélectionner'}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Available Repositories Grid */}
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="p-5 rounded-2xl border animate-pulse space-y-3"
+                    style={{
+                      backgroundColor: isLight ? '#ffffff' : 'rgba(255,255,255,0.02)',
+                      borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.06)',
+                    }}
+                  >
+                    <div className="w-1/3 h-5 bg-indigo-500/20 rounded" />
+                    <div className="w-full h-4 bg-white/10 rounded" />
+                    <div className="w-2/3 h-4 bg-white/10 rounded" />
+                  </div>
+                ))}
+              </div>
+            ) : filteredAvailableRepos.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {filteredAvailableRepos.map((repo) => {
+                  const isSelected = selectedRepoIds.has(repo.id);
+                  return (
+                    <div
+                      key={repo.id}
+                      onClick={() => handleToggleSelectAvailable(repo.id)}
+                      className={`p-5 rounded-2xl border transition-all cursor-pointer relative group flex flex-col justify-between ${
+                        isSelected
+                          ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-500/5'
+                          : isLight
+                          ? 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
+                          : 'bg-[#10141f] border-white/10 hover:border-white/20'
+                      }`}
+                    >
+                      <div className="space-y-2.5">
+                        {/* Top row: Checkbox, Name, External Link */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors shrink-0 ${
+                                isSelected
+                                  ? 'bg-indigo-600 text-white'
+                                  : isLight
+                                  ? 'border border-slate-300 text-transparent'
+                                  : 'border border-white/20 text-transparent'
+                              }`}
+                            >
+                              <RiCheckLine className="w-3.5 h-3.5 stroke-3" />
+                            </div>
+                            <h3 className="font-bold text-base truncate tracking-tight group-hover:text-indigo-400 transition-colors">
+                              {repo.name}
+                            </h3>
+                          </div>
+
+                          <a
+                            href={repo.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="p-1 rounded opacity-40 hover:opacity-100 hover:text-indigo-400 transition-all"
+                            title="Voir sur GitHub"
+                          >
+                            <RiExternalLinkLine className="w-4 h-4" />
+                          </a>
+                        </div>
+
+                        {/* Description */}
+                        <p className="text-xs leading-relaxed opacity-75 line-clamp-2">
+                          {repo.description}
+                        </p>
+                      </div>
+
+                      {/* Bottom Stats & Language */}
+                      <div
+                        className="flex items-center justify-between pt-4 mt-3 border-t text-xs opacity-60"
+                        style={{ borderColor: isLight ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.06)' }}
+                      >
+                        <div className="flex items-center gap-3">
+                          {repo.language && (
+                            <span className="inline-flex items-center gap-1 font-semibold text-indigo-400">
+                              <span className="w-2 h-2 rounded-full bg-indigo-400" />
+                              {repo.language}
+                            </span>
+                          )}
+                          {repo.stars > 0 && (
+                            <span className="inline-flex items-center gap-1">
+                              <RiStarLine className="w-3.5 h-3.5 text-amber-400" />
+                              {repo.stars}
+                            </span>
+                          )}
+                          {repo.forks > 0 && (
+                            <span className="inline-flex items-center gap-1">
+                              <RiGitForkLine className="w-3.5 h-3.5" />
+                              {repo.forks}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1 text-[10px]">
+                          <RiTimeLine className="w-3.5 h-3.5" />
+                          <span>{new Date(repo.updatedAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div
+                className={`p-8 text-center rounded-2xl border ${
+                  isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/2 border-white/5'
+                }`}
+              >
+                <p className="text-xs opacity-75">
+                  {searchQuery
+                    ? 'Aucun dépôt ne correspond à votre recherche.'
+                    : '🎉 Tous vos dépôts GitHub sont déjà intégrés dans votre portfolio !'}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Empty state when no repos at all */}
+        {!isLoading && repos.length === 0 && (
+          <div
+            className={`p-12 text-center rounded-3xl border ${
+              isLight ? 'bg-white border-slate-200' : 'bg-[#10141f] border-white/10'
+            }`}
+          >
+            <RiGithubFill className="w-12 h-12 mx-auto mb-3 opacity-30 text-indigo-400" />
+            <h3 className="font-bold text-lg mb-1">Aucun dépôt GitHub chargé</h3>
+            <p className="text-xs opacity-60 max-w-sm mx-auto">
+              Authentifiez votre compte officiel GitHub ci-dessus pour récupérer instantanément vos projets publics.
+            </p>
+          </div>
         )}
       </div>
 
@@ -815,6 +1053,97 @@ Génère une présentation professionnelle de haut niveau pour chacun de ces pro
             </div>
           </div>
         </div>
+      )}
+
+      {/* AI Image Generation Error Confirmation Modal */}
+      {imageErrorPrompt && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div
+            className={`w-full max-w-md rounded-2xl p-6 border shadow-2xl space-y-5 ${
+              isLight
+                ? 'bg-white border-red-200 text-slate-800 shadow-slate-900/10'
+                : 'bg-[#10141f] border-red-500/30 text-white shadow-black/80'
+            }`}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center shrink-0">
+                <RiAlertLine className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold">
+                  {imageErrorPrompt.isRegeneration
+                    ? "Échec de régénération de l'image"
+                    : "Échec de génération de l'image IA"}
+                </h3>
+                <p className="text-xs opacity-70">
+                  {imageErrorPrompt.error || "L'API d'IA n'a pas pu générer l'image."}
+                </p>
+              </div>
+            </div>
+
+            <div
+              className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'
+              }`}
+            >
+              <div className="font-semibold text-sm">
+                {imageErrorPrompt.project?.title || imageErrorPrompt.project?.name}
+              </div>
+              <p className="opacity-80">
+                {imageErrorPrompt.isRegeneration
+                  ? "Voulez-vous annuler la modification de l'image ou l'ajouter vous-même ?"
+                  : "L'API n'a pas pu générer l'image. Voulez-vous annuler l'ajout de ce projet ou ajouter l'image vous-même ?"}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setImageErrorPrompt(null);
+                  setIsApplying(false);
+                  setApplyStep('');
+                }}
+                className={`px-4 py-2.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+                  isLight
+                    ? 'border-slate-300 text-slate-700 hover:bg-slate-100'
+                    : 'border-white/15 text-slate-300 hover:bg-white/10'
+                }`}
+              >
+                {imageErrorPrompt.isRegeneration ? 'Annuler' : "Oui, annuler l'ajout"}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const promptData = imageErrorPrompt;
+                  setImageErrorPrompt(null);
+                  setPickerModalConfig({
+                    isOpen: true,
+                    currentImage: promptData.project?.image || '',
+                    title: `Image pour : ${promptData.project?.title || promptData.project?.name}`,
+                    promptData,
+                  });
+                }}
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-lg shadow-indigo-600/30 flex items-center gap-2 cursor-pointer"
+              >
+                <RiUploadCloud2Line className="w-4 h-4" />
+                <span>Non, ajouter moi-même</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Image Picker Modal (Upload file / GitHub avatar / Direct URL) */}
+      {pickerModalConfig && (
+        <ImagePickerModal
+          isOpen={pickerModalConfig.isOpen}
+          onClose={handleClosePicker}
+          currentImage={pickerModalConfig.currentImage}
+          title={pickerModalConfig.title}
+          onSave={handleManualImageSave}
+        />
       )}
     </div>
   );
