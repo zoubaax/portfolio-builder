@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth, useUser } from '@clerk/react';
+import { useNavigate } from 'react-router-dom';
 import {
   MOCK_DEVELOPER_PORTFOLIO,
   MOCK_DESIGNER_PORTFOLIO,
   MOCK_MINIMALIST_PORTFOLIO,
-  THEME_PRESETS
+  THEME_PRESETS,
+  createFreshPortfolio
 } from '../types/portfolio';
 
 const DEFAULT_WELCOME_MESSAGE = {
@@ -14,28 +16,46 @@ const DEFAULT_WELCOME_MESSAGE = {
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 };
 
+const stripHeavyBase64 = (obj) => {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(stripHeavyBase64);
+  const clean = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string' && value.startsWith('data:image/') && value.length > 256) {
+      clean[key] = value.slice(0, 48) + '...[TRUNCATED_BASE64]';
+    } else if (typeof value === 'object' && value !== null) {
+      clean[key] = stripHeavyBase64(value);
+    } else {
+      clean[key] = value;
+    }
+  }
+  return clean;
+};
+
 const PortfolioContext = createContext(null);
 
 export const PortfolioProvider = ({ children }) => {
+  const navigate = useNavigate();
   const { getToken, userId, isSignedIn } = useAuth();
   const { user } = useUser();
   const firstName = user?.firstName || 'Guest';
 
-  // Main portfolio state
-  const [portfolio, setPortfolio] = useState(MOCK_DEVELOPER_PORTFOLIO);
+  // Main portfolio state - initialized with fresh empty projects
+  const [portfolio, setPortfolio] = useState(() => createFreshPortfolio(user?.firstName || 'Guest'));
   const [portfolioId, setPortfolioId] = useState(null);
   const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
   const [isPublished, setIsPublished] = useState(false);
   const [versions, setVersions] = useState([]);
   
   // History for Undo / Redo
-  const [history, setHistory] = useState([MOCK_DEVELOPER_PORTFOLIO]);
+  const [history, setHistory] = useState(() => [createFreshPortfolio(user?.firstName || 'Guest')]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
   // Chat & Multi-session management state
   const [chatMessages, setChatMessages] = useState([DEFAULT_WELCOME_MESSAGE]);
   const chatMessagesRef = useRef([DEFAULT_WELCOME_MESSAGE]);
   const portfolioIdRef = useRef(null);
+  const activeLoadingIdRef = useRef(null);
 
   useEffect(() => {
     chatMessagesRef.current = chatMessages;
@@ -120,10 +140,12 @@ export const PortfolioProvider = ({ children }) => {
   // Load a specific portfolio & chat session from Neon DB
   const loadPortfolioSession = useCallback(async (id) => {
     if (!id) return;
+    activeLoadingIdRef.current = id;
     try {
       const headers = await getAuthHeaders();
       const res = await fetch(`http://localhost:5050/api/v1/portfolios/${id}`, { headers });
       const data = await res.json();
+      if (activeLoadingIdRef.current !== id) return; // Cancelled if user switched or clicked + New
       if (data.success && data.data) {
         const item = data.data;
         setPortfolioId(item.id);
@@ -152,28 +174,30 @@ export const PortfolioProvider = ({ children }) => {
         setHasGeneratedFirstPortfolio(true);
         fetchVersions(item.id);
         setIsHistoryOpen(false);
-        window.history.replaceState(null, '', `/studio/${item.id}`);
+        navigate(`/studio/${item.id}`, { replace: true });
         return item;
       }
     } catch (err) {
       console.error('Failed to load portfolio session', err);
     }
-  }, [getAuthHeaders, fetchVersions]);
+  }, [getAuthHeaders, fetchVersions, navigate]);
 
   // Start a fresh, clean chat session
   const createNewSession = useCallback(() => {
+    activeLoadingIdRef.current = null;
+    navigate('/studio', { replace: true });
     setPortfolioId(null);
     portfolioIdRef.current = null;
-    setPortfolio(MOCK_DEVELOPER_PORTFOLIO);
-    setHistory([MOCK_DEVELOPER_PORTFOLIO]);
+    const fresh = createFreshPortfolio(firstName);
+    setPortfolio(fresh);
+    setHistory([fresh]);
     setHistoryIndex(0);
     setChatMessages([DEFAULT_WELCOME_MESSAGE]);
     chatMessagesRef.current = [DEFAULT_WELCOME_MESSAGE];
     setHasGeneratedFirstPortfolio(false);
     setVersions([]);
     setIsHistoryOpen(false);
-    window.history.replaceState(null, '', '/studio');
-  }, []);
+  }, [navigate, firstName]);
 
   // Delete a session
   const deleteSession = useCallback(async (id) => {
@@ -270,7 +294,7 @@ export const PortfolioProvider = ({ children }) => {
           const newId = data.data.id;
           setPortfolioId(newId);
           portfolioIdRef.current = newId;
-          window.history.replaceState(null, '', `/studio/${newId}`);
+          navigate(`/studio/${newId}`, { replace: true });
           fetchVersions(newId);
           fetchUserSessions();
         }
@@ -278,7 +302,7 @@ export const PortfolioProvider = ({ children }) => {
     } catch (err) {
       console.error('Auto-persist session error:', err);
     }
-  }, [portfolioId, getAuthHeaders, fetchVersions, fetchUserSessions]);
+  }, [portfolioId, getAuthHeaders, fetchVersions, fetchUserSessions, navigate]);
 
   // Save or Update Portfolio to Neon DB
   const savePortfolio = useCallback(async (publish = false, promptNote = '') => {
@@ -326,7 +350,7 @@ export const PortfolioProvider = ({ children }) => {
         setPortfolioId(result.data.id);
         setIsPublished(result.data.isPublished);
         setSaveStatus('saved');
-        window.history.replaceState(null, '', `/studio/${result.data.id}`);
+        navigate(`/studio/${result.data.id}`, { replace: true });
         fetchVersions(result.data.id);
         fetchUserSessions();
         setTimeout(() => setSaveStatus('idle'), 3000);
@@ -766,7 +790,7 @@ export const PortfolioProvider = ({ children }) => {
         method: 'POST',
         headers,
         body: JSON.stringify({
-          portfolio,
+          portfolio: stripHeavyBase64(portfolio),
           prompt: promptText,
           provider: 'nvidia',
         }),
@@ -837,51 +861,46 @@ export const PortfolioProvider = ({ children }) => {
           }
         }
 
-        // Merge any explicit projectsToAdd to ensure user's imported GitHub projects & mockups are present (NEVER overwrite previous projects!)
-        if (options.projectsToAdd && Array.isArray(options.projectsToAdd) && options.projectsToAdd.length > 0) {
-          if (updatedPortfolio.sections) {
-            updatedPortfolio.sections = updatedPortfolio.sections.map((s) => {
-              if (s.type === 'projects') {
-                // 1. Projects that existed in the portfolio BEFORE this stream ran
-                const previousProjects = portfolio?.sections?.find((sec) => sec.type === 'projects')?.data?.projects || [];
-                // 2. Newly added projects from selection
-                const newlyAdded = options.projectsToAdd;
-                // 3. Any projects that the LLM generated in updatedPortfolio
-                const aiProjects = Array.isArray(s.data?.projects) ? s.data.projects : [];
+        // Authentic Project Isolation & Integrity:
+        // Projects in 'sec-projects' MUST ONLY come from genuine user GitHub imports or explicit selections, NEVER from AI hallucinations.
+        if (updatedPortfolio.sections) {
+          const previousProjects = portfolio?.sections?.find((sec) => sec.type === 'projects')?.data?.projects || [];
+          const newlyAdded = (options.projectsToAdd && Array.isArray(options.projectsToAdd)) ? options.projectsToAdd : [];
 
-                const merged = [];
-                const addUnique = (item) => {
-                  if (!item) return;
-                  const itemUrl = (item.github || '').toLowerCase().replace(/\/+$/, '');
-                  const itemTitle = (item.title || '').toLowerCase().trim();
-                  const exists = merged.some((m) => {
-                    const mUrl = (m.github || '').toLowerCase().replace(/\/+$/, '');
-                    const mTitle = (m.title || '').toLowerCase().trim();
-                    return (itemUrl && mUrl && itemUrl === mUrl) || (itemTitle && mTitle && itemTitle === mTitle);
-                  });
-                  if (!exists) {
-                    merged.push(item);
-                  }
-                };
-
-                // Add previous projects first to preserve existing ones
-                previousProjects.forEach(addUnique);
-                // Add newly added projects
-                newlyAdded.forEach(addUnique);
-                // Add any non-duplicate AI projects
-                aiProjects.forEach(addUnique);
-
-                return {
-                  ...s,
-                  data: {
-                    ...s.data,
-                    projects: merged,
-                  },
-                };
-              }
-              return s;
+          const mergedAuthenticProjects = [];
+          const addUnique = (item) => {
+            if (!item) return;
+            const itemUrl = (item.github || '').toLowerCase().replace(/\/+$/, '');
+            const itemTitle = (item.title || '').toLowerCase().trim();
+            const exists = mergedAuthenticProjects.some((m) => {
+              const mUrl = (m.github || '').toLowerCase().replace(/\/+$/, '');
+              const mTitle = (m.title || '').toLowerCase().trim();
+              return (itemUrl && mUrl && itemUrl === mUrl) || (itemTitle && mTitle && itemTitle === mTitle);
             });
-          }
+            if (!exists) {
+              mergedAuthenticProjects.push(item);
+            }
+          };
+
+          // 1. Preserve existing authentic projects in the active portfolio
+          previousProjects.forEach(addUnique);
+          // 2. Add any newly selected GitHub projects
+          newlyAdded.forEach(addUnique);
+
+          // 3. Strictly enforce authentic projects on sec-projects (discarding any AI-invented mock projects)
+          updatedPortfolio.sections = updatedPortfolio.sections.map((s) => {
+            if (s.type === 'projects') {
+              return {
+                ...s,
+                data: {
+                  ...s.data,
+                  heading: s.data?.heading || 'Projets Sélectionnés',
+                  projects: mergedAuthenticProjects,
+                },
+              };
+            }
+            return s;
+          });
         }
 
         pushState(updatedPortfolio);
@@ -1077,28 +1096,46 @@ export const PortfolioProvider = ({ children }) => {
           return s;
         });
         replyText = options.summaryTitle || `Synthesized Minimal Editorial portfolio for ${personName}!`;
-      } else if (lower.includes('emerald') || lower.includes('green')) {
+      } else if (lower.includes('yellow') || lower.includes('jaune')) {
+        fallbackPortfolio.theme = {
+          ...fallbackPortfolio.theme,
+          palette: {
+            ...fallbackPortfolio.theme.palette,
+            bg: '#fef08a',
+            surface: '#fef9c3',
+            surfaceCard: '#ffffff',
+            textPrimary: '#0f172a',
+            textSecondary: '#475569',
+            accent: '#ca8a04',
+            border: 'rgba(0, 0, 0, 0.1)',
+          },
+        };
+        replyText = options.summaryTitle || `Couleur d'arrière-plan mise à jour en jaune avec contraste adapté pour ${personName} !`;
+      } else if (lower.includes('emerald') || lower.includes('green') || lower.includes('vert')) {
         fallbackPortfolio.theme = THEME_PRESETS['emerald-matrix'];
         replyText = options.summaryTitle || `Applied Emerald Matrix theme with vivid green accents for ${personName}!`;
       } else if (lower.includes('orange') || lower.includes('ember') || lower.includes('#ff4500')) {
         fallbackPortfolio.theme = THEME_PRESETS['superdesign-ember'];
         replyText = options.summaryTitle || `Applied Superdesign Ember theme with flame orange accents for ${personName}!`;
-      } else if (lower.includes('cyan') || lower.includes('blue')) {
+      } else if (lower.includes('cyan') || lower.includes('blue') || lower.includes('bleu')) {
         fallbackPortfolio.theme = THEME_PRESETS['cyber-dark'];
         replyText = options.summaryTitle || `Applied Cyber Dark theme with cyber cyan accents for ${personName}!`;
       } else if (lower.match(/#[0-9a-f]{3,6}/i)) {
         const hex = lower.match(/#[0-9a-f]{3,6}/i)[0];
+        const isBg = lower.includes('bg') || lower.includes('background') || lower.includes('fond');
         fallbackPortfolio.theme = {
           ...fallbackPortfolio.theme,
           palette: {
             ...fallbackPortfolio.theme.palette,
-            accent: hex,
-            accentHover: hex,
-            accentGlow: `${hex}40`,
-            border: `${hex}30`,
+            ...(isBg ? { bg: hex } : {
+              accent: hex,
+              accentHover: hex,
+              accentGlow: `${hex}40`,
+              border: `${hex}30`,
+            }),
           },
         };
-        replyText = options.summaryTitle || `Updated portfolio accent color to ${hex}!`;
+        replyText = options.summaryTitle || `Updated portfolio color to ${hex}!`;
       } else {
         fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) =>
           s.type === 'hero' ? { ...s, data: { ...s.data, name: personName } } : s

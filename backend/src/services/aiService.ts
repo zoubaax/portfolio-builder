@@ -89,12 +89,37 @@ Schema Definitions:
    - contact: { id: 'sec-contact', type: 'contact', variant: 'card' | 'split', visible: boolean, data: { title: string, email: string, message?: string } }
 
 Crucial Instructions:
+- CRITICAL PROJECT ISOLATION & ACCURACY: In the 'projects' section ('sec-projects'), NEVER invent, imagine, or hallucinate fake software projects, fake repositories, or fake metrics. Always keep the 'projects' array empty (data.projects: []) unless the user explicitly provides specific project names or requests to edit an already existing project. Software projects are imported authentically by the user via GitHub.
 - For 'projects' section, ALWAYS store projects inside the array property named 'projects' (NOT 'items'). Each project uses 'tags' (array of strings, NOT 'tech').
 - For 'skills' section, ALWAYS use 'categories' with objects having 'name' (string) and 'skills' (array of strings).
 - Respect the requested discipline, student status, and experience level precisely (e.g. if user is an engineering student in DevOps/Cloud Native, set hero title to 'Cloud Native & DevOps Engineer' and student description).
-- When asked to change background color, modify '/theme/palette/bg'.
+- When asked to change background color, modify '/theme/palette/bg'. If changing to a light background (yellow, white, beige, light gray), ALWAYS also update '/theme/palette/textPrimary' to a dark color (e.g. '#0f172a'), '/theme/palette/textSecondary' to '#475569', and '/theme/palette/surface' to a harmonious light card background (e.g. '#ffffff' or 'rgba(0,0,0,0.05)') so text and cards remain readable. If changing to a dark background, ensure textPrimary is light ('#f9fafb').
 - Output ONLY valid JSON RFC 6902 patch operations. No markdown wrappers, no conversational text.
 `;
+
+/**
+ * Strips huge base64 image strings before sending portfolio schema to LLM prompt,
+ * preventing context overflow (1M+ tokens) and reducing latency by 90%.
+ */
+export function stripHeavyBase64(obj: any): any {
+  if (!obj || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) {
+    return obj.map(stripHeavyBase64);
+  }
+  const clean: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string' && value.startsWith('data:image/') && value.length > 256) {
+      clean[key] = value.slice(0, 48) + '...[TRUNCATED_BASE64]';
+    } else if (typeof value === 'string' && value.length > 2000 && !key.includes('bio') && !key.includes('description')) {
+      clean[key] = value.slice(0, 100) + '...[TRUNCATED]';
+    } else if (typeof value === 'object' && value !== null) {
+      clean[key] = stripHeavyBase64(value);
+    } else {
+      clean[key] = value;
+    }
+  }
+  return clean;
+}
 
 /**
  * Streaming Chat Editor with Server-Sent Events (SSE)
@@ -120,7 +145,7 @@ export const streamAiEdit = async (
 
   const prompt = `
 Current Portfolio Schema:
-${JSON.stringify(currentPortfolio, null, 2)}
+${JSON.stringify(stripHeavyBase64(currentPortfolio), null, 2)}
 
 User Instruction: "${userPrompt}"
 
@@ -206,11 +231,30 @@ Output ONLY the JSON patch array. Do not wrap in markdown or add explanations.
   
   // If it's not an array, maybe it ignored instructions and returned the full schema
   if (patchArray && patchArray.sections && patchArray.theme) {
+    restoreOriginalImages(patchArray, currentPortfolio);
     return patchArray;
   }
 
   return currentPortfolio;
 };
+
+/**
+ * Restores original base64 images into target schema if truncated placeholders were present
+ */
+function restoreOriginalImages(target: any, source: any) {
+  if (!target?.sections || !source?.sections) return;
+  const sourceProjects = source.sections.find((s: any) => s.type === 'projects')?.data?.projects || [];
+  const targetProjectsSection = target.sections.find((s: any) => s.type === 'projects');
+  if (targetProjectsSection?.data?.projects) {
+    targetProjectsSection.data.projects = targetProjectsSection.data.projects.map((tp: any) => {
+      const sp = sourceProjects.find((p: any) => p.id === tp.id || p.title === tp.title);
+      if (sp?.image && (!tp.image || tp.image.includes('[TRUNCATED'))) {
+        return { ...tp, image: sp.image };
+      }
+      return tp;
+    });
+  }
+}
 
 /**
  * Robust JSON extractor that handles markdown wrappers, preambles, and code blocks
@@ -269,7 +313,7 @@ Include:
 - theme (preset, palette, typography)
 - hero section (with name, title, tagline, CTAs, badge)
 - about section (with bio paragraphs, stats, location)
-- projects section (with 3 high-impact projects, tech tags, metrics)
+- projects section (CRITICAL: MUST set data.projects: [] as empty array; real software projects will be imported directly by user via GitHub, do not hallucinate fake software projects)
 - skills section (categorized)
 - experience section (2-3 realistic career milestones)
 - contact section

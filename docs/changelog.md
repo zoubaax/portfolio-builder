@@ -252,4 +252,31 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
   - **`ContactSection.jsx` :** Boutons d'action pleine largeur centrés et marges tactiles adaptées.
   - **`SectionWrapper.jsx` :** Barre d'outils flottante de style Elementor contrainte à `max-w-[95%]` avec défilement horizontal fluide pour ne jamais déborder hors de l'écran mobile.
 
-
+### 21. Isolation Totale des Projets par Portfolio, Zéro Hallucination IA & Persistance Globale du Compte GitHub
+- **Suppression Définitive des Projets Fictifs Mockés (`frontend/src/types/portfolio.js`) :**
+  - Élimination des anciens projets factices en dur (`Synapse`, `Hyperion`, `Krypton`) de tous les profils de templates (`MOCK_DEVELOPER_PORTFOLIO`, `MOCK_DESIGNER_PORTFOLIO`, `MOCK_MINIMALIST_PORTFOLIO`).
+  - Création de la factory `createFreshPortfolio(userName)` : garantit que tout nouveau portfolio démarre obligatoirement avec une liste de projets strictement vide (`projects: []`).
+- **Garantie d'Isolation Totale & Préservation des Projets Authentiques (`frontend/src/context/PortfolioContext.jsx`) :**
+  - **Création de Nouvelle Session (`createNewSession`) :** Réinitialise le portfolio actif via `createFreshPortfolio(firstName)` avec `portfolioId = null`. Le nouveau portfolio est complètement isolé des sessions précédentes et ne contient aucun projet résiduel.
+  - **Protection Anti-Pollution dans `sendChatMessage` :** Seuls les projets authentiques (issus des imports GitHub réels de l'utilisateur ou explicitement ajoutés via `options.projectsToAdd`) sont conservés dans `sec-projects`. Toute tentative de l'IA d'injecter des projets logiciels inventés ou partiels est automatiquement ignorée et filtrée.
+  - **Maintien Global du Compte GitHub Connecté :** Le compte GitHub de l'utilisateur (`user_id`, jeton OAuth, nom d'utilisateur et avatar) reste connecté au niveau du profil global dans Neon DB. L'utilisateur peut ainsi créer autant de portfolios qu'il le souhaite, son compte GitHub reste accessible partout, tout en ayant la liberté d'importer des sélections de projets 100% différentes et indépendantes pour chaque portfolio.
+- **Règles Strictes Anti-Hallucination Côté Backend (`backend/src/services/aiService.ts`) :**
+  - Mise à jour du `SYSTEM_PORTFOLIO_PROMPT` : interdiction absolue faite à l'IA d'inventer, d'imaginer ou d'halluciner des dépôts logiciels ou métriques dans la section `sec-projects`.
+  - Dans `generatePortfolioFromPrompt` : instruction explicite imposant `data.projects: []`, les projets réels devant être importés exclusivement par l'utilisateur depuis son compte GitHub.
+- **État Vide Élégant avec CTA Direct vers GitHub (`frontend/src/components/portfolio/sections/ProjectsSection.jsx`) :**
+  - Lorsqu'aucun projet n'a encore été importé (`projects.length === 0`), la section n'affiche plus un conteneur vide ou déroutant.
+  - Affichage d'une carte d'accueil épurée aux couleurs du thème actif :
+    - Icône officielle GitHub avec bordure d'accentuation lumineuse.
+    - Titre explicite : *"Aucun projet importé pour le moment"*.
+    - Sous-titre guidant l'utilisateur.
+### 22. Résolution du Dépassement de Contexte LLM (Images Base64) & Prise en Charge Complète des Couleurs de Fond
+- **Diagnostic de la Non-Modification de Couleur :**
+  - Lorsque des dépôts GitHub avec maquettes générées par IA étaient présents, les images stockées sous forme de chaînes Base64 brutes (plus de 1,38 million de caractères) étaient injectées directement dans le prompt système envoyé au modèle NVIDIA NIM.
+  - Le modèle rejetait la requête avec l'erreur `400: This model's maximum context length is 1048576 tokens. However, your messages resulted in 1067436 tokens`, ce qui déclenchait le bloc de secours (fallback) frontend sans appliquer la modification de couleur demandée.
+- **Sanitisation Sémantique des Payloads (`backend/src/services/aiService.ts`, `frontend/src/context/PortfolioContext.jsx`) :**
+  - Implémentation de `stripHeavyBase64` côté frontend et backend : les chaînes Base64 volumineuses sont tronquées en `[TRUNCATED_BASE64]` uniquement lors de la transmission au LLM.
+  - Réduction spectaculaire de la taille du prompt de **1 384 311 caractères à 4 687 caractères (-99,7%)**, réduisant le temps de traitement de l'IA à moins de 2 secondes.
+  - Lors de l'application du patch JSON RFC 6902, l'état complet initial (`currentPortfolio`) est préservé, garantissant que toutes les images haute définition restent 100% intactes sans altération.
+- **Adaptation Intelligente du Contraste & Thèmes Clairs/Sombres :**
+  - Mise à jour du prompt système : lorsque l'utilisateur demande une couleur de fond claire (jaune, blanc, beige, etc.), l'IA ajuste automatiquement `textPrimary` en sombre (`#0f172a`), `textSecondary` (`#475569`) et `surface` (`#fef9c3` / `#ffffff`) pour garantir une lisibilité irréprochable.
+  - Prise en charge enrichie des couleurs (jaune/yellow, vert, orange, bleu, cyan, codes hexadécimaux de fond) dans le gestionnaire de secours local.

@@ -7,7 +7,7 @@ import { usePortfolio } from '../../../context/PortfolioContext';
 import { RiCameraLine } from 'react-icons/ri';
 
 export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => {
-  const { updateSectionField, isEditMode, isMobileViewport } = usePortfolio();
+  const { updateSectionField, isEditMode, isMobileViewport, setViewMode } = usePortfolio();
   const { heading, subheading } = data || {};
   const projects = (data?.projects && Array.isArray(data.projects) && data.projects.length > 0)
     ? data.projects
@@ -48,11 +48,66 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
           />
         </div>
         <p className="text-sm font-medium" style={{ color: 'var(--theme-text-secondary)' }}>
-          Showing {projects.length} curated works
+          {projects.length > 0 ? `Showing ${projects.length} curated works` : '0 projet sélectionné'}
         </p>
       </div>
 
-      {/* 1. Bento Grid Variant */}
+      {/* Empty State when no GitHub projects have been imported yet */}
+      {projects.length === 0 ? (
+        <div
+          className="rounded-3xl border border-dashed p-8 sm:p-12 text-center transition-all duration-300"
+          style={{
+            backgroundColor: 'var(--theme-surface)',
+            borderColor: 'var(--theme-border)',
+          }}
+        >
+          <div
+            className="w-16 h-16 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-inner"
+            style={{
+              backgroundColor: 'rgba(99, 102, 241, 0.12)',
+              border: '1px solid var(--theme-border)',
+              color: 'var(--theme-accent)',
+            }}
+          >
+            <GithubIcon className="w-8 h-8" />
+          </div>
+
+          <h3
+            className="text-lg sm:text-xl font-bold mb-2 tracking-tight"
+            style={{
+              fontFamily: 'var(--theme-heading-font)',
+              color: 'var(--theme-text-primary)',
+            }}
+          >
+            Aucun projet importé pour le moment
+          </h3>
+
+          <p
+            className="text-xs sm:text-sm max-w-md mx-auto mb-6 leading-relaxed"
+            style={{ color: 'var(--theme-text-secondary)' }}
+          >
+            Connectez votre compte GitHub pour importer vos vrais dépôts, générer des maquettes 3D avec l'IA et personnaliser cette section selon vos envies.
+          </p>
+
+          {setViewMode && (
+            <button
+              onClick={() => setViewMode('projects')}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all transform hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+              style={{
+                backgroundColor: 'var(--theme-accent)',
+                color: '#ffffff',
+                boxShadow: '0 10px 25px -5px var(--theme-accent-glow, rgba(99,102,241,0.4))',
+              }}
+            >
+              <GithubIcon className="w-4 h-4" />
+              <span>Importer mes projets GitHub</span>
+              <ArrowUpRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      ) : (
+        <>
+          {/* 1. Bento Grid Variant */}
       {activeVariant === 'bento-grid' && (
         <div className={`grid ${isMobileViewport ? 'grid-cols-1 gap-5' : 'grid-cols-1 md:grid-cols-12 gap-6'}`}>
           {projects.map((proj, idx) => {
@@ -76,7 +131,7 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
                   >
                     <img src={proj.image} alt={proj.title}
                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[var(--theme-surface)] via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-t from-(--theme-surface) via-transparent to-transparent" />
 
                     {isEditMode && (
                       <div className="absolute inset-0 bg-black/50 backdrop-blur-xs opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-all z-20">
@@ -112,7 +167,7 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
                       value={proj.title}
                       onSave={(val) => handleProjectUpdate(idx, 'title', val)}
                       singleLine
-                      className="text-xl sm:text-2xl font-bold tracking-tight group-hover:text-[var(--theme-accent)] transition-colors block"
+                      className="text-xl sm:text-2xl font-bold tracking-tight group-hover:text-(--theme-accent) transition-colors block"
                       style={{ color: 'var(--theme-text-primary)', fontFamily: 'var(--theme-heading-font)' }}
                     />
                     <div className="flex items-center gap-2 shrink-0">
@@ -218,7 +273,7 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
                   value={proj.title}
                   onSave={(val) => handleProjectUpdate(idx, 'title', val)}
                   singleLine
-                  className="text-xl font-semibold group-hover:text-[var(--theme-accent)] transition-colors block"
+                  className="text-xl font-semibold group-hover:text-(--theme-accent) transition-colors block"
                   style={{ color: 'var(--theme-text-primary)', fontFamily: 'var(--theme-heading-font)' }}
                 />
                 <EditableText
@@ -246,6 +301,8 @@ export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => 
             </div>
           ))}
         </div>
+      )}
+        </>
       )}
 
       {/* Project Cover Image Picker Modal */}

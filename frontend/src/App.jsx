@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useUser } from '@clerk/react';
 import { Routes, Route, useNavigate, useParams } from 'react-router-dom';
 import { PortfolioProvider, usePortfolio } from './context/PortfolioContext';
@@ -27,17 +27,21 @@ function StudioWorkspace() {
 
 function StudioRoute() {
   const { id } = useParams();
-  const { loadPortfolioSession, portfolioId, fetchUserSessions } = usePortfolio();
+  const { loadPortfolioSession, fetchUserSessions } = usePortfolio();
+  const loadedIdRef = useRef(null);
 
   useEffect(() => {
     fetchUserSessions();
   }, [fetchUserSessions]);
 
   useEffect(() => {
-    if (id && id !== portfolioId) {
+    if (id && id !== loadedIdRef.current) {
+      loadedIdRef.current = id;
       loadPortfolioSession(id);
+    } else if (!id) {
+      loadedIdRef.current = null;
     }
-  }, [id, portfolioId, loadPortfolioSession]);
+  }, [id, loadPortfolioSession]);
 
   return <StudioWorkspace />;
 }

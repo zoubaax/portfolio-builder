@@ -207,41 +207,7 @@ export const MOCK_DEVELOPER_PORTFOLIO = {
       data: {
         heading: 'Featured Work',
         subheading: 'PORTFOLIO',
-        projects: [
-          {
-            id: 'proj-1',
-            title: 'Synapse — Realtime Vector Search Engine',
-            description: 'Sub-millisecond semantic search engine powered by HNSW indexes and custom quantization.',
-            tags: ['Rust', 'WebAssembly', 'PostgreSQL', 'Python'],
-            metrics: '4x faster index builds',
-            github: 'https://github.com',
-            link: 'https://synapse-search.dev',
-            image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=800&q=80',
-            featured: true,
-          },
-          {
-            id: 'proj-2',
-            title: 'KubeFlow Pipeline Visualizer',
-            description: 'Interactive canvas tool for debugging and deploying machine learning DAGs in Kubernetes.',
-            tags: ['React', 'TypeScript', 'Tailwind', 'Go'],
-            metrics: '12k GitHub Stars',
-            github: 'https://github.com',
-            link: 'https://kubeflow-vis.io',
-            image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80',
-            featured: true,
-          },
-          {
-            id: 'proj-3',
-            title: 'Aura AI — Ambient Coding Agent',
-            description: 'Autonomous coding companion integrating local LLMs with terminal execution sandboxes.',
-            tags: ['Next.js', 'Express', 'Groq', 'Docker'],
-            metrics: '25k Active Developers',
-            github: 'https://github.com',
-            link: 'https://aura-ai.tech',
-            image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
-            featured: false,
-          },
-        ],
+        projects: [],
       },
     },
     {
@@ -382,30 +348,7 @@ export const MOCK_DESIGNER_PORTFOLIO = {
       data: {
         heading: 'Selected Case Studies',
         subheading: 'PORTFOLIO',
-        projects: [
-          {
-            id: 'proj-d1',
-            title: 'Luminary — Financial Intelligence Dashboard',
-            description: 'Complete zero-to-one redesign of wealth management analytics with predictive chart visualizers.',
-            tags: ['Design Systems', 'Figma', 'Fintech', 'Prototyping'],
-            metrics: '+34% user retention',
-            github: '',
-            link: 'https://luminary-finance.design',
-            image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80',
-            featured: true,
-          },
-          {
-            id: 'proj-d2',
-            title: 'Prism — Multi-Brand Design Language',
-            description: 'Accessible token-based design system serving web, iOS, and Android applications seamlessly.',
-            tags: ['Tokens', 'Accessibility', 'Figma', 'React'],
-            metrics: '40% faster sprint delivery',
-            github: '',
-            link: 'https://prism-tokens.design',
-            image: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=800&q=80',
-            featured: true,
-          },
-        ],
+        projects: [],
       },
     },
     {
@@ -476,30 +419,7 @@ export const MOCK_MINIMALIST_PORTFOLIO = {
       data: {
         heading: 'Selected Works',
         subheading: 'ARCHIVE',
-        projects: [
-          {
-            id: 'proj-m1',
-            title: 'MonoText — Zero-Dependency Markdown Reader',
-            description: 'A 4kb web reader dedicated to pure readability with zero tracking scripts.',
-            tags: ['TypeScript', 'HTML5', 'Web Standards'],
-            metrics: '4kb bundle size',
-            github: 'https://github.com',
-            link: 'https://example.com',
-            image: '',
-            featured: false,
-          },
-          {
-            id: 'proj-m2',
-            title: 'Simplex — Micro SQL Query Engine',
-            description: 'Minimal SQLite client abstraction built for embedded applications.',
-            tags: ['C', 'Rust', 'SQLite'],
-            metrics: '1.2ms latency',
-            github: 'https://github.com',
-            link: 'https://example.com',
-            image: '',
-            featured: false,
-          },
-        ],
+        projects: [],
       },
     },
     {
@@ -518,3 +438,112 @@ export const MOCK_MINIMALIST_PORTFOLIO = {
     },
   ],
 };
+
+/**
+ * Creates a clean, unpolluted fresh portfolio template with strictly empty projects.
+ * Guaranteed deep clone with no shared references across sessions.
+ */
+export const createFreshPortfolio = (userName = 'Mon Portfolio') => ({
+  meta: {
+    title: `${userName} — Portfolio`,
+    slug: `portfolio-${Date.now().toString(36)}`,
+    description: 'Portfolio professionnel et vitrine de projets.',
+  },
+  theme: THEME_PRESETS['cyber-dark'],
+  sections: [
+    {
+      id: 'sec-hero',
+      type: 'hero',
+      variant: 'split-portrait',
+      visible: true,
+      data: {
+        badge: 'Disponible pour missions & opportunités',
+        name: userName || 'Développeur',
+        title: 'Ingénieur Logiciel & Cloud',
+        tagline: 'Passionné par la conception de solutions logicielles modernes, performantes et scalables.',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&h=400&q=80',
+        primaryCta: { text: 'Voir mes Projets', link: '#projects' },
+        secondaryCta: { text: 'Me Contacter', link: '#contact' },
+        socials: [
+          { platform: 'github', url: 'https://github.com' },
+          { platform: 'linkedin', url: 'https://linkedin.com' },
+        ],
+      },
+    },
+    {
+      id: 'sec-about',
+      type: 'about',
+      variant: 'bento',
+      visible: true,
+      data: {
+        heading: 'À Propos de Moi',
+        subheading: 'PARCOURS & VISION',
+        bio: [
+          'Développeur passionné par les technologies modernes et les architectures cloud.',
+          'Je crée des applications robustes avec une attention particulière à la qualité du code et à l’expérience utilisateur.'
+        ],
+        stats: [
+          { value: '3+', label: "Années d'expérience" },
+          { value: '100%', label: 'Engagement' },
+        ],
+        location: 'Maroc',
+      },
+    },
+    {
+      id: 'sec-projects',
+      type: 'projects',
+      variant: 'bento-grid',
+      visible: true,
+      data: {
+        heading: 'Projets Sélectionnés',
+        subheading: 'PORTFOLIO',
+        projects: [], // STRICTLY EMPTY - User chooses which GitHub repos to import!
+      },
+    },
+    {
+      id: 'sec-skills',
+      type: 'skills',
+      variant: 'category-cards',
+      visible: true,
+      data: {
+        heading: 'Compétences & Technologies',
+        subheading: 'STACK TECHNIQUE',
+        categories: [
+          {
+            name: 'Frontend',
+            skills: ['React', 'JavaScript', 'HTML5', 'CSS3', 'Tailwind CSS'],
+          },
+          {
+            name: 'Backend & Cloud',
+            skills: ['Node.js', 'Express', 'Docker', 'Git', 'Linux'],
+          },
+        ],
+      },
+    },
+    {
+      id: 'sec-experience',
+      type: 'experience',
+      variant: 'timeline',
+      visible: true,
+      data: {
+        heading: 'Expériences & Formations',
+        subheading: 'PARCOURS',
+        items: [],
+      },
+    },
+    {
+      id: 'sec-contact',
+      type: 'contact',
+      variant: 'minimal-card',
+      visible: true,
+      data: {
+        heading: 'Me Contacter',
+        subheading: 'CONTACT',
+        text: 'N’hésitez pas à m’écrire pour toute opportunité, collaboration ou échange technique.',
+        email: 'contact@example.com',
+        location: 'Maroc',
+        buttonText: 'Envoyer un Message',
+      },
+    },
+  ],
+});
