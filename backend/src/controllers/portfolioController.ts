@@ -33,12 +33,13 @@ export const portfolioController = {
   async create(req: AuthenticatedRequest, res: Response) {
     try {
       const userId = req.auth!.userId;
-      const { title, subdomainSlug, schemaData } = req.body;
+      const { title, subdomainSlug, schemaData, chatHistory } = req.body;
 
       const created = await portfolioService.createPortfolio(userId, {
         title,
         subdomainSlug,
         schemaData,
+        chatHistory,
       });
 
       return sendSuccess(res, created, 'Portfolio created successfully', 201);
@@ -54,13 +55,14 @@ export const portfolioController = {
     try {
       const userId = req.auth!.userId;
       const id = req.params.id as string;
-      const { schemaData, title, isPublished, promptNote } = req.body;
+      const { schemaData, title, isPublished, promptNote, chatHistory } = req.body;
 
       const updated = await portfolioService.updatePortfolio(id, userId, {
         schemaData,
         title,
         isPublished,
         promptNote,
+        chatHistory,
       });
 
       if (!updated) {

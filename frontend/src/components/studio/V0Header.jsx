@@ -14,7 +14,8 @@ import {
   RiLoader4Line,
   RiExternalLinkLine,
   RiEdit2Line,
-  RiGithubFill
+  RiGithubFill,
+  RiHistoryLine
 } from 'react-icons/ri';
 
 export const V0Header = () => {
@@ -36,7 +37,8 @@ export const V0Header = () => {
     savePortfolio,
     saveStatus,
     isPublished,
-    hasGeneratedFirstPortfolio
+    hasGeneratedFirstPortfolio,
+    setIsHistoryOpen,
   } = usePortfolio();
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
@@ -240,6 +242,15 @@ export const V0Header = () => {
           title={isChatCollapsed ? 'Show Chat Panel' : 'Collapse to Fullscreen'}
         >
           <RiSideBarLine className="w-4 h-4" />
+        </button>
+
+        {/* Sessions & Chat History Drawer Trigger */}
+        <button
+          onClick={() => setIsHistoryOpen((prev) => !prev)}
+          className="p-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+          title="Historique des sessions de chat"
+        >
+          <RiHistoryLine className="w-4 h-4" />
         </button>
 
         {/* High-Contrast Solid White Vercel "Deploy" Button */}

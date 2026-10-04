@@ -7,10 +7,15 @@ import { AgentOnboarding } from './components/onboarding/AgentOnboarding';
 import { V0ChatPanel } from './components/studio/V0ChatPanel';
 import { V0Canvas } from './components/studio/V0Canvas';
 
+import { ChatHistoryDrawer } from './components/studio/ChatHistoryDrawer';
+
 function StudioWorkspace() {
   const navigate = useNavigate();
   return (
     <div className="h-screen w-screen flex flex-row overflow-hidden bg-white text-zinc-900 select-none">
+      {/* Session & Chat History Drawer */}
+      <ChatHistoryDrawer />
+
       {/* 1. Left Side: v0 Chat Panel ([ ◫ ] ☆ Project Name ▾ + Message Stream + Input Dock) */}
       <V0ChatPanel onNewProject={() => navigate('/')} />
 
@@ -22,15 +27,17 @@ function StudioWorkspace() {
 
 function StudioRoute() {
   const { id } = useParams();
-  const { setPortfolioId, fetchVersions } = usePortfolio();
+  const { loadPortfolioSession, portfolioId, fetchUserSessions } = usePortfolio();
 
   useEffect(() => {
-    if (id) {
-      setPortfolioId(id);
-      fetchVersions(id);
-      // Future: fetch the portfolio by ID and load it into context
+    fetchUserSessions();
+  }, [fetchUserSessions]);
+
+  useEffect(() => {
+    if (id && id !== portfolioId) {
+      loadPortfolioSession(id);
     }
-  }, [id, setPortfolioId, fetchVersions]);
+  }, [id, portfolioId, loadPortfolioSession]);
 
   return <StudioWorkspace />;
 }

@@ -15,7 +15,8 @@ import {
   RiCheckLine,
   RiCheckDoubleLine,
   RiGithubFill,
-  RiArrowRightLine
+  RiArrowRightLine,
+  RiHistoryLine
 } from 'react-icons/ri';
 
 export const V0ChatPanel = ({ onNewProject }) => {
@@ -29,7 +30,10 @@ export const V0ChatPanel = ({ onNewProject }) => {
     activeTasks,
     isChatCollapsed,
     setIsChatCollapsed,
-    setViewMode
+    setViewMode,
+    isHistoryOpen,
+    setIsHistoryOpen,
+    createNewSession,
   } = usePortfolio();
 
   const [prompt, setPrompt] = useState('');
@@ -81,38 +85,52 @@ export const V0ChatPanel = ({ onNewProject }) => {
     return null;
   }
 
-  const projectTitle = portfolio.meta?.title?.split('—')[0]?.trim() || 'Test';
+  const projectTitle = portfolio.meta?.title?.split('—')[0]?.trim() || 'Portfolio';
 
   return (
-    <aside className="w-[360px] lg:w-[400px] h-screen border-r border-zinc-200 bg-white flex flex-col z-20 shrink-0 select-none text-zinc-900 font-sans">
+    <aside className="w-90 lg:w-100 h-screen border-r border-zinc-200 bg-white flex flex-col z-20 shrink-0 select-none text-zinc-900 font-sans">
       
       {/* 1. Top Bar (Matching Screenshot: [ ◫ ] ☆ Test ▾) */}
       <div className="h-12 px-3.5 border-b border-zinc-100 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {/* Collapse Icon [ ◫ ] */}
           <button
             onClick={() => setIsChatCollapsed(true)}
             className="w-7 h-7 rounded-md hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 flex items-center justify-center transition-colors cursor-pointer"
-            title="Collapse Sidebar"
+            title="Réduire le panneau de chat"
           >
             <RiSideBarLine className="w-4 h-4" />
           </button>
 
+          {/* History Icon Trigger */}
+          <button
+            onClick={() => setIsHistoryOpen((prev) => !prev)}
+            className="w-7 h-7 rounded-md hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900 flex items-center justify-center transition-colors cursor-pointer"
+            title="Historique des sessions"
+          >
+            <RiHistoryLine className="w-4 h-4" />
+          </button>
+
           {/* Star + Project Name + Dropdown Chevron */}
-          <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-700 hover:text-zinc-900 cursor-pointer px-1.5 py-1 rounded hover:bg-zinc-100 transition-colors">
-            <RiStarLine className="w-3.5 h-3.5 text-zinc-400" />
-            <span className="font-semibold text-zinc-800 max-w-[150px] truncate">{projectTitle}</span>
+          <button
+            onClick={() => setIsHistoryOpen((prev) => !prev)}
+            className="flex items-center gap-1.5 text-xs font-medium text-zinc-700 hover:text-zinc-900 cursor-pointer px-1.5 py-1 rounded hover:bg-zinc-100 transition-colors text-left"
+            title="Changer de session ou voir l'historique"
+          >
+            <RiStarLine className="w-3.5 h-3.5 text-amber-400" />
+            <span className="font-semibold text-zinc-800 max-w-35 truncate">{projectTitle}</span>
             <RiArrowDownSLine className="w-3 h-3 text-zinc-400" />
-          </div>
+          </button>
         </div>
 
         {/* New Session Button */}
         <button
-          onClick={onNewProject}
-          className="text-xs text-zinc-500 hover:text-zinc-900 px-2 py-1 rounded hover:bg-zinc-100 transition-colors cursor-pointer"
-          title="New Generation"
+          onClick={createNewSession}
+          className="flex items-center gap-1 text-xs font-medium text-zinc-600 hover:text-zinc-900 px-2 py-1 rounded hover:bg-zinc-100 transition-colors cursor-pointer"
+          title="Nouvelle session"
         >
-          New
+          <RiAddLine className="w-3.5 h-3.5 text-zinc-500" />
+          <span>New</span>
         </button>
       </div>
 

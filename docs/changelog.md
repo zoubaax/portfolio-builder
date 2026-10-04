@@ -112,6 +112,24 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
   - Le pseudo GitHub est directement certifié par les serveurs de GitHub et Clerk, garantissant une intégrité à 100%.
 - **Expérience Utilisateur Sécurisée & Liée à Vie :**
   - Si l'utilisateur est connecté via GitHub : détection automatique instantanée, affichage du badge `🟢 Certifié OAuth`, et chargement direct de ses projets (zéro formulaire).
-  - Si l'utilisateur est connecté par email : écran d'authentification dédié avec bouton direct `[ Connecter avec GitHub OAuth ]` et raccourci vers la gestion de profil Clerk (`openUserProfile`).
+### 11. Système Multi-Sessions & Historique Persistant PostgreSQL (Style ChatGPT / v0)
+- **Migration & Persistance Schéma PostgreSQL Neon (`schema.ts`, `ALTER TABLE`) :**
+  - Ajout de la colonne `chat_history` de type `jsonb DEFAULT '[]'::jsonb` à la table `portfolios`.
+  - Prise en charge native de la persistance de l'historique complet des messages (rôles `user` et `assistant`, horodatage, étapes de travail et checklists d'exécution).
+- **Couche Backend Sécurisée Multi-Tenant (`portfolioRoutes.ts`, `portfolioService.ts`, `portfolioController.ts`) :**
+  - Validation Zod étendue avec `chatHistory: z.array(z.any()).optional()` sur la création (`POST /`) et la mise à jour (`PUT /:id`).
+  - Isolation stricte par tenant : chaque opération de lecture, création, modification et suppression est filtrée de façon inviolable par `userId` extrait du JWT Clerk.
+- **Gestionnaire d'État Multi-Sessions Frontend (`PortfolioContext.jsx`) :**
+  - **Auto-persistance automatique (`persistSession`) :** Dès qu'un prompt est exécuté par l'IA (ou via le fallback intelligent), l'état du portfolio et l'historique des messages sont immédiatement synchronisés dans la base PostgreSQL Neon sans nécessiter de clic manuel.
+  - Si la session est nouvelle (`portfolioId === null`), création automatique du portfolio en base avec génération d'un slug conforme et mise à jour transparente de l'URL vers `/studio/:id` sans rechargement.
+  - Fonctions complètes de gestion : `fetchUserSessions()`, `loadPortfolioSession(id)`, `createNewSession()`, `deleteSession(id)` et `renameSession(id, newTitle)`.
+- **Composant Tiroir d'Historique (`ChatHistoryDrawer.jsx`) :**
+  - Slide-over design v0 / Vercel épuré avec recherche en temps réel, tri chronologique (`updatedAt DESC`), badge de session active (`🟢 Actif`), horodatage relatif ("Il y a 5 min", "Hier", etc.) et compteur de messages.
+  - Actions rapides interactives : renommage en ligne (inline edit), suppression sécurisée avec double confirmation anti-clic accidentel, et bouton `+ Nouveau` pour démarrer un nouveau chat instantanément.
+- **Intégration Studio & Navigation Dynamique (`V0ChatPanel.jsx`, `V0Header.jsx`, `App.jsx`) :**
+  - Le titre du projet `☆ Project Name ▾` et l'icône d'historique dans `V0ChatPanel` et `V0Header` ouvrent le tiroir d'historique d'un simple clic.
+  - Le bouton `New` réinitialise proprement le canvas et le chat pour une nouvelle session vierge sans perdre les sessions précédentes.
+  - Support natif du rechargement (`F5`) et des liens partagés sur `/studio/:id` : le composant `StudioRoute` recharge instantanément le portfolio et tout l'historique de chat associé depuis PostgreSQL Neon.
+
 
 

@@ -54,7 +54,10 @@ export const portfolioService = {
   /**
    * Create a new portfolio for user with initial version snapshot
    */
-  async createPortfolio(userId: string, data: { title: string; subdomainSlug: string; schemaData: any }) {
+  async createPortfolio(
+    userId: string,
+    data: { title: string; subdomainSlug: string; schemaData: any; chatHistory?: any }
+  ) {
     // Ensure user record exists in Neon (sync from Clerk)
     await db
       .insert(users)
@@ -75,6 +78,7 @@ export const portfolioService = {
         subdomainSlug: data.subdomainSlug.toLowerCase().trim(),
         title: data.title,
         schemaData: data.schemaData,
+        chatHistory: data.chatHistory ?? [],
         version: 1,
       })
       .returning();
@@ -97,7 +101,7 @@ export const portfolioService = {
   async updatePortfolio(
     portfolioId: string,
     userId: string,
-    data: { schemaData?: any; title?: string; isPublished?: boolean; promptNote?: string }
+    data: { schemaData?: any; title?: string; isPublished?: boolean; promptNote?: string; chatHistory?: any }
   ) {
     // 1. Verify ownership
     const existing = await this.getPortfolioById(portfolioId, userId);
@@ -111,6 +115,7 @@ export const portfolioService = {
       .set({
         schemaData: data.schemaData ?? existing.schemaData,
         title: data.title ?? existing.title,
+        chatHistory: data.chatHistory !== undefined ? data.chatHistory : existing.chatHistory,
         isPublished: data.isPublished ?? existing.isPublished,
         publishedAt: data.isPublished ? new Date() : existing.publishedAt,
         version: nextVersion,

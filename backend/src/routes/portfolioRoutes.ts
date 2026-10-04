@@ -14,6 +14,7 @@ const createPortfolioSchema = z.object({
     .max(50)
     .regex(/^[a-z0-9-]+$/, 'Subdomain slug can only contain lowercase letters, numbers, and hyphens'),
   schemaData: z.record(z.any()),
+  chatHistory: z.array(z.any()).optional(),
 });
 
 const updatePortfolioSchema = z.object({
@@ -21,6 +22,7 @@ const updatePortfolioSchema = z.object({
   isPublished: z.boolean().optional(),
   promptNote: z.string().optional(),
   schemaData: z.record(z.any()).optional(),
+  chatHistory: z.array(z.any()).optional(),
 });
 
 // Public Subdomain Resolution Route

@@ -27,6 +27,7 @@ export const portfolios = pgTable('portfolios', {
   subdomainSlug: varchar('subdomain_slug', { length: 100 }).notNull().unique(),
   title: varchar('title', { length: 255 }).notNull(),
   schemaData: jsonb('schema_data').notNull(), // Complete PortfolioSchema JSON
+  chatHistory: jsonb('chat_history').default([]), // Persistent multi-chat session conversation messages
   isPublished: boolean('is_published').default(false).notNull(),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   version: integer('version').default(1).notNull(),

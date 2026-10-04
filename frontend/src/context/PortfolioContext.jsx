@@ -7,6 +7,13 @@ import {
   THEME_PRESETS
 } from '../types/portfolio';
 
+const DEFAULT_WELCOME_MESSAGE = {
+  id: 'msg-welcome',
+  role: 'assistant',
+  text: "👋 Hi! I'm your AI Portfolio Agent. You can describe what you need in chat (e.g. 'Senior DevOps Engineer with terminal hero and dark cyber theme') or customize your layout directly.",
+  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+};
+
 const PortfolioContext = createContext(null);
 
 export const PortfolioProvider = ({ children }) => {
@@ -24,6 +31,12 @@ export const PortfolioProvider = ({ children }) => {
   // History for Undo / Redo
   const [history, setHistory] = useState([MOCK_DEVELOPER_PORTFOLIO]);
   const [historyIndex, setHistoryIndex] = useState(0);
+
+  // Chat & Multi-session management state
+  const [chatMessages, setChatMessages] = useState([DEFAULT_WELCOME_MESSAGE]);
+  const [sessions, setSessions] = useState([]);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Studio UI view state
   const [studioTheme, setStudioTheme] = useState('dark'); // Default to sleek Vercel dark mode
@@ -67,13 +80,195 @@ export const PortfolioProvider = ({ children }) => {
     }
   }, [portfolioId, getAuthHeaders]);
 
+  // Fetch All User Sessions (Chat & Portfolio History)
+  const fetchUserSessions = useCallback(async () => {
+    setIsLoadingSessions(true);
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch('http://localhost:5050/api/v1/portfolios', { headers });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.data)) {
+        setSessions(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch user sessions', err);
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, [getAuthHeaders]);
+
+  // Auto-sync sessions when auth is ready
+  useEffect(() => {
+    if (isSignedIn) {
+      fetchUserSessions();
+    }
+  }, [isSignedIn, fetchUserSessions]);
+
+  // Load a specific portfolio & chat session from Neon DB
+  const loadPortfolioSession = useCallback(async (id) => {
+    if (!id) return;
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`http://localhost:5050/api/v1/portfolios/${id}`, { headers });
+      const data = await res.json();
+      if (data.success && data.data) {
+        const item = data.data;
+        setPortfolioId(item.id);
+        if (item.schemaData) {
+          setPortfolio(item.schemaData);
+          setHistory([item.schemaData]);
+          setHistoryIndex(0);
+        }
+        setIsPublished(!!item.isPublished);
+
+        if (Array.isArray(item.chatHistory) && item.chatHistory.length > 0) {
+          setChatMessages(item.chatHistory);
+        } else {
+          setChatMessages([
+            {
+              id: `msg-welcome-${item.id}`,
+              role: 'assistant',
+              text: `📂 Session "${item.title || 'Portfolio'}" chargée avec succès. Vous pouvez continuer à personnaliser votre portfolio ici.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            },
+          ]);
+        }
+        setHasGeneratedFirstPortfolio(true);
+        fetchVersions(item.id);
+        setIsHistoryOpen(false);
+        window.history.replaceState(null, '', `/studio/${item.id}`);
+        return item;
+      }
+    } catch (err) {
+      console.error('Failed to load portfolio session', err);
+    }
+  }, [getAuthHeaders, fetchVersions]);
+
+  // Start a fresh, clean chat session
+  const createNewSession = useCallback(() => {
+    setPortfolioId(null);
+    setPortfolio(MOCK_DEVELOPER_PORTFOLIO);
+    setHistory([MOCK_DEVELOPER_PORTFOLIO]);
+    setHistoryIndex(0);
+    setChatMessages([DEFAULT_WELCOME_MESSAGE]);
+    setHasGeneratedFirstPortfolio(false);
+    setVersions([]);
+    setIsHistoryOpen(false);
+    window.history.replaceState(null, '', '/studio');
+  }, []);
+
+  // Delete a session
+  const deleteSession = useCallback(async (id) => {
+    if (!id) return;
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`http://localhost:5050/api/v1/portfolios/${id}`, {
+        method: 'DELETE',
+        headers,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSessions((prev) => prev.filter((s) => s.id !== id));
+        if (portfolioId === id) {
+          createNewSession();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to delete session', err);
+    }
+  }, [portfolioId, getAuthHeaders, createNewSession]);
+
+  // Rename a session
+  const renameSession = useCallback(async (id, newTitle) => {
+    if (!id || !newTitle?.trim()) return;
+    try {
+      const headers = await getAuthHeaders();
+      const res = await fetch(`http://localhost:5050/api/v1/portfolios/${id}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ title: newTitle.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSessions((prev) =>
+          prev.map((s) => (s.id === id ? { ...s, title: newTitle.trim() } : s))
+        );
+        if (portfolioId === id) {
+          setPortfolio((prev) => ({
+            ...prev,
+            meta: { ...prev.meta, title: newTitle.trim() },
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Failed to rename session', err);
+    }
+  }, [portfolioId, getAuthHeaders]);
+
+  // Auto-Persist Session (Persists schema & chatHistory seamlessly on AI generations)
+  const persistSession = useCallback(async (currentPortfolio, currentChat, promptNote) => {
+    try {
+      const headers = await getAuthHeaders();
+      const title = currentPortfolio.meta?.title || 'Portfolio';
+      const rawSlug = currentPortfolio.meta?.slug || `port-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
+      const cleanSlug = rawSlug
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/--+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 48) || `port-${Date.now().toString().slice(-6)}`;
+
+      if (portfolioId) {
+        await fetch(`http://localhost:5050/api/v1/portfolios/${portfolioId}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            schemaData: currentPortfolio,
+            chatHistory: currentChat,
+            title,
+            promptNote: promptNote || 'AI Prompt Update',
+          }),
+        });
+        fetchVersions(portfolioId);
+        fetchUserSessions();
+      } else {
+        const res = await fetch(`http://localhost:5050/api/v1/portfolios`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            title,
+            subdomainSlug: cleanSlug,
+            schemaData: currentPortfolio,
+            chatHistory: currentChat,
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.data?.id) {
+          const newId = data.data.id;
+          setPortfolioId(newId);
+          window.history.replaceState(null, '', `/studio/${newId}`);
+          fetchVersions(newId);
+          fetchUserSessions();
+        }
+      }
+    } catch (err) {
+      console.error('Auto-persist session error:', err);
+    }
+  }, [portfolioId, getAuthHeaders, fetchVersions, fetchUserSessions]);
+
   // Save or Update Portfolio to Neon DB
   const savePortfolio = useCallback(async (publish = false, promptNote = '') => {
     setSaveStatus('saving');
     try {
       const headers = await getAuthHeaders();
       const title = portfolio.meta?.title || 'Portfolio';
-      const slug = portfolio.meta?.slug || `portfolio-${Date.now().toString().slice(-4)}`;
+      const rawSlug = portfolio.meta?.slug || `port-${Date.now().toString().slice(-4)}`;
+      const cleanSlug = rawSlug
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/--+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 48) || `port-${Date.now().toString().slice(-6)}`;
 
       let response;
       if (portfolioId) {
@@ -82,6 +277,7 @@ export const PortfolioProvider = ({ children }) => {
           headers,
           body: JSON.stringify({
             schemaData: portfolio,
+            chatHistory: chatMessages,
             title,
             isPublished: publish,
             promptNote: promptNote || (publish ? 'Published site update' : 'Saved studio revision'),
@@ -93,8 +289,9 @@ export const PortfolioProvider = ({ children }) => {
           headers,
           body: JSON.stringify({
             title,
-            subdomainSlug: slug,
+            subdomainSlug: cleanSlug,
             schemaData: portfolio,
+            chatHistory: chatMessages,
           }),
         });
       }
@@ -104,7 +301,9 @@ export const PortfolioProvider = ({ children }) => {
         setPortfolioId(result.data.id);
         setIsPublished(result.data.isPublished);
         setSaveStatus('saved');
+        window.history.replaceState(null, '', `/studio/${result.data.id}`);
         fetchVersions(result.data.id);
+        fetchUserSessions();
         setTimeout(() => setSaveStatus('idle'), 3000);
         return result.data;
       } else {
@@ -118,7 +317,7 @@ export const PortfolioProvider = ({ children }) => {
       setTimeout(() => setSaveStatus('idle'), 3000);
       throw err;
     }
-  }, [portfolio, portfolioId, getAuthHeaders, fetchVersions]);
+  }, [portfolio, portfolioId, chatMessages, getAuthHeaders, fetchVersions, fetchUserSessions]);
 
   // Rollback to specific version snapshot
   const rollbackToVersion = useCallback(async (versionId) => {
@@ -146,16 +345,6 @@ export const PortfolioProvider = ({ children }) => {
   const toggleStudioTheme = useCallback(() => {
     setStudioTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   }, []);
-
-  // Studio AI Chat state
-  const [chatMessages, setChatMessages] = useState([
-    {
-      id: 'msg-welcome',
-      role: 'assistant',
-      text: "👋 Hi! I'm your AI Portfolio Agent. You can edit any text directly on the canvas like Elementor, or describe changes in chat (e.g. 'Make it a dark bento style' or 'Add a machine learning project').",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    },
-  ]);
 
   // Push state to history
   const pushState = useCallback((newState) => {
@@ -627,6 +816,7 @@ export const PortfolioProvider = ({ children }) => {
         const isFirstGen = !hasGeneratedFirstPortfolio;
         setHasGeneratedFirstPortfolio(true);
         const finalTasks = initialTasks.map((t) => ({ ...t, done: true, active: false }));
+        let finalMessages = [];
         setChatMessages((prev) => {
           const updated = prev.map((m) =>
             m.id === assistantMsgId
@@ -648,8 +838,12 @@ export const PortfolioProvider = ({ children }) => {
             });
           }
 
+          finalMessages = updated;
           return updated;
         });
+
+        // Persist session schema & chat history to Neon DB
+        persistSession(updatedPortfolio, finalMessages, promptText);
 
         setTimeout(() => {
           setViewMode('preview');
@@ -814,8 +1008,9 @@ export const PortfolioProvider = ({ children }) => {
       pushState(fallbackPortfolio);
       setHasGeneratedFirstPortfolio(true);
       const finalTasks = initialTasks.map((t) => ({ ...t, done: true, active: false }));
-      setChatMessages((prev) =>
-        prev.map((m) =>
+      let finalFallbackMessages = [];
+      setChatMessages((prev) => {
+        const updated = prev.map((m) =>
           m.id === assistantMsgId
             ? {
                 ...m,
@@ -823,8 +1018,14 @@ export const PortfolioProvider = ({ children }) => {
                 tasks: finalTasks,
               }
             : m
-        )
-      );
+        );
+        finalFallbackMessages = updated;
+        return updated;
+      });
+
+      // Persist fallback session schema & chat history to Neon DB
+      persistSession(fallbackPortfolio, finalFallbackMessages, promptText);
+
       setTimeout(() => {
         setViewMode('preview');
       }, 1200);
@@ -833,7 +1034,7 @@ export const PortfolioProvider = ({ children }) => {
       setActiveTasks(null);
       setIsGenerating(false);
     }
-  }, [isGenerating, portfolio, pushState, getAuthHeaders]);
+  }, [isGenerating, portfolio, pushState, getAuthHeaders, persistSession, hasGeneratedFirstPortfolio, firstName]);
 
   return (
     <PortfolioContext.Provider
@@ -856,6 +1057,15 @@ export const PortfolioProvider = ({ children }) => {
         selectedSectionId,
         setSelectedSectionId,
         chatMessages,
+        sessions,
+        isLoadingSessions,
+        isHistoryOpen,
+        setIsHistoryOpen,
+        fetchUserSessions,
+        loadPortfolioSession,
+        createNewSession,
+        deleteSession,
+        renameSession,
         isGenerating,
         activeTasks,
         streamingCode,
