@@ -25,6 +25,7 @@ import {
   RiShieldCheckLine,
   RiLockPasswordLine,
   RiUserSettingsLine,
+  RiLogoutBoxRLine,
 } from 'react-icons/ri';
 
 export const GithubProjectsTab = ({ onApplyComplete }) => {
@@ -33,12 +34,18 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
   const { sendChatMessage, sendMessage, setViewMode, studioTheme, portfolio } = usePortfolio();
   const isLight = studioTheme === 'light';
 
-  // Certified GitHub account verified cryptographically by Clerk OAuth
+  // State for direct Neon DB linked GitHub account
+  const [linkedAccount, setLinkedAccount] = useState({ connected: false, username: null, avatarUrl: null });
+  const [isCheckingStatus, setIsCheckingStatus] = useState(true);
+
+  // Certified GitHub account verified cryptographically (Direct OAuth or Clerk OAuth fallback)
   const clerkGitHubAccount = user?.externalAccounts?.find(
     (acc) => acc.provider === 'oauth_github' || acc.verification?.strategy === 'oauth_github'
   );
 
-  const verifiedUsername = clerkGitHubAccount?.username || '';
+  const verifiedUsername = linkedAccount.username || clerkGitHubAccount?.username || '';
+  const verifiedAvatar =
+    linkedAccount.avatarUrl || (verifiedUsername ? `https://github.com/${verifiedUsername}.png?size=80` : null);
 
   const [isLinkingOAuth, setIsLinkingOAuth] = useState(false);
   const [repos, setRepos] = useState([]);
@@ -53,6 +60,50 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
   const [isApplying, setIsApplying] = useState(false);
   const [applyStep, setApplyStep] = useState('');
 
+  // 1. Fetch linked GitHub account status from Neon DB
+  useEffect(() => {
+    let isMounted = true;
+    const checkStatus = async () => {
+      if (!user?.id) {
+        setIsCheckingStatus(false);
+        return;
+      }
+      try {
+        const res = await fetch(`http://localhost:5050/api/v1/github/status?userId=${encodeURIComponent(user.id)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted && json.success && json.data?.connected) {
+            setLinkedAccount(json.data);
+          }
+        }
+      } catch (e) {
+        console.warn('GitHub status check error:', e);
+      } finally {
+        if (isMounted) setIsCheckingStatus(false);
+      }
+    };
+
+    checkStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id]);
+
+  // 2. Listen for OAuth popup postMessage success
+  useEffect(() => {
+    const handleOAuthMessage = (event) => {
+      if (event.data?.type === 'GITHUB_OAUTH_SUCCESS') {
+        const { username, avatarUrl } = event.data;
+        setLinkedAccount({ connected: true, username, avatarUrl });
+        setSuccessNotice(`Compte GitHub @${username} authentifié et connecté avec succès !`);
+        handleFetchRepos(username);
+      }
+    };
+
+    window.addEventListener('message', handleOAuthMessage);
+    return () => window.removeEventListener('message', handleOAuthMessage);
+  }, [user?.id]);
+
   // Method: Fetch repositories for the authenticated GitHub user
   const handleFetchRepos = async (userToFetch) => {
     if (!userToFetch) return;
@@ -62,7 +113,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     setSelectedRepoIds(new Set());
 
     try {
-      const data = await fetchUserRepos(userToFetch);
+      const data = await fetchUserRepos(userToFetch, user?.id);
       setRepos(data);
     } catch (err) {
       setError(err.message || 'Impossible de récupérer les dépôts.');
@@ -79,40 +130,54 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     }
   }, [verifiedUsername]);
 
-  // Method: Initiate official Clerk OAuth linking with GitHub
-  const handleLinkGitHubOAuth = async () => {
+  // Method: Initiate direct GitHub OAuth flow via secure popup (decoupled from Clerk email conflicts)
+  const handleLinkGitHubOAuth = () => {
     setIsLinkingOAuth(true);
     setError(null);
     try {
-      if (!user) throw new Error('Utilisateur non connecté');
+      const userId = user?.id || 'guest';
+      const authUrl = `http://localhost:5050/api/v1/github/authorize?userId=${encodeURIComponent(userId)}`;
+      const width = 600;
+      const height = 750;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
 
-      const externalAccount = await user.createExternalAccount({
-        strategy: 'oauth_github',
-        redirectUrl: window.location.href,
-        redirect_url: window.location.href,
-      });
+      const popup = window.open(
+        authUrl,
+        'github_oauth_popup',
+        `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,status=yes`
+      );
 
-      if (externalAccount?.verification?.externalVerificationRedirectUrl) {
-        window.location.href = externalAccount.verification.externalVerificationRedirectUrl;
-        return;
-      }
-
-      if (openUserProfile) {
-        openUserProfile();
+      if (!popup) {
+        throw new Error('Le pop-up d\'authentification a été bloqué par votre navigateur. Veuillez autoriser les fenêtres pop-up.');
       }
     } catch (err) {
-      console.warn('Clerk OAuth account creation notice:', err);
-      if (openUserProfile) {
-        openUserProfile();
-      } else {
-        setError(
-          err.errors?.[0]?.message ||
-            err.message ||
-            'La connexion OAuth GitHub nécessite d\'activer GitHub dans votre tableau de bord Clerk (Social Connections).'
-        );
-      }
+      setError(err.message || 'Erreur lors de l\'ouverture de la connexion GitHub.');
     } finally {
       setIsLinkingOAuth(false);
+    }
+  };
+
+  // Method: Disconnect GitHub account
+  const handleDisconnect = async () => {
+    if (!confirm('Voulez-vous vraiment dissocier ce compte GitHub ?')) return;
+
+    setIsLoading(true);
+    setError(null);
+    try {
+      await fetch('http://localhost:5050/api/v1/github/disconnect', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.id }),
+      });
+      setLinkedAccount({ connected: false, username: null, avatarUrl: null });
+      setRepos([]);
+      setSelectedRepoIds(new Set());
+      setSuccessNotice('Compte GitHub dissocié avec succès.');
+    } catch (err) {
+      setError('Impossible de dissocier le compte.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -259,7 +324,7 @@ Génère une présentation professionnelle de haut niveau pour chacun de ces pro
             >
               <div className="relative">
                 <img
-                  src={`https://github.com/${verifiedUsername}.png?size=80`}
+                  src={verifiedAvatar || `https://github.com/${verifiedUsername}.png?size=80`}
                   alt={verifiedUsername}
                   className="w-10 h-10 rounded-full border-2 border-emerald-500/50 object-cover"
                   onError={(e) => {
@@ -290,18 +355,16 @@ Génère une présentation professionnelle de haut niveau pour chacun de ces pro
                     <RiRefreshLine className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
                     <span>Actualiser</span>
                   </button>
-                  {openUserProfile && (
-                    <>
-                      <span className="opacity-30">•</span>
-                      <button
-                        type="button"
-                        onClick={() => openUserProfile()}
-                        className="text-xs opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
-                      >
-                        Gérer le compte
-                      </button>
-                    </>
-                  )}
+                  <span className="opacity-30">•</span>
+                  <button
+                    type="button"
+                    onClick={handleDisconnect}
+                    disabled={isLoading}
+                    className="text-xs text-rose-400 hover:text-rose-300 font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <RiLogoutBoxRLine className="w-3.5 h-3.5" />
+                    <span>Dissocier</span>
+                  </button>
                 </div>
               </div>
             </div>

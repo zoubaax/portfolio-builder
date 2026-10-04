@@ -21,11 +21,31 @@ export function parseGitHubUsername(input = '') {
 }
 
 /**
- * Fetch public repositories for a GitHub username
+ * Fetch repositories for a GitHub user (using OAuth token if available, fallback to public API)
  */
-export async function fetchUserRepos(username) {
+export async function fetchUserRepos(username, userId = '') {
   const cleanUser = parseGitHubUsername(username);
-  if (!cleanUser) throw new Error('Invalid GitHub username');
+
+  // 1. Try backend endpoint first (uses OAuth access token if linked for 5000 req/hr & private repos)
+  if (userId || cleanUser) {
+    try {
+      const params = new URLSearchParams();
+      if (userId) params.append('userId', userId);
+      if (cleanUser) params.append('username', cleanUser);
+
+      const bRes = await fetch(`${API_BASE_URL}/api/v1/github/repos?${params.toString()}`);
+      if (bRes.ok) {
+        const json = await bRes.json();
+        if (json.success && Array.isArray(json.data)) {
+          return json.data;
+        }
+      }
+    } catch (e) {
+      console.warn('Backend repos endpoint fallback to direct GitHub API:', e.message);
+    }
+  }
+
+  if (!cleanUser) throw new Error('Nom d\'utilisateur GitHub introuvable');
 
   const url = `https://api.github.com/users/${encodeURIComponent(cleanUser)}/repos?sort=updated&per_page=100`;
   

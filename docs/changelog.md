@@ -130,6 +130,20 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
   - Le titre du projet `☆ Project Name ▾` et l'icône d'historique dans `V0ChatPanel` et `V0Header` ouvrent le tiroir d'historique d'un simple clic.
   - Le bouton `New` réinitialise proprement le canvas et le chat pour une nouvelle session vierge sans perdre les sessions précédentes.
   - Support natif du rechargement (`F5`) et des liens partagés sur `/studio/:id` : le composant `StudioRoute` recharge instantanément le portfolio et tout l'historique de chat associé depuis PostgreSQL Neon.
-
-
-
+### 12. Liaison GitHub OAuth Directe & Indépendante (Découplage de Clerk)
+- **Découplage Architectural Total des Identités :**
+  - Élimination définitive du blocage Clerk lié aux conflits d'emails (*"The email address associated with this OAuth account is already claimed by another user"*).
+  - L'application dispose désormais de sa propre OAuth App GitHub dédiée (comme Vercel ou v0) : tout utilisateur connecté peut certifier et lier n'importe quel compte GitHub légitime, même si ses adresses email Google et GitHub diffèrent.
+- **Persistance en Base de Données PostgreSQL Neon (`schema.ts`, Migration SQL) :**
+  - Ajout des colonnes `github_username`, `github_access_token` et `github_avatar_url` dans la table `users`.
+  - La connexion GitHub est enregistrée de façon pérenne en base et survit aux rafraîchissements de page et reconnexions.
+- **Routeur Backend Dédié (`backend/src/routes/githubRoutes.ts`, `backend/src/index.ts`) :**
+  - `GET /api/v1/github/authorize` : Redirige de manière sécurisée vers GitHub avec les permissions adéquates (`read:user,repo`) et le `userId` en paramètre d'état (`state`).
+  - `GET /api/v1/github/callback` : Échange le code temporaire contre un jeton d'accès permanent, interroge l'API GitHub `/user`, met à jour l'enregistrement Neon DB et sert une fenêtre popup communicante qui transmet les données au Studio via `window.opener.postMessage({ type: 'GITHUB_OAUTH_SUCCESS', ... })` avant de se fermer automatiquement.
+  - `GET /api/v1/github/status` : Interroge la base Neon pour vérifier si le compte actuel a déjà un profil GitHub lié.
+  - `POST /api/v1/github/disconnect` : Permet la dissociation immédiate et propre du compte GitHub en un clic.
+  - `GET /api/v1/github/repos` : Récupère les dépôts en tirant parti du jeton OAuth sauvegardé (débloquant une limite d'appels de 5 000 requêtes/heure au lieu de 60, et l'accès aux dépôts), avec bascule transparente vers l'API publique en cas de besoin.
+- **Expérience Utilisateur Moderne en Popup dans le Studio (`GithubProjectsTab.jsx`, `githubService.js`) :**
+  - L'authentification s'ouvre dans une fenêtre popup centrée élégante sans quitter le Studio ni perdre l'état du portfolio.
+  - Dès validation sur GitHub, le Studio détecte la confirmation instantanément, affiche le badge `🟢 @Amine-NAHLI Certifié OAuth`, et synchronise immédiatement tous les dépôts disponibles.
+  - Ajout d'un bouton direct `Dissocier` permettant de changer de compte GitHub à tout moment.
