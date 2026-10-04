@@ -140,12 +140,20 @@ export async function generateProjectImageAi({ title, description, tags = [], cu
 
   if (!res.ok) {
     const errorJson = await res.json().catch(() => ({}));
-    throw new Error(errorJson.message || errorJson.error || `Erreur du serveur IA (${res.status})`);
+    const msg =
+      errorJson.message ||
+      (typeof errorJson.error === 'object' ? errorJson.error?.message : errorJson.error) ||
+      `Erreur du serveur IA (${res.status})`;
+    throw new Error(msg);
   }
 
   const json = await res.json();
   if (!json.success || !json.data?.imageUrl) {
-    throw new Error(json.error || "L'IA n'a retourné aucune image.");
+    const msg =
+      json.message ||
+      (typeof json.error === 'object' ? json.error?.message : json.error) ||
+      "L'IA n'a retourné aucune image valide.";
+    throw new Error(msg);
   }
 
   return json.data.imageUrl;

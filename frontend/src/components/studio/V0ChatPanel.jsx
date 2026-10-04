@@ -102,6 +102,22 @@ export const V0ChatPanel = ({ onNewProject }) => {
     return <p className="whitespace-pre-line">{text}</p>;
   };
 
+  const renderAssistantMessageContent = (text) => {
+    if (typeof text !== 'string') return text;
+    if (text.startsWith('{') || text.startsWith('"')) {
+      return '✓ Modifications appliquées avec succès au portfolio.';
+    }
+    // Clean up past sessions that quoted the raw project prompt
+    if (text.includes('Met à jour et enrichis la section Projets') || text.includes('Voici mes projets GitHub :')) {
+      const names = [...text.matchAll(/\d+\.\s+\*\*([^*]+)\*\*/g)].map((m) => m[1]);
+      if (names.length > 0) {
+        return `✓ Section Projets mise à jour avec succès avec vos projets GitHub : ${names.join(', ')}.`;
+      }
+      return '✓ Section Projets mise à jour avec succès avec vos projets GitHub.';
+    }
+    return text;
+  };
+
   if (isChatCollapsed) {
     return null;
   }
@@ -211,9 +227,7 @@ export const V0ChatPanel = ({ onNewProject }) => {
                 {/* Main AI Text (Natural, Clean, No Raw JSON) */}
                 <div className="text-xs text-zinc-800 leading-relaxed font-normal pl-5">
                   <p className="whitespace-pre-line">
-                    {msg.text?.trim().startsWith('{') || msg.text?.trim().startsWith('"')
-                      ? '✓ Modifications appliquées avec succès au portfolio.'
-                      : msg.text}
+                    {renderAssistantMessageContent(msg.text)}
                   </p>
 
                   {/* Optional Interactive Action Buttons (e.g. Open Projects Tab) */}

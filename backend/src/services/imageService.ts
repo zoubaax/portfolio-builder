@@ -17,16 +17,20 @@ export interface GenerateImageResult {
 
 export class ImageService {
   /**
-   * Generates a project visual strictly using the AI image generation model (FLUX.1-schnell).
+   * Generates a project visual using Cloudflare Workers AI (@cf/black-forest-labs/flux-1-schnell).
    * Constructs a universal general prompt based on the real README and title of the project.
-   * Throws an error if the AI model fails, times out, or is offline (NO fake/hardcoded fallbacks).
+   * Throws an error if the model fails or credentials are missing (zero hardcoded/fake fallbacks).
    */
   async generateProjectImage(options: GenerateImageOptions): Promise<GenerateImageResult> {
+    dotenv.config({ override: true });
     const { title = 'Project', description = '', tags = [] } = options;
-    const apiKey = process.env.NVIDIA_IMAGE_API_KEY || process.env.NVIDIA_API_KEY;
+    const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+    const apiToken = process.env.CLOUDFLARE_API_TOKEN;
 
-    if (!apiKey) {
-      throw new Error("Clé API d'image non configurée sur le serveur.");
+    if (!accountId || !apiToken) {
+      throw new Error(
+        "Identifiants Cloudflare manquants dans le backend/.env. Veuillez configurer CLOUDFLARE_ACCOUNT_ID et CLOUDFLARE_API_TOKEN."
+      );
     }
 
     // 1. Sanitize and extract the real README overview
@@ -48,24 +52,24 @@ export class ImageService {
       `Key technologies: ${tags.join(', ') || 'Modern Software Engineering'}. ` +
       `Cinematic studio lighting, 8k octane render, photorealistic, elegant dark tech aesthetic, no text distortion.`;
 
-    console.log(`[ImageService] Calling AI Image Generator for "${title}" with universal README prompt...`);
+    console.log(`[ImageService] Calling Cloudflare Workers AI (FLUX.1-schnell) for "${title}"...`);
 
-    // 3. Call AI image generator (with a 12s timeout)
+    // 3. Call Cloudflare Workers AI endpoint (with a 25s timeout)
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
     try {
-      const response = await fetch('https://ai.api.nvidia.com/v1/genai/black-forest-labs/flux.1-schnell', {
+      const endpoint = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/@cf/black-forest-labs/flux-1-schnell`;
+      const response = await fetch(endpoint, {
         method: 'POST',
         signal: controller.signal,
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'Accept': 'application/json',
+          'Authorization': `Bearer ${apiToken}`,
         },
         body: JSON.stringify({
           prompt: universalPrompt,
-          mode: 'text-to-image',
+          steps: 4,
         }),
       });
 
@@ -73,24 +77,39 @@ export class ImageService {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => '');
-        throw new Error(`L'API d'IA a retourné le code ${response.status}: ${errorText.slice(0, 100) || response.statusText}`);
+        throw new Error(`Cloudflare API a retourné le code ${response.status}: ${errorText.slice(0, 120) || response.statusText}`);
       }
 
-      const data = (await response.json()) as any;
-      if (data?.artifacts?.[0]?.base64) {
-        console.log(`[ImageService] AI successfully generated image for "${title}"`);
+      const contentType = response.headers.get('content-type') || '';
+      let base64Image = '';
+
+      if (contentType.includes('application/json')) {
+        const data = (await response.json()) as any;
+        if (data?.result?.image) {
+          base64Image = data.result.image;
+        } else if (data?.errors && data.errors.length > 0) {
+          throw new Error(`Cloudflare AI error: ${data.errors[0]?.message || 'Erreur inconnue'}`);
+        }
+      } else {
+        // Binary stream response
+        const arrayBuffer = await response.arrayBuffer();
+        base64Image = Buffer.from(arrayBuffer).toString('base64');
+      }
+
+      if (base64Image) {
+        console.log(`[ImageService] Cloudflare AI successfully generated image for "${title}"`);
         return {
-          imageUrl: `data:image/jpeg;base64,${data.artifacts[0].base64}`,
+          imageUrl: `data:image/jpeg;base64,${base64Image}`,
           isAiGenerated: true,
-          provider: 'nvidia/flux.1-schnell',
+          provider: 'cloudflare/@cf/black-forest-labs/flux-1-schnell',
         };
       }
 
-      throw new Error("L'IA n'a retourné aucune image valide.");
+      throw new Error("Cloudflare AI n'a retourné aucune image valide.");
     } catch (err: any) {
       clearTimeout(timeoutId);
       if (err.name === 'AbortError') {
-        throw new Error("Délai d'attente dépassé (l'API d'IA n'a pas répondu à temps).");
+        throw new Error("Délai d'attente dépassé (Cloudflare AI n'a pas répondu à temps).");
       }
       throw err;
     }

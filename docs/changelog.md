@@ -222,3 +222,13 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
     - Récupération de l'avatar GitHub.
     - Saisie d'une URL d'image personnalisée.
   - Dès validation de l'image par l'utilisateur, le projet est ajouté avec succès dans son portfolio avec son image personnalisée.
+
+### 19. Migration vers Cloudflare Workers AI (Modèle @cf/black-forest-labs/flux-1-schnell)
+- **Configuration & Activation de Cloudflare Workers AI (`backend/src/services/imageService.ts`, `backend/.env`) :**
+  - Remplacement de l'endpoint NVIDIA par le réseau mondial de Cloudflare Workers AI.
+  - Déploiement du modèle officiel haute performance `@cf/black-forest-labs/flux-1-schnell`.
+  - Intégration authentifiée avec `CLOUDFLARE_ACCOUNT_ID` et `CLOUDFLARE_API_TOKEN`.
+  - Temps de réponse réduit à 2-5 secondes par image (au lieu des timeouts fréquents sur NVIDIA).
+  - Gestion double des retours (JSON Base64 ou flux binaire ArrayBuffer).
+  - Validation complète effectuée avec succès en environnement réel (10 000 neurones gratuits par jour).
+

@@ -835,18 +835,40 @@ export const PortfolioProvider = ({ children }) => {
           }
         }
 
-        // Merge any explicit projectsToAdd to ensure user's imported GitHub projects & mockups are present
+        // Merge any explicit projectsToAdd to ensure user's imported GitHub projects & mockups are present (NEVER overwrite previous projects!)
         if (options.projectsToAdd && Array.isArray(options.projectsToAdd) && options.projectsToAdd.length > 0) {
           if (updatedPortfolio.sections) {
             updatedPortfolio.sections = updatedPortfolio.sections.map((s) => {
               if (s.type === 'projects') {
-                const existingList = Array.isArray(s.data?.projects) ? s.data.projects : [];
-                const merged = [...options.projectsToAdd];
-                existingList.forEach((ep) => {
-                  if (!merged.some((m) => (m.github && ep.github && m.github === ep.github) || m.title.toLowerCase() === ep.title.toLowerCase())) {
-                    merged.push(ep);
+                // 1. Projects that existed in the portfolio BEFORE this stream ran
+                const previousProjects = portfolio?.sections?.find((sec) => sec.type === 'projects')?.data?.projects || [];
+                // 2. Newly added projects from selection
+                const newlyAdded = options.projectsToAdd;
+                // 3. Any projects that the LLM generated in updatedPortfolio
+                const aiProjects = Array.isArray(s.data?.projects) ? s.data.projects : [];
+
+                const merged = [];
+                const addUnique = (item) => {
+                  if (!item) return;
+                  const itemUrl = (item.github || '').toLowerCase().replace(/\/+$/, '');
+                  const itemTitle = (item.title || '').toLowerCase().trim();
+                  const exists = merged.some((m) => {
+                    const mUrl = (m.github || '').toLowerCase().replace(/\/+$/, '');
+                    const mTitle = (m.title || '').toLowerCase().trim();
+                    return (itemUrl && mUrl && itemUrl === mUrl) || (itemTitle && mTitle && itemTitle === mTitle);
+                  });
+                  if (!exists) {
+                    merged.push(item);
                   }
-                });
+                };
+
+                // Add previous projects first to preserve existing ones
+                previousProjects.forEach(addUnique);
+                // Add newly added projects
+                newlyAdded.forEach(addUnique);
+                // Add any non-duplicate AI projects
+                aiProjects.forEach(addUnique);
+
                 return {
                   ...s,
                   data: {

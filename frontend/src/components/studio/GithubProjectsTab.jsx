@@ -1076,7 +1076,9 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                     : "Échec de génération de l'image IA"}
                 </h3>
                 <p className="text-xs opacity-70">
-                  {imageErrorPrompt.error || "L'API d'IA n'a pas pu générer l'image."}
+                  {typeof imageErrorPrompt.error === 'string'
+                    ? imageErrorPrompt.error
+                    : (imageErrorPrompt.error?.message || "L'API d'IA n'a pas pu générer l'image.")}
                 </p>
               </div>
             </div>
