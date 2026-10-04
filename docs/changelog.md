@@ -87,3 +87,31 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
   - Barre d'action flottante avec compteur de projets sélectionnés, toggle d'activation de la génération visuelle IA, et bouton de synchronisation automatique.
   - Injection automatique du prompt enrichi vers le chat de l'IA pour générer et formater instantanément la section `projects` du portfolio avec retour direct sur la prévisualisation.
 
+### 8. Raffinement du Cycle de Vie Initial & Guidage Conversationnel
+- **Nettoyage de l'État Zéro du Code (`V0Canvas.jsx`) :**
+  - Avant la saisie du premier prompt (`!hasGeneratedFirstPortfolio && !isGenerating`), l'onglet Code n'affiche plus le template JSON mock par défaut ("Alex Vance"). À la place, un écran d'attente terminal épuré indique clairement à l'utilisateur de décrire son projet dans le chat.
+- **Affichage Conditionnel de l'Onglet Projets (`V0Canvas.jsx`, `V0Header.jsx`) :**
+  - L'onglet `[ 🐙 Projets ]` est désormais masqué à l'ouverture initiale de l'application et n'apparaît avec une animation fluide qu'après que le premier portfolio a été généré avec succès par l'IA (`hasGeneratedFirstPortfolio === true`).
+- **Guidage Conversationnel & Bouton Interactif (`PortfolioContext.jsx`, `V0ChatPanel.jsx`) :**
+  - À la fin de la première génération, l'assistant IA envoie un message de félicitations explicite guidant l'utilisateur vers l'étape suivante (lier son GitHub et importer ses projets).
+  - Intégration d'un bouton d'action directe cliquable directement dans la bulle de chat (`[ 🐙 Ouvrir l'onglet Projets & Importer GitHub ]`) permettant de basculer instantanément sur l'onglet Projets en un clic.
+
+### 9. Résolution du Streaming SSE & Intégration Robuste des Projets GitHub
+- **Résilience du Flux SSE (`PortfolioContext.jsx`) :**
+  - Remplacement de l'ancien découpage rigide `.split('\n\n')` par une boucle de parsing résiliente par ligne avec buffer glissant.
+  - Vidage systématique et obligatoire du `streamBuffer` résiduel lors de la fermeture du flux (`done: true`). Cela garantit que les paquets finaux contenant `updatedPortfolio` ne sont plus jamais perdus ou tronqués, évitant tout faux basculement vers le fallback.
+- **Raccordement du Service de Chat dans l'Onglet Projets (`PortfolioContext.jsx`, `GithubProjectsTab.jsx`) :**
+  - Export de l'alias `sendMessage: sendChatMessage` dans le `PortfolioContext` et mise à jour de `GithubProjectsTab.jsx` pour utiliser `sendChatMessage || sendMessage`.
+  - Résolution de l'exception `TypeError: sendMessage is not a function` qui bloquait l'envoi du prompt d'enrichissement et déclenchait le bandeau rouge d'erreur lors du clic sur `Appliquer au Portfolio`.
+
+### 10. Authentification Stricte GitHub OAuth & Protection Anti-Usurpation
+- **Suppression Totale de la Saisie Manuelle de Liens (`GithubProjectsTab.jsx`) :**
+  - Élimination définitive de tout champ de saisie de lien/pseudo manuel afin d'empêcher qu'un utilisateur n'importe des dépôts d'un tiers dont il n'est pas le propriétaire légitime.
+- **Certification Cryptographique OAuth par Clerk :**
+  - Seuls les comptes authentifiés via le protocole officiel GitHub OAuth (`user.externalAccounts` avec `provider: 'oauth_github'`) sont autorisés à charger et synchroniser leurs dépôts.
+  - Le pseudo GitHub est directement certifié par les serveurs de GitHub et Clerk, garantissant une intégrité à 100%.
+- **Expérience Utilisateur Sécurisée & Liée à Vie :**
+  - Si l'utilisateur est connecté via GitHub : détection automatique instantanée, affichage du badge `🟢 Certifié OAuth`, et chargement direct de ses projets (zéro formulaire).
+  - Si l'utilisateur est connecté par email : écran d'authentification dédié avec bouton direct `[ Connecter avec GitHub OAuth ]` et raccourci vers la gestion de profil Clerk (`openUserProfile`).
+
+

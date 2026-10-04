@@ -35,11 +35,12 @@ export const V0Header = () => {
     redo,
     savePortfolio,
     saveStatus,
-    isPublished
+    isPublished,
+    hasGeneratedFirstPortfolio
   } = usePortfolio();
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [titleValue, setTitleValue] = useState(portfolio.meta?.title || 'zoubaa-portfolio');
+  const [titleValue, setTitleValue] = useState(portfolio.meta?.title || 'my-portfolio');
   const [publishedUrl, setPublishedUrl] = useState(null);
 
   const currentVersion = historyIndex + 1;
@@ -148,18 +149,20 @@ export const V0Header = () => {
             <span>Code</span>
           </button>
 
-          <button
-            onClick={() => setViewMode('projects')}
-            className={`px-3 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 ${
-              viewMode === 'projects'
-                ? 'bg-indigo-600 text-white font-medium shadow-xs'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-            title="Importer des projets depuis GitHub"
-          >
-            <RiGithubFill className="w-3.5 h-3.5" />
-            <span>Projets</span>
-          </button>
+          {hasGeneratedFirstPortfolio && (
+            <button
+              onClick={() => setViewMode('projects')}
+              className={`px-3 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200 ${
+                viewMode === 'projects'
+                  ? 'bg-indigo-600 text-white font-medium shadow-xs'
+                  : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+              title="Importer des projets depuis GitHub"
+            >
+              <RiGithubFill className="w-3.5 h-3.5" />
+              <span>Projets</span>
+            </button>
+          )}
         </div>
 
         {/* Device Switcher (Desktop / Mobile) */}

@@ -13,7 +13,9 @@ import {
   RiArrowUpLine,
   RiLoader4Line,
   RiCheckLine,
-  RiCheckDoubleLine
+  RiCheckDoubleLine,
+  RiGithubFill,
+  RiArrowRightLine
 } from 'react-icons/ri';
 
 export const V0ChatPanel = ({ onNewProject }) => {
@@ -26,7 +28,8 @@ export const V0ChatPanel = ({ onNewProject }) => {
     isGenerating,
     activeTasks,
     isChatCollapsed,
-    setIsChatCollapsed
+    setIsChatCollapsed,
+    setViewMode
   } = usePortfolio();
 
   const [prompt, setPrompt] = useState('');
@@ -166,11 +169,24 @@ export const V0ChatPanel = ({ onNewProject }) => {
 
                 {/* Main AI Text (Natural, Clean, No Raw JSON) */}
                 <div className="text-xs text-zinc-800 leading-relaxed font-normal pl-5">
-                  <p>
+                  <p className="whitespace-pre-line">
                     {msg.text?.trim().startsWith('{') || msg.text?.trim().startsWith('"')
                       ? 'Tudo certo — estou funcionando.'
                       : msg.text}
                   </p>
+
+                  {/* Optional Interactive Action Buttons (e.g. Open Projects Tab) */}
+                  {msg.action === 'open_projects' && (
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('projects')}
+                      className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md shadow-indigo-600/25 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                    >
+                      <RiGithubFill className="w-4 h-4" />
+                      <span>Ouvrir l'onglet Projets & Importer GitHub</span>
+                      <RiArrowRightLine className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
               </div>
             )}

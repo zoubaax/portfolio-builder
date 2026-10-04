@@ -567,34 +567,47 @@ export const PortfolioProvider = ({ children }) => {
       let streamBuffer = '';
       let updatedPortfolio = null;
 
+      const processLine = (line) => {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data:')) return;
+        const jsonStr = trimmed.replace(/^data:\s*/, '');
+        try {
+          const data = JSON.parse(jsonStr);
+          if (data.error) {
+            throw new Error(data.error);
+          }
+          if (data.chunk) {
+            setStreamingCode((prev) => prev + data.chunk);
+          }
+          if (data.done && data.updatedPortfolio) {
+            updatedPortfolio = data.updatedPortfolio;
+          }
+        } catch (e) {
+          if (trimmed.includes('"error"')) {
+            throw e;
+          }
+        }
+      };
+
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
 
         const chunkText = decoder.decode(value, { stream: true });
-        const lines = (streamBuffer + chunkText).split('\n\n');
-        streamBuffer = lines.pop() || '';
+        streamBuffer += chunkText;
+
+        const lines = streamBuffer.split('\n');
+        // The last line might be incomplete, preserve it in streamBuffer
+        streamBuffer = lines.pop() ?? '';
 
         for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            let data;
-            try {
-              data = JSON.parse(line.replace('data: ', '').trim());
-            } catch {
-              continue;
-            }
-            if (data.error) {
-              throw new Error(data.error);
-            }
-            // Buffer raw JSON to streamingCode for the Code inspector tab, NOT chat text!
-            if (data.chunk) {
-              setStreamingCode((prev) => prev + data.chunk);
-            }
-            if (data.done && data.updatedPortfolio) {
-              updatedPortfolio = data.updatedPortfolio;
-            }
-          }
+          processLine(line);
         }
+      }
+
+      // Flush any remaining line in buffer when stream ends
+      if (streamBuffer.trim()) {
+        processLine(streamBuffer);
       }
 
       if (updatedPortfolio) {
@@ -611,19 +624,33 @@ export const PortfolioProvider = ({ children }) => {
         }
 
         pushState(updatedPortfolio);
+        const isFirstGen = !hasGeneratedFirstPortfolio;
         setHasGeneratedFirstPortfolio(true);
         const finalTasks = initialTasks.map((t) => ({ ...t, done: true, active: false }));
-        setChatMessages((prev) =>
-          prev.map((m) =>
+        setChatMessages((prev) => {
+          const updated = prev.map((m) =>
             m.id === assistantMsgId
               ? {
                   ...m,
-                  text: `✓ Synthesized custom portfolio layout and theme for: "${promptText}"`,
+                  text: `✓ Architecture et design du portfolio générés avec succès pour : "${promptText}"`,
                   tasks: finalTasks,
                 }
               : m
-          )
-        );
+          );
+
+          if (isFirstGen) {
+            updated.push({
+              id: `msg-followup-${Date.now()}`,
+              role: 'assistant',
+              text: `🎉 Votre portfolio a été généré avec succès !\n\n💡 Prochaine étape recommandée : Le nouvel onglet [ 🐙 Projets ] vient d'apparaître dans la barre supérieure. Connectez votre GitHub, sélectionnez vos dépôts et générez des mockups IA (FLUX.1-schnell) pour personnaliser votre section projets.`,
+              action: 'open_projects',
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            });
+          }
+
+          return updated;
+        });
+
         setTimeout(() => {
           setViewMode('preview');
         }, 1200);
@@ -854,6 +881,7 @@ export const PortfolioProvider = ({ children }) => {
         updateThemeToken,
         loadPresetPortfolio,
         sendChatMessage,
+        sendMessage: sendChatMessage,
         portfolioId,
         saveStatus,
         isPublished,

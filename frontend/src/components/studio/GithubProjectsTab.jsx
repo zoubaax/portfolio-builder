@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useUser } from '@clerk/react';
+import { useUser, useClerk } from '@clerk/react';
 import { usePortfolio } from '../../context/PortfolioContext';
 import {
   fetchUserRepos,
@@ -22,20 +22,25 @@ import {
   RiCheckLine,
   RiTimeLine,
   RiInformationLine,
+  RiShieldCheckLine,
+  RiLockPasswordLine,
+  RiUserSettingsLine,
 } from 'react-icons/ri';
 
 export const GithubProjectsTab = ({ onApplyComplete }) => {
   const { user } = useUser();
-  const { sendMessage, setViewMode, studioTheme, portfolio } = usePortfolio();
+  const { openUserProfile } = useClerk();
+  const { sendChatMessage, sendMessage, setViewMode, studioTheme, portfolio } = usePortfolio();
   const isLight = studioTheme === 'light';
 
-  // Extract GitHub username from Clerk externalAccounts if logged in via GitHub
+  // Certified GitHub account verified cryptographically by Clerk OAuth
   const clerkGitHubAccount = user?.externalAccounts?.find(
     (acc) => acc.provider === 'oauth_github' || acc.verification?.strategy === 'oauth_github'
   );
 
-  const [usernameInput, setUsernameInput] = useState(clerkGitHubAccount?.username || '');
-  const [activeUsername, setActiveUsername] = useState(clerkGitHubAccount?.username || '');
+  const verifiedUsername = clerkGitHubAccount?.username || '';
+
+  const [isLinkingOAuth, setIsLinkingOAuth] = useState(false);
   const [repos, setRepos] = useState([]);
   const [selectedRepoIds, setSelectedRepoIds] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,33 +52,66 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
   const [isApplying, setIsApplying] = useState(false);
   const [applyStep, setApplyStep] = useState('');
 
-  // Initial fetch if username detected from Clerk
+  // Automatically fetch verified repositories when OAuth account is present
   useEffect(() => {
-    if (clerkGitHubAccount?.username) {
-      handleFetchRepos(clerkGitHubAccount.username);
+    if (verifiedUsername) {
+      handleFetchRepos(verifiedUsername);
     }
-  }, [clerkGitHubAccount?.username]);
+  }, [verifiedUsername]);
 
+  // Method: Fetch repositories for the authenticated GitHub user
   const handleFetchRepos = async (userToFetch) => {
-    const cleanUser = parseGitHubUsername(userToFetch);
-    if (!cleanUser) {
-      setError('Veuillez renseigner un pseudo ou lien de profil GitHub valide.');
-      return;
-    }
+    if (!userToFetch) return;
 
     setIsLoading(true);
     setError(null);
     setSelectedRepoIds(new Set());
 
     try {
-      const data = await fetchUserRepos(cleanUser);
+      const data = await fetchUserRepos(userToFetch);
       setRepos(data);
-      setActiveUsername(cleanUser);
     } catch (err) {
       setError(err.message || 'Impossible de récupérer les dépôts.');
       setRepos([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Method: Initiate official Clerk OAuth linking with GitHub
+  const handleLinkGitHubOAuth = async () => {
+    setIsLinkingOAuth(true);
+    setError(null);
+    try {
+      if (!user) throw new Error('Utilisateur non connecté');
+
+      const externalAccount = await user.createExternalAccount({
+        strategy: 'oauth_github',
+        redirectUrl: window.location.href,
+        redirect_url: window.location.href,
+      });
+
+      if (externalAccount?.verification?.externalVerificationRedirectUrl) {
+        window.location.href = externalAccount.verification.externalVerificationRedirectUrl;
+        return;
+      }
+
+      if (openUserProfile) {
+        openUserProfile();
+      }
+    } catch (err) {
+      console.warn('Clerk OAuth account creation notice:', err);
+      if (openUserProfile) {
+        openUserProfile();
+      } else {
+        setError(
+          err.errors?.[0]?.message ||
+            err.message ||
+            'La connexion OAuth GitHub nécessite d\'activer GitHub dans votre tableau de bord Clerk (Social Connections).'
+        );
+      }
+    } finally {
+      setIsLinkingOAuth(false);
     }
   };
 
@@ -163,7 +201,12 @@ ${projectsPromptList}
 Génère une présentation professionnelle de haut niveau pour chacun de ces projets.`;
 
       // 4. Send to Copilot and switch back to preview
-      await sendMessage(fullPrompt);
+      const sendFn = sendChatMessage || sendMessage;
+      if (typeof sendFn === 'function') {
+        await sendFn(fullPrompt);
+      } else {
+        throw new Error('Le service de chat Copilot n\'est pas disponible');
+      }
 
       if (onApplyComplete) {
         onApplyComplete();
@@ -172,7 +215,7 @@ Génère une présentation professionnelle de haut niveau pour chacun de ces pro
       }
     } catch (err) {
       console.error('Error applying projects:', err);
-      setError('Erreur lors de l\'intégration des projets. Veuillez réessayer.');
+      setError(err.message || 'Erreur lors de l\'intégration des projets. Veuillez réessayer.');
     } finally {
       setIsApplying(false);
       setApplyStep('');
@@ -187,8 +230,10 @@ Génère une présentation professionnelle de haut niveau pour chacun de ces pro
     >
       <div className="max-w-5xl mx-auto space-y-6 pb-24">
         {/* Header Title & Description */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6"
-             style={{ borderColor: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)' }}>
+        <div
+          className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-6"
+          style={{ borderColor: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)' }}
+        >
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-2 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
               <RiGithubFill className="w-4 h-4" />
@@ -198,72 +243,146 @@ Génère une présentation professionnelle de haut niveau pour chacun de ces pro
               Importer vos Projets GitHub
             </h1>
             <p className="text-sm opacity-70 mt-1">
-              Connectez votre profil, cochez vos meilleurs dépôts et laissez l'IA générer des descriptions percutantes et des mockups visuels (FLUX.1-schnell).
+              {verifiedUsername
+                ? `Connecté de façon certifiée avec votre profil GitHub @${verifiedUsername}. Cochez vos projets et appliquez-les à votre portfolio.`
+                : `Authentifiez votre compte officiel GitHub via OAuth pour importer et certifier vos projets légitimes.`}
             </p>
           </div>
 
-          {/* Connected Profile Pill if known */}
-          {activeUsername && (
+          {/* Connected Profile Status Card (Certifié OAuth) */}
+          {verifiedUsername && (
             <div
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl border ${
-                isLight ? 'bg-white border-slate-200' : 'bg-white/5 border-white/10'
+              className={`flex items-center gap-4 px-4 py-3 rounded-2xl border shadow-sm ${
+                isLight ? 'bg-white border-slate-200' : 'bg-[#10141f] border-white/10'
               }`}
             >
-              <img
-                src={`https://github.com/${activeUsername}.png?size=80`}
-                alt={activeUsername}
-                className="w-8 h-8 rounded-full border border-indigo-500/30"
-                onError={(e) => {
-                  e.target.src = 'https://github.com/github.png';
-                }}
-              />
+              <div className="relative">
+                <img
+                  src={`https://github.com/${verifiedUsername}.png?size=80`}
+                  alt={verifiedUsername}
+                  className="w-10 h-10 rounded-full border-2 border-emerald-500/50 object-cover"
+                  onError={(e) => {
+                    e.target.src = 'https://github.com/github.png';
+                  }}
+                />
+                <span
+                  className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#10141f] rounded-full"
+                  title="Certifié GitHub OAuth"
+                />
+              </div>
+
               <div className="text-xs">
-                <span className="block opacity-60">Compte actif</span>
-                <span className="font-bold font-mono text-indigo-400">@{activeUsername}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-sm text-indigo-400 font-mono">@{verifiedUsername}</span>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <RiShieldCheckLine className="w-3 h-3" />
+                    Certifié OAuth
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleFetchRepos(verifiedUsername)}
+                    disabled={isLoading}
+                    className="text-xs text-indigo-400 hover:text-indigo-300 font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <RiRefreshLine className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                    <span>Actualiser</span>
+                  </button>
+                  {openUserProfile && (
+                    <>
+                      <span className="opacity-30">•</span>
+                      <button
+                        type="button"
+                        onClick={() => openUserProfile()}
+                        className="text-xs opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+                      >
+                        Gérer le compte
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* Username Input / Change Bar */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleFetchRepos(usernameInput);
-          }}
-          className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-center gap-3 ${
-            isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#10141f] border-white/10'
-          }`}
-        >
-          <div className="relative flex-1 w-full">
-            <RiGithubFill className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 opacity-40" />
-            <input
-              type="text"
-              value={usernameInput}
-              onChange={(e) => setUsernameInput(e.target.value)}
-              placeholder="Entrez votre pseudo GitHub ou l'URL (ex: aminenahli ou https://github.com/...)"
-              className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-transparent border text-sm outline-none transition-all focus:border-indigo-500"
-              style={{ borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)' }}
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={isLoading || !usernameInput.trim()}
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl font-semibold text-sm bg-indigo-600 hover:bg-indigo-500 text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-indigo-600/20"
+        {/* Strict OAuth Authentication Panel - No manual link input to prevent impersonation */}
+        {!verifiedUsername && (
+          <div
+            className={`p-8 rounded-3xl border text-center max-w-xl mx-auto space-y-6 ${
+              isLight ? 'bg-white border-slate-200 shadow-xl' : 'bg-[#10141f] border-white/10'
+            }`}
           >
-            {isLoading ? (
-              <>
-                <RiRefreshLine className="w-4 h-4 animate-spin" />
-                <span>Chargement...</span>
-              </>
-            ) : (
-              <>
-                <RiRefreshLine className="w-4 h-4" />
-                <span>Synchroniser les Dépôts</span>
-              </>
-            )}
-          </button>
-        </form>
+            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto shadow-inner">
+              <RiGithubFill className="w-9 h-9" />
+            </div>
+
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <RiShieldCheckLine className="w-3.5 h-3.5" />
+                <span>Authentification 100% Sécurisée & Vérifiée</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black tracking-tight">
+                Authentifiez votre Compte GitHub
+              </h2>
+              <p className="text-xs sm:text-sm opacity-70 max-w-md mx-auto leading-relaxed">
+                Afin de garantir l'authenticité de vos projets et empêcher toute utilisation non autorisée du compte d'un tiers, la liaison de vos projets se fait exclusivement par authentification OAuth officielle.
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={handleLinkGitHubOAuth}
+                disabled={isLinkingOAuth}
+                className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
+              >
+                <RiGithubFill className="w-5 h-5" />
+                <span>{isLinkingOAuth ? 'Connexion en cours...' : 'Connecter avec GitHub OAuth'}</span>
+              </button>
+
+              {openUserProfile && (
+                <button
+                  type="button"
+                  onClick={() => openUserProfile()}
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl font-semibold text-xs border border-white/15 hover:bg-white/5 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <RiUserSettingsLine className="w-4 h-4 opacity-70" />
+                  <span>Gérer mon profil Clerk</span>
+                </button>
+              )}
+            </div>
+
+            {/* Security guarantees */}
+            <div
+              className={`p-4 rounded-2xl border grid grid-cols-1 sm:grid-cols-3 gap-3 text-left text-xs ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/2 border-white/5'
+              }`}
+            >
+              <div>
+                <span className="font-bold block text-indigo-400">🔒 Anti-usurpation</span>
+                <span className="opacity-60 text-[11px]">Seul le propriétaire du compte GitHub peut charger ses dépôts.</span>
+              </div>
+              <div>
+                <span className="font-bold block text-emerald-400">⚡ Connecté à vie</span>
+                <span className="opacity-60 text-[11px]">Une seule validation suffit pour synchroniser vos projets en permanence.</span>
+              </div>
+              <div>
+                <span className="font-bold block text-cyan-400">✨ Synchronisation auto</span>
+                <span className="opacity-60 text-[11px]">Zéro lien à copier/coller. Détection instantanée de vos dépôts.</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Success Notice */}
+        {successNotice && (
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
+            <RiCheckLine className="w-4 h-4 shrink-0" />
+            <span>{successNotice}</span>
+          </div>
+        )}
 
         {/* Error message */}
         {error && (
