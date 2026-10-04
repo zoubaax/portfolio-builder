@@ -46,18 +46,12 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [successNotice, setSuccessNotice] = useState(null);
 
   // Generation options
   const [generateAiImages, setGenerateAiImages] = useState(true);
   const [isApplying, setIsApplying] = useState(false);
   const [applyStep, setApplyStep] = useState('');
-
-  // Automatically fetch verified repositories when OAuth account is present
-  useEffect(() => {
-    if (verifiedUsername) {
-      handleFetchRepos(verifiedUsername);
-    }
-  }, [verifiedUsername]);
 
   // Method: Fetch repositories for the authenticated GitHub user
   const handleFetchRepos = async (userToFetch) => {
@@ -77,6 +71,13 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
       setIsLoading(false);
     }
   };
+
+  // Automatically fetch verified repositories when OAuth account is present
+  useEffect(() => {
+    if (verifiedUsername) {
+      handleFetchRepos(verifiedUsername);
+    }
+  }, [verifiedUsername]);
 
   // Method: Initiate official Clerk OAuth linking with GitHub
   const handleLinkGitHubOAuth = async () => {

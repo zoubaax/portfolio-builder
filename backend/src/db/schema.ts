@@ -13,6 +13,9 @@ export const users = pgTable('users', {
   byokGroqKey: text('byok_groq_key'),
   byokMistralKey: text('byok_mistral_key'),
   byokNvidiaKey: text('byok_nvidia_key'),
+  githubUsername: text('github_username'),
+  githubAccessToken: text('github_access_token'),
+  githubAvatarUrl: text('github_avatar_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

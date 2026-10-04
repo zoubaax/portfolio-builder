@@ -89,11 +89,54 @@ function MainFlow() {
   );
 }
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('App ErrorBoundary caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-[#090d16] text-white flex flex-col items-center justify-center p-6 text-center select-none font-sans">
+          <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mb-4 text-2xl font-bold">
+            ⚠️
+          </div>
+          <h2 className="text-lg font-bold mb-2">Une erreur d'affichage est survenue</h2>
+          <p className="text-xs text-zinc-400 max-w-md mb-6 leading-relaxed">
+            {this.state.error?.message || 'Erreur inattendue dans le Studio.'}
+          </p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.href = '/studio';
+            }}
+            className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all cursor-pointer shadow-lg shadow-indigo-600/30"
+          >
+            Recharger le Studio
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function App() {
   return (
-    <PortfolioProvider>
-      <MainFlow />
-    </PortfolioProvider>
+    <ErrorBoundary>
+      <PortfolioProvider>
+        <MainFlow />
+      </PortfolioProvider>
+    </ErrorBoundary>
   );
 }
 
