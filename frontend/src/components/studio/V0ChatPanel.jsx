@@ -235,10 +235,10 @@ export const V0ChatPanel = ({ onNewProject }) => {
                     <button
                       type="button"
                       onClick={() => setViewMode('projects')}
-                      className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md shadow-indigo-600/25 cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                      className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium bg-zinc-900 hover:bg-black text-white transition-all shadow-xs cursor-pointer active:scale-[0.98]"
                     >
-                      <RiGithubFill className="w-4 h-4" />
-                      <span>Ouvrir l'onglet Projets & Importer GitHub</span>
+                      <RiGithubFill className="w-3.5 h-3.5" />
+                      <span>Accéder à l'onglet Projets</span>
                       <RiArrowRightLine className="w-3.5 h-3.5" />
                     </button>
                   )}

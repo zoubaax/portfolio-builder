@@ -6,12 +6,10 @@ import {
   RiCameraLine,
   RiCloseLine,
   RiCheckLine,
-  RiImageLine,
-  RiSparkling2Fill
 } from 'react-icons/ri';
 import { GithubIcon } from './BrandIcons';
 
-export const ImagePickerModal = ({ isOpen, onClose, currentImage, onSave, title = "Change Image" }) => {
+export const ImagePickerModal = ({ isOpen, onClose, currentImage, onSave, title = "Changer l'image" }) => {
   const { studioTheme } = usePortfolio();
   const isLight = studioTheme === 'light';
 
@@ -66,105 +64,108 @@ export const ImagePickerModal = ({ isOpen, onClose, currentImage, onSave, title 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
       <div
-        className={`w-full max-w-lg rounded-3xl border shadow-2xl overflow-hidden transition-all ${
+        className={`w-full max-w-lg rounded-2xl border shadow-xl overflow-hidden transition-all font-sans ${
           isLight
-            ? 'bg-white border-slate-200 text-slate-800 shadow-slate-900/20'
-            : 'bg-[#111726] border-white/10 text-white shadow-2xl'
+            ? 'bg-white border-zinc-200 text-zinc-900 shadow-zinc-900/10'
+            : 'bg-zinc-900 border-zinc-800 text-zinc-100 shadow-black/80'
         }`}
       >
         {/* Modal Header */}
-        <div className={`flex items-center justify-between px-6 py-4 border-b ${
-          isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/10 bg-[#0d1320]'
+        <div className={`flex items-center justify-between px-5 py-4 border-b shrink-0 ${
+          isLight ? 'border-zinc-100 bg-zinc-50/70' : 'border-zinc-800 bg-zinc-950/60'
         }`}>
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+              isLight ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-900'
+            }`}>
               <RiCameraLine className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-bold text-sm tracking-tight">{title}</h3>
-              <p className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-zinc-400'}`}>
-                Upload your real photo, import from GitHub, or paste a link
+              <h3 className="font-semibold text-sm tracking-tight">{title}</h3>
+              <p className={`text-[11px] ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                Importez un fichier local, votre avatar GitHub ou collez un lien direct
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className={`p-1.5 rounded-xl transition-colors ${
-              isLight ? 'hover:bg-slate-200 text-slate-500' : 'hover:bg-white/10 text-zinc-400'
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              isLight ? 'hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900' : 'hover:bg-zinc-800 text-zinc-400 hover:text-white'
             }`}
+            title="Fermer"
           >
-            <RiCloseLine className="w-5 h-5" />
+            <RiCloseLine className="w-4 h-4" />
           </button>
         </div>
 
         {/* Source Tabs */}
-        <div className={`flex border-b p-2 gap-1.5 ${isLight ? 'border-slate-100 bg-slate-50/30' : 'border-white/5 bg-[#090d16]'}`}>
+        <div className={`flex border-b p-2 gap-1.5 ${isLight ? 'border-zinc-100 bg-zinc-50/40' : 'border-zinc-800 bg-zinc-950/40'}`}>
           <button
             onClick={() => setActiveTab('upload')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-medium transition-all cursor-pointer ${
               activeTab === 'upload'
                 ? isLight
-                  ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
-                  : 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-white text-zinc-900 shadow-xs border border-zinc-200 font-semibold'
+                  : 'bg-zinc-800 text-white shadow-xs font-semibold'
                 : isLight
-                  ? 'text-slate-500 hover:text-slate-800'
+                  ? 'text-zinc-600 hover:text-zinc-900'
                   : 'text-zinc-400 hover:text-white'
             }`}
           >
-            <RiUploadCloud2Line className="w-4 h-4" />
-            <span>Upload File</span>
+            <RiUploadCloud2Line className="w-3.5 h-3.5" />
+            <span>Fichier local</span>
           </button>
 
           <button
             onClick={() => setActiveTab('github')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-medium transition-all cursor-pointer ${
               activeTab === 'github'
                 ? isLight
-                  ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
-                  : 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-white text-zinc-900 shadow-xs border border-zinc-200 font-semibold'
+                  : 'bg-zinc-800 text-white shadow-xs font-semibold'
                 : isLight
-                  ? 'text-slate-500 hover:text-slate-800'
+                  ? 'text-zinc-600 hover:text-zinc-900'
                   : 'text-zinc-400 hover:text-white'
             }`}
           >
             <GithubIcon className="w-3.5 h-3.5" />
-            <span>GitHub Avatar</span>
+            <span>Avatar GitHub</span>
           </button>
 
           <button
             onClick={() => setActiveTab('url')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs font-bold transition-all ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-medium transition-all cursor-pointer ${
               activeTab === 'url'
                 ? isLight
-                  ? 'bg-white text-indigo-600 shadow-sm border border-slate-200'
-                  : 'bg-indigo-600 text-white shadow-sm'
+                  ? 'bg-white text-zinc-900 shadow-xs border border-zinc-200 font-semibold'
+                  : 'bg-zinc-800 text-white shadow-xs font-semibold'
                 : isLight
-                  ? 'text-slate-500 hover:text-slate-800'
+                  ? 'text-zinc-600 hover:text-zinc-900'
                   : 'text-zinc-400 hover:text-white'
             }`}
           >
-            <RiLink className="w-4 h-4" />
-            <span>Image URL</span>
+            <RiLink className="w-3.5 h-3.5" />
+            <span>Lien URL</span>
           </button>
         </div>
 
         {/* Tab Body */}
-        <div className="p-6 space-y-5">
+        <div className="p-5 space-y-4 text-xs">
           {/* TAB 1: FILE UPLOAD */}
           {activeTab === 'upload' && (
             <div
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
               onDrop={handleDrop}
-              className={`relative border-2 border-dashed rounded-2xl p-6 text-center transition-all cursor-pointer ${
+              className={`relative border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer ${
                 isDragging
-                  ? 'border-indigo-500 bg-indigo-50/20 scale-[0.99]'
+                  ? 'border-zinc-900 bg-zinc-100/50 dark:border-white dark:bg-zinc-800/50'
                   : isLight
-                    ? 'border-slate-200 hover:border-indigo-400 bg-slate-50/50 hover:bg-slate-50'
-                    : 'border-white/10 hover:border-indigo-500/50 bg-white/5 hover:bg-white/10'
+                    ? 'border-zinc-200 hover:border-zinc-400 bg-zinc-50/50 hover:bg-zinc-50'
+                    : 'border-zinc-700 hover:border-zinc-500 bg-zinc-950/40 hover:bg-zinc-950/70'
               }`}
             >
               <input
@@ -174,14 +175,16 @@ export const ImagePickerModal = ({ isOpen, onClose, currentImage, onSave, title 
                 className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
               />
               <div className="flex flex-col items-center justify-center gap-2 pointer-events-none">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 flex items-center justify-center text-xl">
-                  <RiUploadCloud2Line className="w-6 h-6" />
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg ${
+                  isLight ? 'bg-zinc-100 text-zinc-700' : 'bg-zinc-800 text-zinc-300'
+                }`}>
+                  <RiUploadCloud2Line className="w-5 h-5" />
                 </div>
-                <p className="text-xs font-bold mt-1">
-                  Drag & drop your photo here, or <span className="text-indigo-600 underline">browse</span>
+                <p className="text-xs font-semibold mt-1">
+                  Glissez-déposez votre image ici, ou <span className="underline">parcourez vos fichiers</span>
                 </p>
-                <p className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-zinc-500'}`}>
-                  Supports PNG, JPG, WEBP, or SVG (Up to 10MB)
+                <p className={`text-[11px] ${isLight ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                  Prend en charge PNG, JPG, WEBP ou SVG (jusqu'à 10 Mo)
                 </p>
               </div>
             </div>
@@ -190,36 +193,40 @@ export const ImagePickerModal = ({ isOpen, onClose, currentImage, onSave, title 
           {/* TAB 2: GITHUB AVATAR */}
           {activeTab === 'github' && (
             <form onSubmit={handleGithubFetch} className="space-y-3">
-              <label className={`block text-xs font-bold ${isLight ? 'text-slate-600' : 'text-zinc-300'}`}>
-                Enter GitHub Username
+              <label className={`block text-xs font-semibold ${isLight ? 'text-zinc-700' : 'text-zinc-300'}`}>
+                Nom d'utilisateur GitHub
               </label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
-                  <span className={`absolute left-3 top-2.5 text-xs font-mono ${isLight ? 'text-slate-400' : 'text-zinc-500'}`}>
+                  <span className={`absolute left-3 top-2 text-xs font-mono ${isLight ? 'text-zinc-400' : 'text-zinc-500'}`}>
                     @
                   </span>
                   <input
                     type="text"
                     value={githubUser}
                     onChange={(e) => setGithubUser(e.target.value)}
-                    placeholder="zoubaax"
-                    className={`w-full pl-7 pr-3 py-2 text-xs rounded-xl border outline-none font-mono transition-all ${
+                    placeholder="ex: aminenahli"
+                    className={`w-full pl-7 pr-3 py-2 text-xs rounded-lg border outline-none font-mono transition-all ${
                       isLight
-                        ? 'bg-slate-50 focus:bg-white border-slate-200 focus:border-indigo-500 text-slate-800'
-                        : 'bg-white/5 focus:bg-[#151d2e] border-white/10 focus:border-indigo-500 text-white'
+                        ? 'bg-white focus:border-zinc-900 border-zinc-200 text-zinc-900'
+                        : 'bg-zinc-900 focus:border-zinc-400 border-zinc-700 text-white'
                     }`}
                   />
                 </div>
                 <button
                   type="submit"
                   disabled={!githubUser.trim()}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 text-white text-xs font-bold transition-all shadow-sm"
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 ${
+                    isLight
+                      ? 'bg-zinc-900 hover:bg-black text-white'
+                      : 'bg-white hover:bg-zinc-100 text-zinc-900'
+                  }`}
                 >
-                  Fetch
+                  Récupérer
                 </button>
               </div>
-              <p className={`text-[11px] ${isLight ? 'text-slate-400' : 'text-zinc-500'}`}>
-                Instantly imports your avatar from <code className="font-mono">github.com/{'{username}'}.png</code>
+              <p className={`text-[11px] ${isLight ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                Importe directement l'avatar depuis <code className="font-mono">github.com/{'{pseudo}'}.png</code>
               </p>
             </form>
           )}
@@ -227,27 +234,31 @@ export const ImagePickerModal = ({ isOpen, onClose, currentImage, onSave, title 
           {/* TAB 3: IMAGE URL */}
           {activeTab === 'url' && (
             <form onSubmit={handleUrlSubmit} className="space-y-3">
-              <label className={`block text-xs font-bold ${isLight ? 'text-slate-600' : 'text-zinc-300'}`}>
-                Paste Image Direct URL
+              <label className={`block text-xs font-semibold ${isLight ? 'text-zinc-700' : 'text-zinc-300'}`}>
+                URL directe de l'image
               </label>
               <div className="flex gap-2">
                 <input
                   type="url"
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
-                  placeholder="https://images.unsplash.com/... or your CDN URL"
-                  className={`flex-1 px-3 py-2 text-xs rounded-xl border outline-none font-mono transition-all ${
+                  placeholder="https://images.unsplash.com/... ou lien CDN"
+                  className={`flex-1 px-3 py-2 text-xs rounded-lg border outline-none font-mono transition-all ${
                     isLight
-                      ? 'bg-slate-50 focus:bg-white border-slate-200 focus:border-indigo-500 text-slate-800'
-                      : 'bg-white/5 focus:bg-[#151d2e] border-white/10 focus:border-indigo-500 text-white'
+                      ? 'bg-white focus:border-zinc-900 border-zinc-200 text-zinc-900'
+                      : 'bg-zinc-900 focus:border-zinc-400 border-zinc-700 text-white'
                   }`}
                 />
                 <button
                   type="submit"
                   disabled={!urlInput.trim()}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-30 text-white text-xs font-bold transition-all shadow-sm"
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 ${
+                    isLight
+                      ? 'bg-zinc-900 hover:bg-black text-white'
+                      : 'bg-white hover:bg-zinc-100 text-zinc-900'
+                  }`}
                 >
-                  Preview
+                  Aperçu
                 </button>
               </div>
             </form>
@@ -255,53 +266,57 @@ export const ImagePickerModal = ({ isOpen, onClose, currentImage, onSave, title 
 
           {/* Live Preview Strip */}
           {previewUrl && (
-            <div className={`p-3.5 rounded-2xl border flex items-center justify-between gap-4 ${
-              isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'
+            <div className={`p-3 rounded-xl border flex items-center justify-between gap-3.5 ${
+              isLight ? 'bg-zinc-50/80 border-zinc-200' : 'bg-zinc-950/60 border-zinc-800'
             }`}>
               <div className="flex items-center gap-3 min-w-0">
                 <img
                   src={previewUrl}
-                  alt="Preview"
-                  onError={() => alert('Could not load image from this URL. Please check the link.')}
-                  className="w-14 h-14 rounded-xl object-cover border border-white/20 shadow-md shrink-0"
+                  alt="Aperçu"
+                  onError={() => alert('Impossible de charger cette image. Vérifiez le lien.')}
+                  className="w-12 h-12 rounded-lg object-cover border border-zinc-200 dark:border-zinc-700 shadow-xs shrink-0"
                 />
                 <div className="min-w-0">
-                  <span className="text-xs font-bold block truncate">Selected Image Preview</span>
-                  <span className={`text-[10px] block truncate font-mono mt-0.5 ${isLight ? 'text-slate-400' : 'text-zinc-400'}`}>
-                    {previewUrl.startsWith('data:') ? 'Local file uploaded' : previewUrl}
+                  <span className="text-xs font-semibold block truncate">Image sélectionnée</span>
+                  <span className={`text-[10px] block truncate font-mono mt-0.5 ${isLight ? 'text-zinc-500' : 'text-zinc-400'}`}>
+                    {previewUrl.startsWith('data:') ? 'Fichier local chargé' : previewUrl}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 text-emerald-500 text-xs font-bold shrink-0">
-                <RiCheckLine className="w-4 h-4" />
-                <span>Ready</span>
+              <div className="flex items-center gap-1 text-emerald-500 text-xs font-semibold shrink-0">
+                <RiCheckLine className="w-3.5 h-3.5" />
+                <span>Prête</span>
               </div>
             </div>
           )}
         </div>
 
         {/* Modal Footer */}
-        <div className={`flex items-center justify-end gap-2.5 px-6 py-4 border-t ${
-          isLight ? 'border-slate-100 bg-slate-50/50' : 'border-white/10 bg-[#0d1320]'
+        <div className={`flex items-center justify-end gap-2 px-5 py-3 border-t shrink-0 ${
+          isLight ? 'border-zinc-100 bg-zinc-50/70' : 'border-zinc-800 bg-zinc-950/60'
         }`}>
           <button
             type="button"
             onClick={onClose}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${
-              isLight ? 'text-slate-600 hover:bg-slate-200' : 'text-zinc-400 hover:text-white hover:bg-white/5'
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+              isLight ? 'text-zinc-600 hover:bg-zinc-200/70' : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
             }`}
           >
-            Cancel
+            Annuler
           </button>
           <button
             type="button"
             onClick={handleConfirm}
             disabled={!previewUrl}
-            className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white shadow-md shadow-indigo-600/20 active:scale-95 transition-all"
+            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer shadow-xs disabled:opacity-40 ${
+              isLight
+                ? 'bg-zinc-900 hover:bg-black text-white'
+                : 'bg-white hover:bg-zinc-100 text-zinc-900'
+            }`}
           >
-            <RiCheckLine className="w-4 h-4" />
-            <span>Apply Photo</span>
+            <RiCheckLine className="w-3.5 h-3.5" />
+            <span>Appliquer l'image</span>
           </button>
         </div>
       </div>

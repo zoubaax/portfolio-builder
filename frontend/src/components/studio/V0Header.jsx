@@ -121,7 +121,7 @@ export const V0Header = () => {
           {/* Auto-saved indicator */}
           <div className="hidden lg:flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono ml-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            <span>{saveStatus === 'saving' ? 'Saving...' : 'Saved'}</span>
+            <span>{saveStatus === 'saving' ? 'Sauvegarde...' : 'Enregistré'}</span>
           </div>
         </div>
       </div>
@@ -139,7 +139,7 @@ export const V0Header = () => {
             }`}
           >
             <RiEyeLine className="w-3.5 h-3.5" />
-            <span>Preview</span>
+            <span>Aperçu</span>
           </button>
 
           <button
@@ -159,7 +159,7 @@ export const V0Header = () => {
               onClick={() => setViewMode('projects')}
               className={`px-3 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200 ${
                 viewMode === 'projects'
-                  ? 'bg-indigo-600 text-white font-medium shadow-xs'
+                  ? 'bg-zinc-800 text-white font-medium shadow-xs'
                   : 'text-zinc-400 hover:text-zinc-200'
               }`}
               title="Importer des projets depuis GitHub"
@@ -182,7 +182,7 @@ export const V0Header = () => {
                 ? 'bg-zinc-800 text-white'
                 : 'text-zinc-500 hover:text-zinc-300'
             }`}
-            title="Desktop view"
+            title="Vue Bureau"
           >
             <RiComputerLine className="w-3.5 h-3.5" />
           </button>
@@ -197,7 +197,7 @@ export const V0Header = () => {
                 ? 'bg-zinc-800 text-white'
                 : 'text-zinc-500 hover:text-zinc-300'
             }`}
-            title="Mobile view (390px)"
+            title="Vue Mobile (390px)"
           >
             <RiSmartphoneLine className="w-3.5 h-3.5" />
           </button>
@@ -217,7 +217,7 @@ export const V0Header = () => {
                 ? 'hover:bg-zinc-800 text-zinc-300 hover:text-white cursor-pointer'
                 : 'text-zinc-700 cursor-not-allowed'
             }`}
-            title="Previous version"
+            title="Version précédente"
           >
             <RiArrowLeftSLine className="w-3.5 h-3.5" />
           </button>
@@ -234,7 +234,7 @@ export const V0Header = () => {
                 ? 'hover:bg-zinc-800 text-zinc-300 hover:text-white cursor-pointer'
                 : 'text-zinc-700 cursor-not-allowed'
             }`}
-            title="Next version"
+            title="Version suivante"
           >
             <RiArrowRightSLine className="w-3.5 h-3.5" />
           </button>
@@ -248,7 +248,7 @@ export const V0Header = () => {
               ? 'bg-white text-black border-white'
               : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800'
           }`}
-          title={isChatCollapsed ? 'Show Chat Panel' : 'Collapse to Fullscreen'}
+          title={isChatCollapsed ? 'Afficher le chat' : 'Plein écran'}
         >
           <RiSideBarLine className="w-4 h-4" />
         </button>
@@ -275,7 +275,7 @@ export const V0Header = () => {
           ) : (
             <RiUploadCloud2Line className="w-3.5 h-3.5" />
           )}
-          <span>{isPublished ? 'Deployed' : 'Deploy'}</span>
+          <span>{isPublished ? 'Publié' : 'Publier'}</span>
         </button>
 
         {/* Clerk User Avatar */}
@@ -289,9 +289,9 @@ export const V0Header = () => {
             <div className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center mx-auto mb-3 text-xl font-bold">
               ✓
             </div>
-            <h3 className="text-base font-bold text-white mb-1">Successfully Deployed</h3>
+            <h3 className="text-base font-bold text-white mb-1">Portfolio Publié avec Succès</h3>
             <p className="text-xs text-zinc-400 mb-4 font-mono">
-              Your portfolio is compiled and live on the edge.
+              Votre portfolio est désormais en ligne et accessible mondialement.
             </p>
             <div className="flex items-center gap-2 p-2 rounded-xl bg-zinc-900 border border-zinc-800 mb-4">
               <input
@@ -306,7 +306,7 @@ export const V0Header = () => {
                 rel="noreferrer"
                 className="px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold flex items-center gap-1 hover:bg-zinc-200 transition-colors"
               >
-                <span>Visit</span>
+                <span>Voir le site</span>
                 <RiExternalLinkLine className="w-3 h-3" />
               </a>
             </div>
@@ -314,7 +314,7 @@ export const V0Header = () => {
               onClick={() => setPublishedUrl(null)}
               className="text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer font-mono"
             >
-              Close
+              Fermer
             </button>
           </div>
         </div>

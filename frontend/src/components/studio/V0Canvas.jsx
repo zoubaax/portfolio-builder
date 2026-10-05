@@ -9,6 +9,7 @@ import {
   RiArrowLeftSLine,
   RiArrowRightSLine,
   RiSmartphoneLine,
+  RiTabletLine,
   RiComputerLine,
   RiExternalLinkLine,
   RiRefreshLine,
@@ -152,7 +153,7 @@ export const V0Canvas = () => {
             }`}
           >
             <RiGlobalLine className="w-3.5 h-3.5" />
-            <span>Preview</span>
+            <span>Aperçu</span>
           </button>
 
           {/* Code Tab (Forced during generation) */}
@@ -177,12 +178,12 @@ export const V0Canvas = () => {
               onClick={() => setViewMode('projects')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer animate-in fade-in zoom-in-95 duration-200 ${
                 viewMode === 'projects'
-                  ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-200/60 shadow-xs'
+                  ? 'bg-zinc-100 text-zinc-900 font-semibold border border-zinc-300 shadow-xs'
                   : 'text-zinc-500 hover:text-zinc-800'
               }`}
               title="Importer des projets GitHub"
             >
-              <RiGithubFill className="w-3.5 h-3.5 text-indigo-600" />
+              <RiGithubFill className="w-3.5 h-3.5 text-zinc-800" />
               <span>Projets</span>
             </button>
           )}
@@ -208,12 +209,12 @@ export const V0Canvas = () => {
               }
             }}
             className={`p-0.5 rounded transition-colors cursor-pointer ${
-              activeWidth !== null ? 'text-indigo-600 font-bold' : 'text-zinc-500 hover:text-zinc-800'
+              activeWidth !== null ? 'text-zinc-900 font-bold' : 'text-zinc-500 hover:text-zinc-800'
             }`}
             title={activeWidth !== null ? "Passer en vue Plein écran (Desktop)" : "Passer en vue Mobile"}
           >
             {activeWidth !== null ? (
-              <RiComputerLine className="w-3.5 h-3.5 text-indigo-600" />
+              <RiComputerLine className="w-3.5 h-3.5 text-zinc-900" />
             ) : (
               <RiSmartphoneLine className="w-3.5 h-3.5" />
             )}
@@ -226,7 +227,7 @@ export const V0Canvas = () => {
           <button
             onClick={() => window.open(publishedUrl || '#', '_blank')}
             className="text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer"
-            title="Open in new window"
+            title="Ouvrir dans une nouvelle fenêtre"
           >
             <RiExternalLinkLine className="w-3.5 h-3.5" />
           </button>
@@ -234,7 +235,7 @@ export const V0Canvas = () => {
           <button
             onClick={() => window.location.reload()}
             className="text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer"
-            title="Refresh"
+            title="Rafraîchir"
           >
             <RiRefreshLine className="w-3.5 h-3.5" />
           </button>
@@ -252,13 +253,13 @@ export const V0Canvas = () => {
                 ? 'bg-zinc-200 text-zinc-900'
                 : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900'
             }`}
-            title="Theme & Color Swatches"
+            title="Thèmes & Nuancier"
           >
             <RiPaletteLine className="w-4 h-4" />
           </button>
 
           <button className="px-3 py-1 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-xs font-medium text-zinc-700 transition-colors cursor-pointer">
-            Invite
+            Inviter
           </button>
 
           <button
@@ -266,18 +267,18 @@ export const V0Canvas = () => {
             disabled={saveStatus === 'saving'}
             className="px-3.5 py-1 rounded-lg bg-black hover:bg-zinc-800 text-white text-xs font-medium transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
           >
-            <span>{isPublished ? 'Published' : 'Publish'}</span>
+            <span>{isPublished ? 'Publié' : 'Publier'}</span>
           </button>
         </div>
       </div>
 
       {/* 2. Color Swatch Popover */}
       {showColorPopover && (
-        <div className="absolute top-14 right-4 z-40 w-72 bg-white border border-zinc-200 rounded-2xl p-4 shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200 text-zinc-900">
+        <div className="absolute top-14 right-4 z-40 w-72 bg-white border border-zinc-200 rounded-2xl p-4 shadow-2xl animate-in fade-in slide-from-top-2 duration-200 text-zinc-900">
           <div className="flex items-center justify-between pb-2.5 border-b border-zinc-100 mb-3">
             <div className="flex items-center gap-1.5">
               <RiPaletteLine className="w-4 h-4 text-zinc-700" />
-              <h4 className="text-xs font-bold text-zinc-900">Theme & Color Swatches</h4>
+              <h4 className="text-xs font-bold text-zinc-900">Thèmes & Nuancier</h4>
             </div>
             <button
               onClick={() => setShowColorPopover(false)}
@@ -289,7 +290,7 @@ export const V0Canvas = () => {
 
           {/* Preset Swatches */}
           <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold mb-2">
-            Curated Themes
+            Thèmes Prédéfinis
           </p>
           <div className="space-y-1.5 mb-4">
             {Object.values(THEME_PRESETS).map((t) => (
@@ -321,7 +322,7 @@ export const V0Canvas = () => {
 
           {/* Quick Accent Color Buttons */}
           <p className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold mb-2">
-            Instant Accent Color
+            Couleur d'accentuation
           </p>
           <div className="flex flex-wrap gap-2 mb-3">
             {QUICK_ACCENT_COLORS.map((c) => (
@@ -337,7 +338,7 @@ export const V0Canvas = () => {
 
           {/* Custom Hex Color Picker */}
           <div className="pt-2 border-t border-zinc-100 flex items-center justify-between text-xs">
-            <span className="text-zinc-500 text-[11px]">Custom Hex</span>
+            <span className="text-zinc-500 text-[11px]">Hex personnalisé</span>
             <div className="flex items-center gap-2">
               <input
                 type="color"
@@ -360,45 +361,60 @@ export const V0Canvas = () => {
           <div className="flex items-center gap-1 bg-zinc-100 p-0.5 rounded-xl border border-zinc-200/80">
             <button
               onClick={() => { setDeviceView('mobile'); setSimulatedWidth(320); }}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${activeWidth === 320 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
-              title="iPhone SE (320px)"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer ${
+                activeWidth === 320 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'
+              }`}
+              title="Mobile Compact (320px)"
             >
-              📱 320
+              <RiSmartphoneLine className="w-3 h-3 text-zinc-400" />
+              <span>320</span>
             </button>
             <button
               onClick={() => { setDeviceView('mobile'); setSimulatedWidth(375); }}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${activeWidth === 375 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
-              title="Mobile M (375px)"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer ${
+                activeWidth === 375 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'
+              }`}
+              title="Mobile Standard (375px)"
             >
-              📱 375
+              <span>375</span>
             </button>
             <button
               onClick={() => { setDeviceView('mobile'); setSimulatedWidth(390); }}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${activeWidth === 390 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
-              title="iPhone 14/15 (390px)"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer ${
+                activeWidth === 390 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'
+              }`}
+              title="iPhone 14/15/16 (390px)"
             >
-              📱 390
+              <span>390</span>
             </button>
             <button
               onClick={() => { setDeviceView('mobile'); setSimulatedWidth(428); }}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${activeWidth === 428 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
-              title="Mobile L (428px)"
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer ${
+                activeWidth === 428 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'
+              }`}
+              title="Mobile Large (428px)"
             >
-              📱 428
+              <span>428</span>
             </button>
             <button
               onClick={() => { setDeviceView('tablet'); setSimulatedWidth(768); }}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${activeWidth === 768 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer ${
+                activeWidth === 768 ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'
+              }`}
               title="Tablette iPad (768px)"
             >
-              📟 768
+              <RiTabletLine className="w-3 h-3 text-zinc-400" />
+              <span>768</span>
             </button>
             <button
               onClick={() => { setDeviceView('desktop'); setSimulatedWidth(null); }}
-              className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${activeWidth === null ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'}`}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer ${
+                activeWidth === null ? 'bg-white text-zinc-900 shadow-xs font-bold' : 'text-zinc-500 hover:text-zinc-800'
+              }`}
               title="Plein écran Desktop (100%)"
             >
-              💻 100%
+              <RiComputerLine className="w-3 h-3 text-zinc-400" />
+              <span>100%</span>
             </button>
           </div>
 
@@ -422,13 +438,13 @@ export const V0Canvas = () => {
                     setDeviceView(val < 768 ? 'mobile' : 'tablet');
                   }
                 }}
-                className="w-24 sm:w-36 accent-indigo-600 cursor-pointer h-1.5 bg-zinc-200 rounded-lg"
+                className="w-24 sm:w-36 accent-zinc-900 cursor-pointer h-1.5 bg-zinc-200 rounded-lg"
               />
               <span className="text-[11px] text-zinc-400 font-mono">100%</span>
             </div>
 
-            <div className="px-3 py-1 rounded-lg bg-zinc-900 text-white font-mono text-xs font-bold shadow-xs flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <div className="px-3 py-1 rounded-lg bg-zinc-900 text-white font-mono text-xs font-medium shadow-xs flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
               <span>{activeWidth ? `${activeWidth}px` : 'Plein écran (100%)'}</span>
             </div>
           </div>
@@ -454,7 +470,7 @@ export const V0Canvas = () => {
                   </svg>
                 </div>
                 <p className="text-zinc-400 text-sm font-normal">
-                  Your v0 generation will show here.
+                  Votre portfolio généré s'affichera ici.
                 </p>
               </div>
             )}
@@ -464,14 +480,14 @@ export const V0Canvas = () => {
               <div className="flex flex-col items-center justify-center text-center p-8 select-none animate-in fade-in duration-200">
                 <RiLoader4Line className="w-8 h-8 animate-spin text-zinc-600 mb-3" />
                 <p className="text-xs text-zinc-600 font-mono mb-2">
-                  Streaming code in background...
+                  Génération du code en cours...
                 </p>
                 <button
                   onClick={() => setViewMode('code')}
                   className="px-3 py-1.5 rounded-lg bg-zinc-900 text-white text-xs font-mono flex items-center gap-1.5 hover:bg-black transition-colors cursor-pointer"
                 >
                   <RiCodeSSlashLine className="w-3.5 h-3.5" />
-                  <span>Switch to Code View →</span>
+                  <span>Voir le Code →</span>
                 </button>
               </div>
             )}
@@ -494,7 +510,7 @@ export const V0Canvas = () => {
                       <div
                         onPointerDown={(e) => handlePointerDownResize(e, 'left')}
                         className={`absolute -left-3.5 top-1/2 -translate-y-1/2 z-40 w-6 h-16 rounded-full flex items-center justify-center cursor-ew-resize transition-all hover:scale-110 active:scale-95 group/handle border shadow-xl select-none ${
-                          isResizing ? 'bg-indigo-600 scale-110 border-indigo-400' : 'bg-zinc-800/90 hover:bg-indigo-600 border-white/20'
+                          isResizing ? 'bg-zinc-900 scale-110 border-zinc-700' : 'bg-zinc-800/90 hover:bg-zinc-900 border-white/20'
                         }`}
                         title="Glisser pour redimensionner"
                       >
@@ -535,7 +551,7 @@ export const V0Canvas = () => {
                       <div
                         onPointerDown={(e) => handlePointerDownResize(e, 'right')}
                         className={`absolute -right-3.5 top-1/2 -translate-y-1/2 z-40 w-6 h-16 rounded-full flex items-center justify-center cursor-ew-resize transition-all hover:scale-110 active:scale-95 group/handle border shadow-xl select-none ${
-                          isResizing ? 'bg-indigo-600 scale-110 border-indigo-400' : 'bg-zinc-800/90 hover:bg-indigo-600 border-white/20'
+                          isResizing ? 'bg-zinc-900 scale-110 border-zinc-700' : 'bg-zinc-800/90 hover:bg-zinc-900 border-white/20'
                         }`}
                         title="Glisser pour redimensionner"
                       >
@@ -564,11 +580,11 @@ export const V0Canvas = () => {
                 {isGenerating ? (
                   <span className="flex items-center gap-1.5 text-emerald-400 font-mono text-[11px]">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                    <span>Streaming (NVIDIA Nemotron 3 Ultra 550B)</span>
+                    <span>Génération en direct...</span>
                   </span>
                 ) : hasGeneratedFirstPortfolio ? (
                   <span className="text-zinc-400 text-[11px]">
-                    ✓ Code Ready
+                    ✓ Code Prêt
                   </span>
                 ) : (
                   <span className="text-zinc-500 text-[11px]">
@@ -584,7 +600,7 @@ export const V0Canvas = () => {
                   className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-white text-black text-[11px] font-semibold hover:bg-zinc-200 transition-colors cursor-pointer"
                 >
                   <RiGlobalLine className="w-3 h-3" />
-                  <span>View Preview</span>
+                  <span>Voir l'Aperçu</span>
                   <RiArrowRightLine className="w-3 h-3" />
                 </button>
 
@@ -597,12 +613,12 @@ export const V0Canvas = () => {
                     {copiedCode ? (
                       <>
                         <RiCheckLine className="w-3 h-3 text-emerald-400" />
-                        <span className="text-emerald-400">Copied</span>
+                        <span className="text-emerald-400">Copié</span>
                       </>
                     ) : (
                       <>
                         <RiFileCopyLine className="w-3 h-3" />
-                        <span>Copy</span>
+                        <span>Copier</span>
                       </>
                     )}
                   </button>
@@ -653,9 +669,9 @@ export const V0Canvas = () => {
       {publishedUrl && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="w-full max-w-sm bg-white border border-zinc-200 rounded-2xl p-5 shadow-2xl animate-in zoom-in-95 text-center">
-            <h3 className="text-sm font-bold text-zinc-900 mb-1">Portfolio Published!</h3>
+            <h3 className="text-sm font-bold text-zinc-900 mb-1">Portfolio Publié !</h3>
             <p className="text-xs text-zinc-500 mb-4">
-              Your custom portfolio is live on the web.
+              Votre portfolio est désormais accessible en ligne.
             </p>
             <div className="flex items-center gap-2 p-2 rounded-xl bg-zinc-50 border border-zinc-200 mb-4">
               <input
@@ -670,14 +686,14 @@ export const V0Canvas = () => {
                 rel="noreferrer"
                 className="px-2.5 py-1 rounded-md bg-black text-white text-xs font-medium hover:bg-zinc-800"
               >
-                Visit
+                Visiter
               </a>
             </div>
             <button
               onClick={() => setPublishedUrl(null)}
               className="text-xs text-zinc-400 hover:text-zinc-700 cursor-pointer"
             >
-              Close
+              Fermer
             </button>
           </div>
         </div>

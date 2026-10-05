@@ -31,6 +31,7 @@ import {
   RiAlertLine,
   RiUploadCloud2Line,
   RiCloseLine,
+  RiFolder3Line,
 } from 'react-icons/ri';
 import { ImagePickerModal } from '../common/ImagePickerModal';
 
@@ -536,7 +537,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
   return (
     <div
       className={`h-full w-full overflow-y-auto p-6 md:p-8 transition-colors ${
-        isLight ? 'bg-slate-50 text-slate-900' : 'bg-[#090b10] text-slate-100'
+        isLight ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-zinc-100'
       }`}
     >
       <div className="max-w-5xl mx-auto space-y-6 pb-24">
@@ -546,9 +547,11 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
           style={{ borderColor: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)' }}
         >
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold mb-2 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-              <RiGithubFill className="w-4 h-4" />
-              <span>Import GitHub & AI Generator</span>
+            <div className={`inline-flex items-center gap-2 px-2.5 py-1 rounded-md text-xs font-medium mb-2 border ${
+              isLight ? 'bg-zinc-100 text-zinc-700 border-zinc-200' : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+            }`}>
+              <RiGithubFill className="w-3.5 h-3.5 text-zinc-700 dark:text-zinc-300" />
+              <span>Dépôts GitHub</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Importer vos Projets GitHub
@@ -563,41 +566,43 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
           {/* Connected Profile Status Card (Certifié OAuth) */}
           {verifiedUsername && (
             <div
-              className={`flex items-center gap-4 px-4 py-3 rounded-2xl border shadow-sm ${
-                isLight ? 'bg-white border-slate-200' : 'bg-[#10141f] border-white/10'
+              className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl border ${
+                isLight ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-800'
               }`}
             >
               <div className="relative">
                 <img
                   src={verifiedAvatar || `https://github.com/${verifiedUsername}.png?size=80`}
                   alt={verifiedUsername}
-                  className="w-10 h-10 rounded-full border-2 border-emerald-500/50 object-cover"
+                  className="w-9 h-9 rounded-full border border-zinc-200 dark:border-zinc-700 object-cover"
                   onError={(e) => {
                     e.target.src = 'https://github.com/github.png';
                   }}
                 />
                 <span
-                  className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-emerald-500 border-2 border-[#10141f] rounded-full"
-                  title="Certifié GitHub OAuth"
+                  className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full"
+                  title="Connecté"
                 />
               </div>
 
               <div className="text-xs">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-sm text-indigo-400 font-mono">@{verifiedUsername}</span>
-                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <RiShieldCheckLine className="w-3 h-3" />
-                    Certifié OAuth
+                  <span className="font-semibold text-xs font-mono">@{verifiedUsername}</span>
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium border ${
+                    isLight ? 'bg-zinc-100 text-zinc-700 border-zinc-200' : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                  }`}>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span>Connecté</span>
                   </span>
                 </div>
-                <div className="flex items-center gap-2 mt-1">
+                <div className="flex items-center gap-2 mt-0.5">
                   <button
                     type="button"
                     onClick={() => handleFetchRepos(verifiedUsername)}
                     disabled={isLoading}
-                    className="text-xs text-indigo-400 hover:text-indigo-300 font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
+                    className="text-[11px] text-zinc-500 hover:text-zinc-900 dark:hover:text-white font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
                   >
-                    <RiRefreshLine className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+                    <RiRefreshLine className={`w-3 h-3 ${isLoading ? 'animate-spin' : ''}`} />
                     <span>Actualiser</span>
                   </button>
                   <span className="opacity-30">•</span>
@@ -605,9 +610,9 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                     type="button"
                     onClick={handleDisconnect}
                     disabled={isLoading}
-                    className="text-xs text-rose-400 hover:text-rose-300 font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
+                    className="text-[11px] text-rose-500 hover:text-rose-600 font-medium inline-flex items-center gap-1 cursor-pointer transition-colors"
                   >
-                    <RiLogoutBoxRLine className="w-3.5 h-3.5" />
+                    <RiLogoutBoxRLine className="w-3 h-3" />
                     <span>Dissocier</span>
                   </button>
                 </div>
@@ -616,38 +621,40 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
           )}
         </div>
 
-        {/* Strict OAuth Authentication Panel - No manual link input to prevent impersonation */}
+        {/* Strict OAuth Authentication Panel - Clean & Minimal */}
         {!verifiedUsername && (
           <div
-            className={`p-8 rounded-3xl border text-center max-w-xl mx-auto space-y-6 ${
-              isLight ? 'bg-white border-slate-200 shadow-xl' : 'bg-[#10141f] border-white/10'
+            className={`p-6 sm:p-8 rounded-2xl border text-center max-w-lg mx-auto space-y-4 ${
+              isLight ? 'bg-white border-zinc-200 shadow-sm' : 'bg-zinc-900 border-zinc-800'
             }`}
           >
-            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mx-auto shadow-inner">
-              <RiGithubFill className="w-9 h-9" />
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto ${
+              isLight ? 'bg-zinc-900 text-white' : 'bg-white text-zinc-900'
+            }`}>
+              <RiGithubFill className="w-6 h-6" />
             </div>
 
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <RiShieldCheckLine className="w-3.5 h-3.5" />
-                <span>Authentification 100% Sécurisée & Vérifiée</span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-black tracking-tight">
-                Authentifiez votre Compte GitHub
+            <div className="space-y-1.5">
+              <h2 className="text-base sm:text-lg font-bold tracking-tight">
+                Connecter votre compte GitHub
               </h2>
-              <p className="text-xs sm:text-sm opacity-70 max-w-md mx-auto leading-relaxed">
-                Afin de garantir l'authenticité de vos projets et empêcher toute utilisation non autorisée du compte d'un tiers, la liaison de vos projets se fait exclusivement par authentification OAuth officielle.
+              <p className="text-xs opacity-70 max-w-sm mx-auto leading-relaxed">
+                Synchronisez vos dépôts publics certifiés directement avec votre portfolio.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-1">
               <button
                 type="button"
                 onClick={handleLinkGitHubOAuth}
                 disabled={isLinkingOAuth}
-                className="w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-sm bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-lg shadow-indigo-600/30 flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-50"
+                className={`w-full sm:w-auto px-5 py-2.5 rounded-lg font-semibold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
+                  isLight
+                    ? 'bg-zinc-900 hover:bg-black text-white'
+                    : 'bg-white hover:bg-zinc-100 text-zinc-900'
+                }`}
               >
-                <RiGithubFill className="w-5 h-5" />
+                <RiGithubFill className="w-4 h-4" />
                 <span>{isLinkingOAuth ? 'Connexion en cours...' : 'Connecter avec GitHub OAuth'}</span>
               </button>
 
@@ -655,47 +662,37 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                 <button
                   type="button"
                   onClick={() => openUserProfile()}
-                  className="w-full sm:w-auto px-5 py-3 rounded-xl font-semibold text-xs border border-white/15 hover:bg-white/5 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                  className={`w-full sm:w-auto px-4 py-2.5 rounded-lg font-medium text-xs border transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    isLight
+                      ? 'border-zinc-200 hover:bg-zinc-50 text-zinc-700'
+                      : 'border-zinc-700 hover:bg-zinc-800 text-zinc-300'
+                  }`}
                 >
-                  <RiUserSettingsLine className="w-4 h-4 opacity-70" />
-                  <span>Gérer mon profil Clerk</span>
+                  <RiUserSettingsLine className="w-3.5 h-3.5 opacity-70" />
+                  <span>Gérer mon profil</span>
                 </button>
               )}
             </div>
 
-            {/* Security guarantees */}
-            <div
-              className={`p-4 rounded-2xl border grid grid-cols-1 sm:grid-cols-3 gap-3 text-left text-xs ${
-                isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/2 border-white/5'
-              }`}
-            >
-              <div>
-                <span className="font-bold block text-indigo-400">🔒 Anti-usurpation</span>
-                <span className="opacity-60 text-[11px]">Seul le propriétaire du compte GitHub peut charger ses dépôts.</span>
-              </div>
-              <div>
-                <span className="font-bold block text-emerald-400">⚡ Connecté à vie</span>
-                <span className="opacity-60 text-[11px]">Une seule validation suffit pour synchroniser vos projets en permanence.</span>
-              </div>
-              <div>
-                <span className="font-bold block text-cyan-400">✨ Synchronisation auto</span>
-                <span className="opacity-60 text-[11px]">Zéro lien à copier/coller. Détection instantanée de vos dépôts.</span>
-              </div>
-            </div>
+            <p className="text-[11px] opacity-50 pt-3 border-t border-zinc-100 dark:border-zinc-800">
+              Synchronisation directe et sécurisée via l'API officielle GitHub OAuth.
+            </p>
           </div>
         )}
 
         {/* Success Notice */}
         {successNotice && (
-          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs flex items-center gap-2">
-            <RiCheckLine className="w-4 h-4 shrink-0" />
+          <div className={`p-3.5 rounded-xl border text-xs flex items-center gap-2 ${
+            isLight ? 'bg-zinc-100 border-zinc-200 text-zinc-800' : 'bg-zinc-850 border-zinc-700 text-zinc-200'
+          }`}>
+            <RiCheckLine className="w-4 h-4 shrink-0 text-zinc-900 dark:text-white" />
             <span>{successNotice}</span>
           </div>
         )}
 
         {/* Error message */}
         {error && (
-          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm flex items-center gap-2">
+          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 text-sm flex items-center gap-2">
             <RiInformationLine className="w-5 h-5 shrink-0" />
             <span>{error}</span>
           </div>
@@ -707,11 +704,15 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
               style={{ borderColor: isLight ? 'rgba(0,0,0,0.08)' : 'rgba(255,255,255,0.08)' }}
             >
               <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                <RiFolder3Line className="w-5 h-5 text-zinc-600 dark:text-zinc-400" />
                 <h2 className="text-lg sm:text-xl font-bold tracking-tight">
                   Projets Actifs dans le Portfolio
                 </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className={`px-2.5 py-0.5 rounded-md text-xs font-medium border ${
+                  isLight
+                    ? 'bg-zinc-100 text-zinc-700 border-zinc-200'
+                    : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                }`}>
                   {currentPortfolioProjects.length} projet{currentPortfolioProjects.length > 1 ? 's' : ''} en ligne
                 </span>
               </div>
@@ -728,12 +729,12 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                     key={proj.id || idx}
                     className={`rounded-2xl border overflow-hidden transition-all flex flex-col justify-between ${
                       isLight
-                        ? 'bg-white border-slate-200 shadow-sm hover:border-slate-300'
-                        : 'bg-[#10141f] border-white/10 hover:border-white/20'
+                        ? 'bg-white border-zinc-200 shadow-xs hover:border-zinc-300'
+                        : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
                     }`}
                   >
                     {/* Visual Banner Thumbnail */}
-                    <div className="relative h-44 sm:h-48 w-full overflow-hidden bg-slate-900 group">
+                    <div className="relative h-44 sm:h-48 w-full overflow-hidden bg-zinc-950 group">
                       {proj.image ? (
                         <img
                           src={proj.image}
@@ -741,17 +742,17 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-indigo-950/40 text-indigo-400 text-xs">
-                          Aucune image de couverture
+                        <div className="w-full h-full flex items-center justify-center bg-zinc-800/60 text-zinc-400 text-xs">
+                          Aucune image d'illustration
                         </div>
                       )}
 
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
+                      <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
                       {/* Status Badge */}
                       <div className="absolute top-3 left-3 flex items-center gap-2">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/90 text-white backdrop-blur-md shadow-md">
-                          <RiCheckLine className="w-3.5 h-3.5 stroke-3" />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-zinc-900/90 text-white dark:bg-white/90 dark:text-zinc-900 backdrop-blur-md shadow-xs">
+                          <RiCheckLine className="w-3 h-3" />
                           <span>Dans le portfolio</span>
                         </span>
                       </div>
@@ -762,19 +763,18 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                           href={proj.github}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/60 hover:bg-black/90 text-white backdrop-blur-md transition-all shadow"
+                          className="absolute top-3 right-3 p-1.5 rounded-lg bg-black/60 hover:bg-black/90 text-white backdrop-blur-md transition-all shadow-xs"
                           title="Voir sur GitHub"
                         >
-                          <RiExternalLinkLine className="w-4 h-4" />
+                          <RiExternalLinkLine className="w-3.5 h-3.5" />
                         </a>
                       )}
 
                       {/* Regenerating Overlay */}
                       {isRegenerating && (
-                        <div className="absolute inset-0 bg-black/85 backdrop-blur-xs flex flex-col items-center justify-center gap-2 text-white z-30 animate-in fade-in duration-200">
-                          <RiRefreshLine className="w-7 h-7 animate-spin text-indigo-400" />
-                          <span className="text-xs font-bold tracking-wide">Génération Maquette 3D...</span>
-                          <span className="text-[10px] opacity-70">FLUX.1-schnell IA</span>
+                        <div className="absolute inset-0 bg-black/80 backdrop-blur-xs flex flex-col items-center justify-center gap-2 text-white z-30 animate-in fade-in duration-150">
+                          <RiRefreshLine className="w-6 h-6 animate-spin text-zinc-300" />
+                          <span className="text-xs font-semibold tracking-wide">Conception du visuel...</span>
                         </div>
                       )}
                     </div>
@@ -796,7 +796,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                           {proj.tags.slice(0, 4).map((tag, tIdx) => (
                             <span
                               key={tIdx}
-                              className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                              className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700/80"
                             >
                               {tag}
                             </span>
@@ -814,11 +814,15 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                           type="button"
                           disabled={isRegenerating}
                           onClick={() => handleRegenerateImage(proj)}
-                          className="flex-1 py-2 px-3 rounded-xl text-xs font-bold bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 hover:scale-[1.01] active:scale-[0.99]"
-                          title="Générer une nouvelle maquette 3D publicitaire pour ce projet"
+                          className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 ${
+                            isLight
+                              ? 'bg-zinc-100 hover:bg-zinc-200/80 text-zinc-800 border-zinc-200'
+                              : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border-zinc-700'
+                          }`}
+                          title="Générer un nouveau visuel pour ce projet"
                         >
-                          <RiSparkling2Fill className={`w-3.5 h-3.5 ${isRegenerating ? 'animate-spin' : 'text-amber-400'}`} />
-                          <span>{isRegenerating ? 'Génération...' : "Refaire l'image"}</span>
+                          <RiRefreshLine className={`w-3.5 h-3.5 ${isRegenerating ? 'animate-spin' : ''}`} />
+                          <span>{isRegenerating ? 'Génération...' : 'Nouveau visuel'}</span>
                         </button>
 
                         {/* Button Supprimer */}
@@ -826,7 +830,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                           type="button"
                           disabled={isRegenerating}
                           onClick={() => handleRemovePortfolioProject(proj)}
-                          className="py-2 px-3.5 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer hover:scale-[1.01] active:scale-[0.99]"
+                          className="py-2 px-3 rounded-xl text-xs font-semibold text-rose-500 hover:bg-rose-500/10 border border-rose-500/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                           title="Supprimer ce projet du portfolio"
                         >
                           <RiDeleteBin6Line className="w-3.5 h-3.5" />
@@ -847,16 +851,16 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <RiGithubFill className="w-5 h-5 text-indigo-400" />
+                  <RiGithubFill className="w-5 h-5 opacity-70" />
                   <h2 className="text-lg sm:text-xl font-bold tracking-tight">
                     Dépôts GitHub Disponibles à Importer
                   </h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700">
                     {availableRepos.length} disponible{availableRepos.length > 1 ? 's' : ''}
                   </span>
                 </div>
                 <p className="text-xs opacity-60 mt-0.5">
-                  Cochez les dépôts que vous souhaitez enrichir avec l'IA et ajouter à votre portfolio.
+                  Sélectionnez les dépôts GitHub à intégrer à votre portfolio.
                 </p>
               </div>
 
@@ -870,7 +874,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Filtrer par nom ou techno..."
-                      className="w-full pl-9 pr-3 py-1.5 rounded-lg border text-xs bg-transparent outline-none focus:border-indigo-500"
+                      className="w-full pl-9 pr-3 py-1.5 rounded-lg border text-xs bg-transparent outline-none focus:border-zinc-900 dark:focus:border-white"
                       style={{ borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.1)' }}
                     />
                   </div>
@@ -878,7 +882,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                   <button
                     type="button"
                     onClick={() => handleSelectAllAvailable(filteredAvailableRepos)}
-                    className="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer shrink-0"
+                    className="text-xs font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors cursor-pointer shrink-0"
                   >
                     {selectedRepoIds.size === filteredAvailableRepos.length && filteredAvailableRepos.length > 0
                       ? 'Tout désélectionner'
@@ -900,9 +904,9 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                       borderColor: isLight ? '#e2e8f0' : 'rgba(255,255,255,0.06)',
                     }}
                   >
-                    <div className="w-1/3 h-5 bg-indigo-500/20 rounded" />
-                    <div className="w-full h-4 bg-white/10 rounded" />
-                    <div className="w-2/3 h-4 bg-white/10 rounded" />
+                    <div className="w-1/3 h-5 bg-zinc-200 dark:bg-zinc-800 rounded" />
+                    <div className="w-full h-4 bg-zinc-100 dark:bg-zinc-800/60 rounded" />
+                    <div className="w-2/3 h-4 bg-zinc-100 dark:bg-zinc-800/60 rounded" />
                   </div>
                 ))}
               </div>
@@ -916,10 +920,12 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                       onClick={() => handleToggleSelectAvailable(repo.id)}
                       className={`p-5 rounded-2xl border transition-all cursor-pointer relative group flex flex-col justify-between ${
                         isSelected
-                          ? 'border-indigo-500 ring-2 ring-indigo-500/20 bg-indigo-500/5'
+                          ? isLight
+                            ? 'border-zinc-900 ring-1 ring-zinc-900 bg-zinc-50/70'
+                            : 'border-white ring-1 ring-white bg-zinc-800/80'
                           : isLight
-                          ? 'bg-white border-slate-200 hover:border-slate-300 shadow-sm'
-                          : 'bg-[#10141f] border-white/10 hover:border-white/20'
+                          ? 'bg-white border-zinc-200 hover:border-zinc-300 shadow-xs'
+                          : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
                       }`}
                     >
                       <div className="space-y-2.5">
@@ -929,15 +935,17 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                             <div
                               className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors shrink-0 ${
                                 isSelected
-                                  ? 'bg-indigo-600 text-white'
+                                  ? isLight
+                                    ? 'bg-zinc-900 text-white'
+                                    : 'bg-white text-zinc-900'
                                   : isLight
-                                  ? 'border border-slate-300 text-transparent'
-                                  : 'border border-white/20 text-transparent'
+                                  ? 'border border-zinc-300 text-transparent'
+                                  : 'border border-zinc-700 text-transparent'
                               }`}
                             >
                               <RiCheckLine className="w-3.5 h-3.5 stroke-3" />
                             </div>
-                            <h3 className="font-bold text-base truncate tracking-tight group-hover:text-indigo-400 transition-colors">
+                            <h3 className="font-bold text-base truncate tracking-tight group-hover:text-zinc-900 dark:group-hover:text-white transition-colors">
                               {repo.name}
                             </h3>
                           </div>
@@ -947,7 +955,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="p-1 rounded opacity-40 hover:opacity-100 hover:text-indigo-400 transition-all"
+                            className="p-1 rounded opacity-40 hover:opacity-100 hover:text-zinc-900 dark:hover:text-white transition-all"
                             title="Voir sur GitHub"
                           >
                             <RiExternalLinkLine className="w-4 h-4" />
@@ -967,8 +975,8 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                       >
                         <div className="flex items-center gap-3">
                           {repo.language && (
-                            <span className="inline-flex items-center gap-1 font-semibold text-indigo-400">
-                              <span className="w-2 h-2 rounded-full bg-indigo-400" />
+                            <span className="inline-flex items-center gap-1 font-semibold text-zinc-700 dark:text-zinc-300">
+                              <span className="w-2 h-2 rounded-full bg-zinc-500" />
                               {repo.language}
                             </span>
                           )}
@@ -998,7 +1006,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
             ) : (
               <div
                 className={`p-8 text-center rounded-2xl border ${
-                  isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/2 border-white/5'
+                  isLight ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-900 border-zinc-800'
                 }`}
               >
                 <p className="text-xs opacity-75">
@@ -1014,12 +1022,12 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
         {/* Empty state when no repos at all */}
         {!isLoading && repos.length === 0 && (
           <div
-            className={`p-12 text-center rounded-3xl border ${
-              isLight ? 'bg-white border-slate-200' : 'bg-[#10141f] border-white/10'
+            className={`p-10 text-center rounded-2xl border ${
+              isLight ? 'bg-white border-zinc-200' : 'bg-zinc-900 border-zinc-800'
             }`}
           >
-            <RiGithubFill className="w-12 h-12 mx-auto mb-3 opacity-30 text-indigo-400" />
-            <h3 className="font-bold text-lg mb-1">Aucun dépôt GitHub chargé</h3>
+            <RiGithubFill className="w-10 h-10 mx-auto mb-2.5 opacity-30" />
+            <h3 className="font-semibold text-base mb-1">Aucun dépôt GitHub chargé</h3>
             <p className="text-xs opacity-60 max-w-sm mx-auto">
               Authentifiez votre compte officiel GitHub ci-dessus pour récupérer instantanément vos projets publics.
             </p>
@@ -1031,21 +1039,23 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
       {selectedRepoIds.size > 0 && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 w-11/12 max-w-2xl animate-in slide-in-from-bottom duration-200">
           <div
-            className={`p-4 rounded-2xl border shadow-2xl backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-4 ${
+            className={`p-3.5 rounded-2xl border shadow-xl backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-3 ${
               isLight
-                ? 'bg-white/95 border-slate-300 shadow-slate-900/20 text-slate-800'
-                : 'bg-[#10141f]/95 border-white/20 shadow-black/80 text-white'
+                ? 'bg-white/95 border-zinc-200 shadow-zinc-900/10 text-zinc-900'
+                : 'bg-zinc-900/95 border-zinc-800 shadow-black/80 text-white'
             }`}
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold text-sm">
+              <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+                isLight ? 'bg-zinc-100 text-zinc-900 border border-zinc-200' : 'bg-zinc-800 text-white border border-zinc-700'
+              }`}>
                 {selectedRepoIds.size}
               </div>
               <div className="text-xs">
-                <span className="font-bold block">
+                <span className="font-semibold block">
                   {selectedRepoIds.size} projet{selectedRepoIds.size > 1 ? 's' : ''} sélectionné{selectedRepoIds.size > 1 ? 's' : ''}
                 </span>
-                <span className="opacity-60">Prêt pour l'intégration portfolio</span>
+                <span className="opacity-60 text-[11px]">Prêt pour l'intégration portfolio</span>
               </div>
             </div>
 
@@ -1056,11 +1066,10 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                   type="checkbox"
                   checked={generateAiImages}
                   onChange={(e) => setGenerateAiImages(e.target.checked)}
-                  className="rounded text-indigo-600 focus:ring-0 cursor-pointer w-4 h-4"
+                  className="rounded text-zinc-900 dark:text-white focus:ring-0 cursor-pointer w-4 h-4"
                 />
-                <span className="flex items-center gap-1">
-                  <RiSparkling2Fill className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Images IA (FLUX.1-schnell)</span>
+                <span className="text-xs text-zinc-700 dark:text-zinc-300">
+                  Générer un visuel d'illustration
                 </span>
               </label>
 
@@ -1068,17 +1077,21 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                 type="button"
                 disabled={isApplying}
                 onClick={handleApplyToPortfolio}
-                className="px-5 py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-lg shadow-indigo-600/30 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                className={`px-4 py-2 rounded-xl font-semibold text-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 ${
+                  isLight
+                    ? 'bg-zinc-900 hover:bg-black text-white shadow-xs'
+                    : 'bg-white hover:bg-zinc-100 text-zinc-900 shadow-xs'
+                }`}
               >
                 {isApplying ? (
                   <>
-                    <RiRefreshLine className="w-4 h-4 animate-spin" />
+                    <RiRefreshLine className="w-3.5 h-3.5 animate-spin" />
                     <span>{applyStep || 'Génération...'}</span>
                   </>
                 ) : (
                   <>
-                    <span>Appliquer au Portfolio</span>
-                    <RiArrowRightLine className="w-4 h-4" />
+                    <span>Appliquer au portfolio</span>
+                    <RiArrowRightLine className="w-3.5 h-3.5" />
                   </>
                 )}
               </button>
@@ -1087,50 +1100,50 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
         </div>
       )}
 
-      {/* AI Image Generation Error Confirmation Modal */}
+      {/* Image Generation Error Confirmation Modal */}
       {imageErrorPrompt && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
           <div
-            className={`w-full max-w-md rounded-2xl p-6 border shadow-2xl space-y-5 ${
+            className={`w-full max-w-md rounded-2xl p-6 border shadow-2xl space-y-4 font-sans ${
               isLight
-                ? 'bg-white border-red-200 text-slate-800 shadow-slate-900/10'
-                : 'bg-[#10141f] border-red-500/30 text-white shadow-black/80'
+                ? 'bg-white border-zinc-200 text-zinc-900 shadow-zinc-900/10'
+                : 'bg-zinc-900 border-zinc-800 text-white shadow-black/80'
             }`}
           >
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 flex items-center justify-center shrink-0">
-                <RiAlertLine className="w-6 h-6" />
+            <div className="flex items-start gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
+                <RiAlertLine className="w-5 h-5" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-lg font-bold">
+                <h3 className="text-base font-bold">
                   {imageErrorPrompt.isRegeneration
-                    ? "Échec de régénération de l'image"
-                    : "Échec de génération de l'image IA"}
+                    ? "Impossible de créer le visuel"
+                    : "Création du visuel non finalisée"}
                 </h3>
                 <p className="text-xs opacity-70">
                   {typeof imageErrorPrompt.error === 'string'
                     ? imageErrorPrompt.error
-                    : (imageErrorPrompt.error?.message || "L'API d'IA n'a pas pu générer l'image.")}
+                    : (imageErrorPrompt.error?.message || "Le service d'image n'a pas pu générer le visuel.")}
                 </p>
               </div>
             </div>
 
             <div
-              className={`p-3.5 rounded-xl border text-xs space-y-1.5 ${
-                isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-white/10'
+              className={`p-3 rounded-xl border text-xs space-y-1 ${
+                isLight ? 'bg-zinc-50 border-zinc-200' : 'bg-zinc-950 border-zinc-800'
               }`}
             >
-              <div className="font-semibold text-sm">
+              <div className="font-semibold text-xs">
                 {imageErrorPrompt.project?.title || imageErrorPrompt.project?.name}
               </div>
               <p className="opacity-80">
                 {imageErrorPrompt.isRegeneration
-                  ? "Voulez-vous annuler la modification de l'image ou l'ajouter vous-même ?"
-                  : "L'API n'a pas pu générer l'image. Voulez-vous annuler l'ajout de ce projet ou ajouter l'image vous-même ?"}
+                  ? "Souhaitez-vous annuler ou choisir vous-même une image ?"
+                  : "Souhaitez-vous annuler l'ajout de ce projet ou choisir une image vous-même ?"}
               </p>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
                 type="button"
                 onClick={() => {
@@ -1138,13 +1151,13 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                   setIsApplying(false);
                   setApplyStep('');
                 }}
-                className={`px-4 py-2.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+                className={`px-3.5 py-2 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
                   isLight
-                    ? 'border-slate-300 text-slate-700 hover:bg-slate-100'
-                    : 'border-white/15 text-slate-300 hover:bg-white/10'
+                    ? 'border-zinc-200 text-zinc-700 hover:bg-zinc-100'
+                    : 'border-zinc-700 text-zinc-300 hover:bg-zinc-800'
                 }`}
               >
-                {imageErrorPrompt.isRegeneration ? 'Annuler' : "Oui, annuler l'ajout"}
+                {imageErrorPrompt.isRegeneration ? 'Annuler' : "Ignorer l'image"}
               </button>
 
               <button
@@ -1159,10 +1172,14 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
                     promptData,
                   });
                 }}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-lg shadow-indigo-600/30 flex items-center gap-2 cursor-pointer"
+                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  isLight
+                    ? 'bg-zinc-900 hover:bg-black text-white'
+                    : 'bg-white hover:bg-zinc-100 text-zinc-900'
+                }`}
               >
-                <RiUploadCloud2Line className="w-4 h-4" />
-                <span>Non, ajouter moi-même</span>
+                <RiUploadCloud2Line className="w-3.5 h-3.5" />
+                <span>Choisir une image</span>
               </button>
             </div>
           </div>

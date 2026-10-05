@@ -141,7 +141,7 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                       }}
                     >
                       <RiAddLine className="w-3.5 h-3.5" />
-                      <span>{socials?.length > 0 ? 'Edit Contacts' : 'Add Contact'}</span>
+                      <span>{socials?.length > 0 ? 'Modifier les contacts' : 'Ajouter un contact'}</span>
                     </button>
                   )}
                 </div>
@@ -173,7 +173,7 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                       <RiCameraLine className="w-5 h-5" />
                     </div>
                     <span className="text-xs font-bold uppercase tracking-wider bg-black/70 px-3 py-1 rounded-full border border-white/20">
-                      Change Photo
+                      Changer la photo
                     </span>
                   </div>
                 )}
@@ -188,7 +188,7 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
           onClose={() => setIsImagePickerOpen(false)}
           currentImage={avatar}
           onSave={(newImg) => updateSectionField(sectionId, 'avatar', newImg)}
-          title="Change Profile Photo"
+          title="Changer la photo de profil"
         />
 
         {/* Social & Contact Links Modal */}
@@ -313,7 +313,7 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                     }}
                   >
                     <RiAddLine className="w-3.5 h-3.5" />
-                    <span>{socials?.length > 0 ? 'Edit Contacts' : 'Add Contact'}</span>
+                    <span>{socials?.length > 0 ? 'Modifier les contacts' : 'Ajouter un contact'}</span>
                   </button>
                 )}
               </div>
@@ -429,7 +429,7 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                 borderColor: 'var(--theme-border)',
                 color: 'var(--theme-text-secondary)'
               }}
-              title={socials?.length > 0 ? 'Edit Contacts' : 'Add Contact'}
+              title={socials?.length > 0 ? 'Modifier les contacts' : 'Ajouter un contact'}
             >
               <RiAddLine className="w-4 h-4" />
             </button>

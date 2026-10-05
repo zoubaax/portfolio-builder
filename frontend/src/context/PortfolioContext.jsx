@@ -70,7 +70,7 @@ export const PortfolioProvider = ({ children }) => {
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Studio UI view state
-  const [studioTheme, setStudioTheme] = useState('dark'); // Default to sleek Vercel dark mode
+  const [studioTheme, setStudioTheme] = useState('light'); // Clean V0/Linear light aesthetic
   const [deviceView, setDeviceView] = useState('desktop'); // 'desktop' | 'tablet' | 'mobile'
   const [simulatedWidth, setSimulatedWidth] = useState(null); // null (100% desktop) or number in px (e.g. 390)
   const isMobileViewport = simulatedWidth !== null ? simulatedWidth < 768 : deviceView === 'mobile';
@@ -929,7 +929,7 @@ export const PortfolioProvider = ({ children }) => {
           finalMessages.push({
             id: `msg-followup-${Date.now()}`,
             role: 'assistant',
-            text: `🎉 Votre portfolio a été généré avec succès !\n\n💡 Prochaine étape recommandée : Le nouvel onglet [ 🐙 Projets ] vient d'apparaître dans la barre supérieure. Connectez votre GitHub, sélectionnez vos dépôts et générez des mockups IA (FLUX.1-schnell) pour personnaliser votre section projets.`,
+            text: `Votre portfolio a été créé avec succès.\n\nVous pouvez maintenant importer vos projets GitHub depuis l'onglet Projets dans la barre supérieure pour ajouter vos réalisations et générer des visuels d'illustration.`,
             action: 'open_projects',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           });

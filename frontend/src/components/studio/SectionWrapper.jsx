@@ -59,29 +59,29 @@ export const SectionWrapper = ({ section, index, isFirst, isLast, children }) =>
     <div className="relative group/section transition-all my-3">
       {/* Elementor Floating Handle Bar */}
       <div
-        className={`opacity-0 group-hover/section:opacity-100 focus-within:opacity-100 transition-opacity duration-200 absolute -top-5 left-2 sm:left-6 max-w-[95%] overflow-x-auto z-40 flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs select-none backdrop-blur-md shadow-xl border ${
+        className={`opacity-0 group-hover/section:opacity-100 focus-within:opacity-100 transition-opacity duration-200 absolute -top-5 left-2 sm:left-6 max-w-[95%] overflow-x-auto z-40 flex items-center gap-1.5 rounded-xl px-2.5 py-1 text-xs select-none backdrop-blur-md shadow-lg border font-sans ${
           isLight
-            ? 'bg-white/95 border-slate-300 text-slate-800 shadow-slate-300/40'
-            : 'bg-[#141b2d] border-indigo-500/40 text-white'
+            ? 'bg-white/95 border-zinc-200 text-zinc-900 shadow-zinc-900/10'
+            : 'bg-zinc-900/95 border-zinc-700 text-zinc-100 shadow-black/80'
         }`}
       >
         {/* Section Label */}
-        <span className="font-extrabold uppercase tracking-wider text-[10px] flex items-center gap-1.5 text-indigo-600">
-          <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
+        <span className="font-bold uppercase tracking-wider text-[10px] flex items-center gap-1.5 text-zinc-900 dark:text-zinc-100">
+          <span className="w-1.5 h-1.5 rounded-full bg-zinc-900 dark:bg-white" />
           {section.type}
         </span>
 
-        <div className={`h-3 w-px mx-0.5 ${isLight ? 'bg-slate-200' : 'bg-white/20'}`} />
+        <div className={`h-3 w-px mx-0.5 ${isLight ? 'bg-zinc-200' : 'bg-zinc-700'}`} />
 
         {/* Variant Dropdown */}
         {variants.length > 0 && (
           <select
             value={section.variant || variants[0]}
             onChange={(e) => changeSectionVariant(section.id, e.target.value)}
-            className={`text-[10px] font-bold rounded-lg px-2 py-0.5 border outline-none cursor-pointer ${
+            className={`text-[10px] font-semibold rounded-md px-1.5 py-0.5 border outline-none cursor-pointer ${
               isLight
-                ? 'bg-slate-50 text-indigo-700 border-slate-200'
-                : 'bg-[#1c2438] text-indigo-300 border-white/10'
+                ? 'bg-zinc-50 text-zinc-800 border-zinc-200'
+                : 'bg-zinc-800 text-zinc-200 border-zinc-700'
             }`}
           >
             {variants.map((v) => (
@@ -92,54 +92,58 @@ export const SectionWrapper = ({ section, index, isFirst, isLast, children }) =>
           </select>
         )}
 
-        <div className={`h-3 w-px mx-0.5 ${isLight ? 'bg-slate-200' : 'bg-white/20'}`} />
+        <div className={`h-3 w-px mx-0.5 ${isLight ? 'bg-zinc-200' : 'bg-zinc-700'}`} />
 
         {/* AI Mini Refine Trigger */}
         <button
           onClick={() => setIsAiBarOpen(!isAiBarOpen)}
-          title="Ask AI to refine this specific section"
-          className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold bg-indigo-600 text-white hover:bg-indigo-700 transition-colors shadow-xs"
+          title="Demander un ajustement à l'IA pour cette section"
+          className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold transition-colors cursor-pointer ${
+            isLight
+              ? 'bg-zinc-900 text-white hover:bg-black'
+              : 'bg-white text-zinc-900 hover:bg-zinc-100'
+          }`}
         >
           <RiSparkling2Fill className="w-3 h-3" />
-          <span>Refine</span>
+          <span>Ajuster</span>
         </button>
 
         {/* Move Up */}
         <button
           onClick={() => !isFirst && moveSection(index, index - 1)}
           disabled={isFirst}
-          title="Move section up"
-          className="p-1 rounded text-zinc-400 hover:text-zinc-900 disabled:opacity-20"
+          title="Monter la section"
+          className="p-1 rounded text-zinc-400 hover:text-zinc-900 dark:hover:text-white disabled:opacity-20 cursor-pointer"
         >
-          <RiArrowUpSLine className="w-4 h-4" />
+          <RiArrowUpSLine className="w-3.5 h-3.5" />
         </button>
 
         {/* Move Down */}
         <button
           onClick={() => !isLast && moveSection(index, index + 1)}
           disabled={isLast}
-          title="Move section down"
-          className="p-1 rounded text-zinc-400 hover:text-zinc-900 disabled:opacity-20"
+          title="Descendre la section"
+          className="p-1 rounded text-zinc-400 hover:text-zinc-900 dark:hover:text-white disabled:opacity-20 cursor-pointer"
         >
-          <RiArrowDownSLine className="w-4 h-4" />
+          <RiArrowDownSLine className="w-3.5 h-3.5" />
         </button>
 
         {/* Duplicate */}
         <button
           onClick={() => duplicateSection(section.id)}
-          title="Duplicate section"
-          className="p-1 rounded text-zinc-400 hover:text-zinc-900"
+          title="Dupliquer la section"
+          className="p-1 rounded text-zinc-400 hover:text-zinc-900 dark:hover:text-white cursor-pointer"
         >
-          <RiFileCopyLine className="w-3.5 h-3.5" />
+          <RiFileCopyLine className="w-3 h-3" />
         </button>
 
         {/* Delete */}
         <button
           onClick={() => deleteSection(section.id)}
-          title="Delete section"
-          className="p-1 rounded text-zinc-400 hover:text-rose-500"
+          title="Supprimer la section"
+          className="p-1 rounded text-zinc-400 hover:text-rose-500 cursor-pointer"
         >
-          <RiDeleteBin6Line className="w-3.5 h-3.5" />
+          <RiDeleteBin6Line className="w-3 h-3" />
         </button>
       </div>
 
@@ -147,93 +151,102 @@ export const SectionWrapper = ({ section, index, isFirst, isLast, children }) =>
       {isAiBarOpen && (
         <form
           onSubmit={handleAiSubmit}
-          className={`absolute -top-16 left-6 z-50 flex items-center gap-2 rounded-2xl p-2 shadow-2xl border ${
+          className={`absolute -top-14 left-6 z-50 flex items-center gap-2 rounded-xl p-1.5 shadow-xl border font-sans ${
             isLight
-              ? 'bg-white border-indigo-400 shadow-indigo-100/50 text-slate-800'
-              : 'bg-[#101726] border-indigo-500 text-white'
+              ? 'bg-white border-zinc-200 text-zinc-900 shadow-zinc-900/10'
+              : 'bg-zinc-900 border-zinc-700 text-white shadow-black/80'
           }`}
         >
-          <RiSparkling2Fill className="w-4 h-4 text-indigo-500 ml-2 shrink-0" />
           <input
             type="text"
             value={aiPrompt}
             onChange={(e) => setAiPrompt(e.target.value)}
-            placeholder={`Ask AI to tweak this ${section.type}...`}
+            placeholder={`Ajuster cette section ${section.type}...`}
             autoFocus
-            className={`w-64 bg-transparent text-xs outline-none ${isLight ? 'text-slate-900' : 'text-white'}`}
+            className={`w-64 bg-transparent text-xs outline-none px-2 ${isLight ? 'text-zinc-900' : 'text-white'}`}
           />
           <button
             type="submit"
             disabled={!aiPrompt.trim() || isGenerating}
-            className="px-3 py-1 rounded-xl bg-indigo-600 text-white text-xs font-bold hover:bg-indigo-700 shadow-sm"
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 ${
+              isLight
+                ? 'bg-zinc-900 hover:bg-black text-white'
+                : 'bg-white hover:bg-zinc-100 text-zinc-900'
+            }`}
           >
-            Go
+            Envoyer
           </button>
           <button
             type="button"
             onClick={() => setIsAiBarOpen(false)}
-            className="text-zinc-400 hover:text-zinc-600 p-1"
+            className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-1 cursor-pointer"
           >
-            <RiCloseLine className="w-4 h-4" />
+            <RiCloseLine className="w-3.5 h-3.5" />
           </button>
         </form>
       )}
 
       {/* Section Content with Visual Hover Box */}
-      <div className="relative rounded-2xl group-hover/section:ring-2 group-hover/section:ring-indigo-500/50 transition-all">
+      <div className="relative rounded-2xl group-hover/section:ring-1 group-hover/section:ring-zinc-400/40 dark:group-hover/section:ring-zinc-600/40 transition-all">
         {children}
       </div>
 
       {/* Elementor '+' Add Section Divider */}
-      <div className="relative my-4 flex items-center justify-center opacity-0 group-hover/section:opacity-100 hover:opacity-100 transition-opacity">
+      <div className="relative my-4 flex items-center justify-center opacity-0 group-hover/section:opacity-100 hover:opacity-100 transition-opacity font-sans">
         <div className="absolute inset-0 flex items-center">
-          <div className={`w-full border-t border-dashed ${isLight ? 'border-slate-300' : 'border-indigo-500/30'}`} />
+          <div className={`w-full border-t border-dashed ${isLight ? 'border-zinc-200' : 'border-zinc-800'}`} />
         </div>
         <div className="relative z-10 flex items-center gap-2">
           {!isAddMenuOpen ? (
             <button
               onClick={() => setIsAddMenuOpen(true)}
-              className={`flex items-center gap-1.5 px-3.5 py-1 rounded-full text-[11px] font-bold border shadow-md transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold border shadow-xs transition-all cursor-pointer ${
                 isLight
-                  ? 'bg-white text-indigo-700 border-slate-300 hover:bg-indigo-600 hover:text-white hover:border-indigo-600'
-                  : 'bg-[#141b2d] border-indigo-500/40 text-indigo-300 hover:bg-indigo-600 hover:text-white'
+                  ? 'bg-white text-zinc-800 border-zinc-200 hover:bg-zinc-900 hover:text-white hover:border-zinc-900'
+                  : 'bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-white hover:text-zinc-900'
               }`}
             >
               <RiAddCircleLine className="w-3.5 h-3.5" />
-              <span>Add Section</span>
+              <span>Ajouter une section</span>
             </button>
           ) : (
             <div
-              className={`flex items-center gap-1.5 p-1.5 rounded-2xl shadow-xl border backdrop-blur-md ${
+              className={`flex items-center gap-1.5 p-1 rounded-xl shadow-xl border backdrop-blur-md ${
                 isLight
-                  ? 'bg-white border-slate-200 text-slate-800'
-                  : 'bg-[#141b2d] border-indigo-500/50 text-white'
+                  ? 'bg-white border-zinc-200 text-zinc-800'
+                  : 'bg-zinc-900 border-zinc-700 text-zinc-100'
               }`}
             >
-              <span className={`text-[10px] px-2 font-mono uppercase font-bold ${isLight ? 'text-slate-400' : 'text-zinc-400'}`}>
-                Insert:
+              <span className={`text-[10px] px-2 font-mono uppercase font-semibold ${isLight ? 'text-zinc-400' : 'text-zinc-500'}`}>
+                Insérer :
               </span>
-              {['projects', 'experience', 'skills', 'about', 'contact'].map((t) => (
+              {[
+                { type: 'projects', label: 'Projets' },
+                { type: 'experience', label: 'Expérience' },
+                { type: 'skills', label: 'Compétences' },
+                { type: 'about', label: 'À propos' },
+                { type: 'contact', label: 'Contact' }
+              ].map(({ type, label }) => (
                 <button
-                  key={t}
+                  key={type}
                   onClick={() => {
-                    addSection(t, index);
+                    addSection(type, index);
                     setIsAddMenuOpen(false);
                   }}
-                  className={`px-2.5 py-1 rounded-xl text-[11px] font-semibold capitalize transition-all ${
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
                     isLight
-                      ? 'bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700'
-                      : 'bg-white/5 hover:bg-indigo-600 hover:text-white text-zinc-300'
+                      ? 'bg-zinc-100 hover:bg-zinc-900 hover:text-white text-zinc-700'
+                      : 'bg-zinc-800 hover:bg-white hover:text-zinc-900 text-zinc-300'
                   }`}
                 >
-                  +{t}
+                  +{label}
                 </button>
               ))}
               <button
                 onClick={() => setIsAddMenuOpen(false)}
-                className="p-1 text-zinc-400 hover:text-zinc-600"
+                className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
               >
-                <RiCloseLine className="w-4 h-4" />
+                <RiCloseLine className="w-3.5 h-3.5" />
               </button>
             </div>
           )}

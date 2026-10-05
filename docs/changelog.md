@@ -306,5 +306,33 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
 - **Intégration Unifiée & Optimisation des Performances (`backend/src/services/aiService.ts`, `backend/src/services/imageService.ts`) :**
   - `summarizeProjectWithAi` génère désormais le `imagePrompt` en une seule passe conjointe lors de l'import GitHub, évitant tout appel réseau redondant.
   - En cas de régénération individuelle depuis le Studio, `imageService.generateProjectImage` déclenche automatiquement le Tier 1 via `generateImagePromptWithAi` avant de solliciter FLUX.1.
-  - Sauvegarde et propagation du prompt personnalisé dans le service frontend (`frontend/src/services/githubService.js`, `frontend/src/components/studio/GithubProjectsTab.jsx`).
+### 25. Harmonisation Visuelle Complète du Studio & Épuration du Bruit Visuel (Charte V0 / Linear Zinc)
+- **Harmonisation de la Palette Graphique (Suppression du Teal et des Bleus Nuit Surchargés) :**
+  - Alignement de l'ensemble des modales et barres d'outils sur la charte sobre et élégante du panneau de chat à gauche (`V0ChatPanel`) : utilisation exclusive des tokens Zinc (`bg-white border-zinc-200` en mode clair, `bg-zinc-900 border-zinc-800` en mode sombre, boutons noirs/zinc discrets et percutants).
+  - Refonte intégrale de la modal de contact (`SocialLinksModal.jsx`) : élimination des teintes `teal-500` et du fond navy sombre `#10141f` au profit d'une interface épurée aux bordures fines et typographie soignée.
+  - Refonte de la modal de choix d'image (`ImagePickerModal.jsx`) : élimination des fonds `#111726` au profit du style de surface Zinc et des onglets discrets.
+  - Harmonisation de la barre flottante de section (`SectionWrapper.jsx`) : passage des bleus nuit `#141b2d` aux styles Zinc semi-transparents avec flou d'arrière-plan.
+- **Suppression du Bruit Visuel et des Buzzwords IA :**
+  - Remplacement dans l'onglet des projets GitHub (`GithubProjectsTab.jsx`) des mentions publicitaires et agressives d'IA (*"FLUX.1-schnell IA"*, *"Maquette 3D"*, étoiles dorées criardes, avertissements rouges) par une terminologie professionnelle, sobre et rassurante (*"Conception du visuel..."*, *"Générer un visuel d'illustration"*, *"Nouveau visuel"*).
+  - Épuration de la carte de connexion OAuth GitHub en une bannière discrète et claire.
+  - Épuration des overlays et ombres portées pour une intégration naturelle dans le Canvas.
+- **Uniformisation Linguistique (100% Français) :**
+  - Traduction intégrale en français des libellés d'actions, boutons, tooltips et dialogues d'erreur dans l'ensemble des composants du Studio :
+    - `HeroSection.jsx` : *"Modifier les contacts"* / *"Ajouter un contact"*, *"Changer la photo"*.
+    - `SocialLinksModal.jsx` : *"Gérer vos contacts & réseaux"*, *"Liens actifs"*, *"Sélectionner une plateforme"*, *"Appliquer au portfolio"*.
+    - `V0Header.jsx` : *"Aperçu"*, *"Projets"*, *"Vue Bureau"*, *"Vue Mobile"*, *"Version précédente/suivante"*, *"Afficher le chat" / "Plein écran"*, *"Publié" / "Publier"*.
+    - `V0Canvas.jsx` : *"Thèmes & Nuancier"*, *"Thèmes Prédéfinis"*, *"Couleur d'accentuation"*, *"Hex personnalisé"*, *"Voir le Code"*, *"Copier"*, *"Visiter"*.
+    - `PortfolioContext.jsx` : message de notification post-génération nettoyé de tout buzzword et de tout émoji.
+- **Raffinement de la Barre Responsive & Suppression Complète des Émojis (`V0Canvas.jsx`) :**
+  - Remplacement des émojis (`📱`, `📟`, `💻`) par des micro-icônes vectorielles sobres (`RiSmartphoneLine`, `RiTabletLine`, `RiComputerLine`) et une typographie mono épurée (`320`, `375`, `390`, `428`, `768`, `100%`).
+  - Élimination du voyant vert pulsant et du curseur violet au profit d'une pastille et d'un slider neutres Zinc.
+- **Refonte d'Expérience du Formulaire de Contacts (`SocialLinksModal.jsx`) :**
+  - Bascule du thème par défaut du Studio en mode clair (`studioTheme = 'light'`) pour que la modale s'affiche sur un fond blanc pur et élégant harmonisé avec le chat.
+  - Pré-remplissage automatique au chargement du premier lien actif existant pour éviter les champs vides déroutants.
+  - Suppression du badge vert criard `✓ Ajouté` au profit d'un indicateur discret en nuance Zinc.
+  - Clarification des boutons d'action : *"Enregistrer la modification"* / *"Ajouter ce lien"*.
+- **Épuration des Indicateurs Verts & Mentions IA dans les Projets (`GithubProjectsTab.jsx`, `V0ChatPanel.jsx`) :**
+  - Suppression du point vert clignotant et du badge vert fluorescent (*"2 projets en ligne"*), remplacés par une icône de dossier propre (`RiFolder3Line`) et un badge Zinc sobre.
+  - Remplacement du badge *"Import GitHub & AI Generator"* par *"Dépôts GitHub"*.
+  - Remplacement du bouton d'action violet/indigo du chat par un bouton Zinc noir/blanc sobre.
 
