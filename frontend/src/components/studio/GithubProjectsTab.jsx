@@ -4,6 +4,7 @@ import { usePortfolio } from '../../context/PortfolioContext';
 import {
   fetchUserRepos,
   fetchRepoReadme,
+  summarizeProjectAi,
   generateProjectImageAi,
   parseGitHubUsername,
 } from '../../services/githubService';
@@ -331,18 +332,26 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
 
   // Helper: Finalize adding enriched projects with their images to the portfolio
   const finalizeProjectAddition = async (enrichedProjects, projectImages) => {
-    // Build structured project objects
-    const projectsToAdd = enrichedProjects.map((p, idx) => ({
-      id: `proj-gh-${p.id || Date.now() + idx}`,
-      title: p.name.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-      description: p.readmeSnippet ? p.readmeSnippet.slice(0, 160) + '...' : (p.description || 'Projet open-source certifié GitHub'),
-      tags: [p.language, ...(p.topics || [])].filter(Boolean).slice(0, 4),
-      metrics: `${p.stars || 0} Stars • GitHub Certified`,
-      github: p.url,
-      link: p.homepage || p.url,
-      image: projectImages[p.name] || '',
-      featured: false,
-    }));
+    // Build structured project objects with AI-synthesized metadata
+    const projectsToAdd = enrichedProjects.map((p, idx) => {
+      const summary = p.aiSummary || {};
+      const fallbackTitle = p.name.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+      const fallbackDesc = p.readmeSnippet ? p.readmeSnippet.slice(0, 160) + '...' : (p.description || 'Projet open-source certifié GitHub');
+
+      return {
+        id: `proj-gh-${p.id || Date.now() + idx}`,
+        title: summary.title || fallbackTitle,
+        description: summary.description || fallbackDesc,
+        tags: (Array.isArray(summary.tags) && summary.tags.length > 0)
+          ? summary.tags
+          : [p.language, ...(p.topics || [])].filter(Boolean).slice(0, 4),
+        metrics: summary.metrics || `${p.stars || 0} Stars • GitHub Certified`,
+        github: p.url,
+        link: p.homepage || p.url,
+        image: projectImages[p.name] || '',
+        featured: false,
+      };
+    });
 
     // Directly update projects section immediately: MUST PRESERVE ALL EXISTING PROJECTS!
     if (updateSection) {
@@ -391,14 +400,19 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     }
 
     const proj = enrichedProjects[index];
-    setApplyStep(`Génération de l'image IA pour "${proj.name}"...`);
-    const tags = [proj.language, ...(proj.topics || [])].filter(Boolean);
+    const summary = proj.aiSummary || {};
+    const displayTitle = summary.title || proj.name;
+    setApplyStep(`Conception du visuel clean pour "${displayTitle}"...`);
+    const tags = (Array.isArray(summary.tags) && summary.tags.length > 0)
+      ? summary.tags
+      : [proj.language, ...(proj.topics || [])].filter(Boolean);
 
     try {
       const imgUrl = await generateProjectImageAi({
-        title: proj.name,
-        description: proj.readmeSnippet || proj.description,
+        title: displayTitle,
+        description: summary.description || proj.readmeSnippet || proj.description,
         tags,
+        prompt: summary.imagePrompt,
       });
       const updatedImages = { ...currentImages, [proj.name]: imgUrl };
       await generateImagesAndFinalize(enrichedProjects, updatedImages, index + 1);
@@ -418,7 +432,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     }
   };
 
-  // Action: Apply selected available projects to portfolio with AI images generated from README
+  // Action: Apply selected available projects to portfolio with AI summary & images generated from README
   const handleApplyToPortfolio = async () => {
     const selectedList = availableRepos.filter((r) => selectedRepoIds.has(r.id));
     if (selectedList.length === 0) return;
@@ -428,17 +442,35 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
 
     try {
       // 1. Fetch README snippets in parallel
-      const enrichedProjects = await Promise.all(
+      const readmes = await Promise.all(
         selectedList.map(async (repo) => {
           const readmeSnippet = await fetchRepoReadme(repo.owner, repo.name);
+          return { repo, readmeSnippet };
+        })
+      );
+
+      // 2. Synthesize clean titles, descriptions, tags, and metrics via LLM in parallel
+      setApplyStep('Synthèse intelligente par IA (résumés, tags, métriques)...');
+      const enrichedProjects = await Promise.all(
+        readmes.map(async ({ repo, readmeSnippet }) => {
+          const summary = await summarizeProjectAi({
+            name: repo.name,
+            owner: repo.owner,
+            language: repo.language,
+            topics: repo.topics || [],
+            rawDescription: repo.description,
+            readmeContent: readmeSnippet,
+          });
+
           return {
             ...repo,
             readmeSnippet,
+            aiSummary: summary,
           };
         })
       );
 
-      // 2. Generate images via AI if enabled
+      // 3. Generate images via AI if enabled
       if (generateAiImages) {
         await generateImagesAndFinalize(enrichedProjects, {}, 0);
       } else {

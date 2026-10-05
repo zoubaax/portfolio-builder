@@ -280,3 +280,31 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
 - **Adaptation Intelligente du Contraste & Thèmes Clairs/Sombres :**
   - Mise à jour du prompt système : lorsque l'utilisateur demande une couleur de fond claire (jaune, blanc, beige, etc.), l'IA ajuste automatiquement `textPrimary` en sombre (`#0f172a`), `textSecondary` (`#475569`) et `surface` (`#fef9c3` / `#ffffff`) pour garantir une lisibilité irréprochable.
   - Prise en charge enrichie des couleurs (jaune/yellow, vert, orange, bleu, cyan, codes hexadécimaux de fond) dans le gestionnaire de secours local.
+
+### 23. Synthèse Intelligente des READMEs GitHub par LLM (Titres, Résumés Percutants, Tags & Métriques d'Impact)
+- **Élimination du Découpage Brut des READMEs (`frontend/src/services/githubService.js`) :**
+  - Remplacement du simple découpage des 160 premiers caractères bruts (qui importait les balises markdown, notes internes et émojis d'en-tête).
+  - Augmentation du buffer de lecture à 3 500 caractères textuels nettoyés pour fournir au LLM un contexte riche et complet sur le projet.
+- **Nouvel Endpoint Dédié de Synthèse IA (`backend/src/controllers/aiController.ts`, `backend/src/routes/aiRoutes.ts`, `backend/src/services/aiService.ts`) :**
+  - Création de la route `POST /api/v1/ai/summarize-project`.
+  - Le modèle LLM (NVIDIA NIM Nemotron 3 550B / Groq) analyse la documentation et extrait en une passe :
+    - Un **titre propre et valorisant** (ex: `Smart Network Mapper`).
+    - Une **description percutante de 1 à 2 phrases** (120-180 car.) formulée en français sans aucun artefact markdown.
+    - Les **3 à 5 technologies réelles** utilisées (tags déduits du README).
+    - Un **badge de valeur technique percutant** (au lieu d'un générique "0 Stars").
+- **Synergie Totale avec le Moteur d'Image IA (`frontend/src/components/studio/GithubProjectsTab.jsx`) :**
+  - La description synthétisée par l'IA est directement transmise au générateur de maquettes Cloudflare FLUX.1. Les visuels générés sont ainsi encore plus représentatifs et fidèles au domaine réel du projet.
+  - Mise à jour du stepper visuel de chargement informant l'utilisateur de l'étape de synthèse intelligente en cours.
+
+### 24. Pipeline Visuel 2-Tier : Ingénierie de Prompt par LLM & Rendu d'Interface Propre (Élimination du 3D & Respect du Domaine Réel)
+- **Suppression Totale du Style 3D / Rendu Octane / Objets en Plastique :**
+  - Fin des prompts imposant des rendus 3D isométriques ou des objets abstraits qui dénaturaient les projets de développement.
+  - Remplacement par une direction artistique moderne orientée **UI/UX logicielle épurée, tableaux de bord sombres (Dark Mode) et télémétrie haute fidélité** (inspirée par Linear, Stripe, Vercel et Raycast).
+- **Architecture Visuelle en 2 Niveaux (2-Tier Pipeline) :**
+  - **Tier 1 (Directeur Artistique LLM) :** Le modèle de langage standard (NVIDIA NIM / Groq) analyse les métadonnées, la synthèse du README et les technologies du projet pour concevoir un prompt en anglais sur-mesure décrivant précisément l'interface ou le visuel technique qui représente son domaine réel (ex: console de cybersécurité avec graphe topologique de nœuds pour un scanner réseau, maquette SaaS avec cartes analytiques pour une plateforme e-commerce).
+  - **Tier 2 (Moteur de Diffusion FLUX.1-schnell) :** Le prompt sur-mesure conçu par le LLM est transmis directement à Cloudflare Workers AI pour générer une image haute définition photoréaliste en moins de 2 secondes.
+- **Intégration Unifiée & Optimisation des Performances (`backend/src/services/aiService.ts`, `backend/src/services/imageService.ts`) :**
+  - `summarizeProjectWithAi` génère désormais le `imagePrompt` en une seule passe conjointe lors de l'import GitHub, évitant tout appel réseau redondant.
+  - En cas de régénération individuelle depuis le Studio, `imageService.generateProjectImage` déclenche automatiquement le Tier 1 via `generateImagePromptWithAi` avant de solliciter FLUX.1.
+  - Sauvegarde et propagation du prompt personnalisé dans le service frontend (`frontend/src/services/githubService.js`, `frontend/src/components/studio/GithubProjectsTab.jsx`).
+

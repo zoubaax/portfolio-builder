@@ -113,7 +113,7 @@ export async function fetchRepoReadme(owner, repo) {
         .replace(/https?:\/\/[^\s]+/g, '') // Remove raw URLs
         .replace(/\s+/g, ' ') // Collapse whitespace
         .trim();
-      return cleanText.slice(0, 240);
+      return cleanText.slice(0, 3500);
     }
   } catch (e) {
     console.warn(`README not fetched for ${repo}:`, e.message);
@@ -122,9 +122,49 @@ export async function fetchRepoReadme(owner, repo) {
 }
 
 /**
+ * Synthesizes a clean, high-impact title, description, tags, and metric from repository README using LLM
+ */
+export async function summarizeProjectAi({ name, owner, language, topics = [], rawDescription = '', readmeContent = '' }) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/v1/ai/summarize-project`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name,
+        owner,
+        language,
+        topics,
+        rawDescription,
+        readmeContent,
+      }),
+    });
+
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && json.data) {
+        return json.data;
+      }
+    }
+  } catch (err) {
+    console.warn(`Failed to synthesize AI summary for ${name}:`, err.message);
+  }
+
+  // Graceful fallback
+  const cleanTitle = name.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  return {
+    title: cleanTitle,
+    description: rawDescription || 'Projet open-source certifié GitHub.',
+    tags: [language, ...topics].filter(Boolean).slice(0, 4),
+    metrics: 'Architecture Modulaire • Open-Source',
+  };
+}
+
+/**
  * Calls backend to generate AI image for a project via FLUX.1-schnell
  */
-export async function generateProjectImageAi({ title, description, tags = [], currentImageUrl }) {
+export async function generateProjectImageAi({ title, description, tags = [], currentImageUrl, prompt }) {
   const res = await fetch(`${API_BASE_URL}/api/v1/ai/generate-project-image`, {
     method: 'POST',
     headers: {
@@ -135,6 +175,7 @@ export async function generateProjectImageAi({ title, description, tags = [], cu
       description,
       tags,
       currentImageUrl,
+      prompt,
     }),
   });
 

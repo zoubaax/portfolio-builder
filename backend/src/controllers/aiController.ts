@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { streamAiEdit, generatePortfolioFromPrompt } from '../services/aiService.js';
+import { streamAiEdit, generatePortfolioFromPrompt, summarizeProjectWithAi } from '../services/aiService.js';
 import { imageService } from '../services/imageService.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
@@ -77,6 +77,35 @@ export const aiController = {
       return sendSuccess(res, result, 'Project visual generated');
     } catch (err: any) {
       return sendError(res, 'IMAGE_GEN_FAILED', err.message || 'Failed to generate visual', 500);
+    }
+  },
+
+  /**
+   * Synthesize an ultra-clean, high-impact project summary and tags from GitHub README documentation
+   */
+  async summarizeProject(req: Request, res: Response) {
+    try {
+      const { name, owner, language, topics, rawDescription, readmeContent, provider, byokKey } = req.body;
+
+      if (!name) {
+        return sendError(res, 'BAD_REQUEST', 'Repository name is required', 400);
+      }
+
+      const summary = await summarizeProjectWithAi(
+        {
+          name,
+          owner,
+          language,
+          topics,
+          rawDescription,
+          readmeContent,
+        },
+        { provider, byokKey }
+      );
+
+      return sendSuccess(res, summary, 'Project synthesized successfully');
+    } catch (err: any) {
+      return sendError(res, 'AI_SUMMARIZE_FAILED', err.message || 'Failed to summarize project', 500);
     }
   },
 };

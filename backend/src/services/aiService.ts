@@ -52,7 +52,7 @@ export const getAiClient = (config: AiClientConfig = {}) => {
         apiKey: process.env.NVIDIA_API_KEY,
         baseURL: 'https://integrate.api.nvidia.com/v1',
       }),
-      model: config.byokModel || process.env.NVIDIA_MODEL || 'nvidia/nemotron-3-ultra-550b-a55b',
+      model: config.byokModel || process.env.NVIDIA_MODEL || 'meta/llama-3.2-11b-vision-instruct',
       provider: 'nvidia',
     };
   }
@@ -391,3 +391,184 @@ function generateMockInitial(description: string) {
     ],
   };
 }
+
+export interface SummarizeProjectParams {
+  name: string;
+  owner?: string;
+  language?: string;
+  topics?: string[];
+  rawDescription?: string;
+  readmeContent?: string;
+}
+
+export interface SummarizeProjectResult {
+  title: string;
+  description: string;
+  tags: string[];
+  metrics: string;
+  imagePrompt?: string;
+}
+
+export interface GenerateImagePromptParams {
+  title: string;
+  description?: string;
+  tags?: string[];
+}
+
+/**
+ * Uses the LLM to design an ultra-clean, modern, tailored image generation prompt in English for FLUX.1.
+ * STRICTLY FORBIDS 3D toys/cartoons/isometric rendering in favor of sleek UI dashboards and software visuals.
+ */
+export const generateImagePromptWithAi = async (
+  params: GenerateImagePromptParams,
+  config: AiClientConfig = {}
+): Promise<string> => {
+  const { title, description = '', tags = [] } = params;
+  const ai = getAiClient(config);
+
+  const cleanDesc = (description || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/!\[.*?\]\(.*?\)/g, '')
+    .replace(/[#*`~_]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 300);
+
+  const cleanFallbackPrompt = `Sleek dark-mode digital dashboard for software application "${title}", modern clean software interface, slate dark background (#090d16), subtle electric cyan accents, crisp vector UI telemetry cards and charts, studio display lighting, no text distortion, minimal aesthetic.`;
+
+  if (!ai) {
+    return cleanFallbackPrompt;
+  }
+
+  const systemPrompt = `You are an expert visual director and prompt engineer for state-of-the-art image diffusion models (FLUX.1).
+Your mission is to generate a single, highly tailored image prompt in English for a software project card in an engineering portfolio.
+
+STRICT VISUAL STYLE RULES:
+- STRICTLY FORBIDDEN: NO 3D toys, NO cartoon characters, NO isometric plastic rendering, NO childish clay figurines, NO floating spheres or abstract geometric toys.
+- STYLE: Clean modern software interface mockup, sleek dark-mode digital dashboard, or minimalist high-tech engineering visual (inspired by Linear.app, Stripe, Vercel, Raycast).
+- CONTENT: Accurately represents the software's real domain and functionality:
+  * Network / Security: Sleek dark cybersecurity console, network topology telemetry with luminous nodes, connection latency charts, traffic inspection HUD.
+  * Web / SaaS / Mobile: Modern minimalist UI dashboard mockup, cards, data visualizations, sleek typography layout, subtle glassmorphic containers.
+  * AI / Data: Minimalist data analytics dashboard, neural node streams, clean metric widgets, prediction charts.
+  * DevOps / Cloud: Microservices mesh visual, container orchestration metrics, clean dark HUD, deployment pipeline diagram.
+- LIGHTING & PALETTE: Deep slate dark background (#090d16), subtle neon cyan or electric blue accents, soft ambient glow, crisp vector precision, studio photography of an ultra-thin OLED display.
+- NO JUMBLED TEXT: Avoid detailed readable text; specify clean abstract UI cards, charts, and vector graphs.
+
+Output ONLY the prompt string (1 to 2 sentences in English). No introductory text, no quotes, no markdown wrappers.`;
+
+  const userPrompt = `Project Title: ${title}
+Project Overview: ${cleanDesc || title}
+Key Technologies: ${tags.join(', ') || 'Modern Software Engineering'}
+
+Write the FLUX.1 image prompt:`;
+
+  try {
+    const response = await ai.client.chat.completions.create({
+      model: ai.model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.3,
+      max_tokens: 150,
+    });
+
+    const rawPrompt = response.choices[0]?.message?.content?.trim();
+    if (rawPrompt && rawPrompt.length > 20) {
+      return rawPrompt.replace(/^["']|["']$/g, '').trim();
+    }
+  } catch (err) {
+    console.warn('AI image prompt generation error, using clean fallback:', err);
+  }
+
+  return cleanFallbackPrompt;
+};
+
+/**
+ * Uses LLM to read GitHub repository README documentation and generate an ultra-clean,
+ * high-impact, professional summary, tech stack tags, value metric, and a tailored clean UI image prompt.
+ */
+export const summarizeProjectWithAi = async (
+  params: SummarizeProjectParams,
+  config: AiClientConfig = {}
+): Promise<SummarizeProjectResult> => {
+  const { name, language, topics = [], rawDescription = '', readmeContent = '' } = params;
+  const ai = getAiClient(config);
+
+  const cleanTitleFallback = name.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  const fallbackResult: SummarizeProjectResult = {
+    title: cleanTitleFallback,
+    description: rawDescription || 'Projet open-source certifié GitHub.',
+    tags: [language, ...topics].filter(Boolean).slice(0, 4) as string[],
+    metrics: 'Architecture Modulaire • Open-Source',
+    imagePrompt: `Sleek dark-mode digital dashboard for software application "${cleanTitleFallback}", modern clean software interface, slate dark background (#090d16), subtle electric cyan accents, crisp vector UI telemetry cards and charts, studio display lighting, no text distortion, minimal aesthetic.`,
+  };
+
+  if (!ai) {
+    return fallbackResult;
+  }
+
+  // Truncate README content to 3,500 chars to remain token-efficient while giving rich context
+  const cleanReadme = (readmeContent || '').slice(0, 3500).trim();
+
+  const systemPrompt = `You are an expert technical portfolio curator, copywriter, and visual director.
+Your mission is to analyze a developer's GitHub repository documentation (README and metadata) and synthesize:
+1. "title": Clean, professional project name (e.g. "Smart Network Mapper").
+2. "description": An impactful, crystal-clear 1 to 2 sentences (120 to 180 characters max) in French explaining the problem solved and value proposition. NEVER include raw markdown syntax (no **, *, #, backticks, emojis, bullet points, or development notes).
+3. "tags": An array of 3 to 5 key technologies/frameworks extracted from the README or metadata.
+4. "metrics": A concise technical highlight badge (e.g. "Diagnostic Temps Réel • Analyse Multi-Threads").
+5. "imagePrompt": A tailored 1 to 2 sentence English prompt for FLUX.1 to generate a clean, modern, ultra-professional software interface mockup (STRICTLY FORBIDDEN: NO 3D toys, NO cartoons, NO isometric plastic rendering; clean dark-mode UI dashboard, slate dark palette #090d16, subtle cyan/blue accents, crisp vector charts representing the project's actual features).
+
+Output ONLY a valid JSON object matching:
+{
+  "title": string,
+  "description": string,
+  "tags": string[],
+  "metrics": string,
+  "imagePrompt": string
+}`;
+
+  const userPrompt = `Project Metadata:
+- Repository Name: ${name}
+- Primary Language: ${language || 'Not specified'}
+- Topics/Tags: ${topics.join(', ') || 'None'}
+- Raw GitHub Description: ${rawDescription || 'None'}
+
+README Documentation Snippet:
+"""
+${cleanReadme || 'No README provided. Rely on repository name, language, and topics.'}
+"""
+
+Synthesize the portfolio project summary and visual prompt JSON now.`;
+
+  try {
+    const response = await ai.client.chat.completions.create({
+      model: ai.model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.2,
+    });
+
+    const content = response.choices[0]?.message?.content || '';
+    const parsed = extractJson(content);
+
+    if (parsed && typeof parsed === 'object') {
+      return {
+        title: (parsed.title && typeof parsed.title === 'string' && parsed.title.trim()) ? parsed.title.trim() : cleanTitleFallback,
+        description: (parsed.description && typeof parsed.description === 'string' && parsed.description.trim()) ? parsed.description.trim() : fallbackResult.description,
+        tags: (Array.isArray(parsed.tags) && parsed.tags.length > 0) ? parsed.tags.slice(0, 5) : fallbackResult.tags,
+        metrics: (parsed.metrics && typeof parsed.metrics === 'string' && parsed.metrics.trim()) ? parsed.metrics.trim() : fallbackResult.metrics,
+        imagePrompt: (parsed.imagePrompt && typeof parsed.imagePrompt === 'string' && parsed.imagePrompt.trim().length > 15)
+          ? parsed.imagePrompt.replace(/^["']|["']$/g, '').trim()
+          : fallbackResult.imagePrompt,
+      };
+    }
+  } catch (err) {
+    console.warn('AI project summarization fallback due to error:', err);
+  }
+
+  return fallbackResult;
+};
+

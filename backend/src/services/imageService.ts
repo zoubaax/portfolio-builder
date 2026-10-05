@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { generateImagePromptWithAi } from './aiService.js';
 dotenv.config();
 
 export interface GenerateImageOptions {
@@ -17,9 +18,9 @@ export interface GenerateImageResult {
 
 export class ImageService {
   /**
-   * Generates a project visual using Cloudflare Workers AI (@cf/black-forest-labs/flux-1-schnell).
-   * Constructs a universal general prompt based on the real README and title of the project.
-   * Throws an error if the model fails or credentials are missing (zero hardcoded/fake fallbacks).
+   * Generates a project visual using a 2-tier AI pipeline:
+   * Tier 1: Normal LLM designs a tailored, clean UI/software interface prompt (NO 3D, NO cartoons).
+   * Tier 2: Cloudflare Workers AI (FLUX.1-schnell) renders the high-res visual banner.
    */
   async generateProjectImage(options: GenerateImageOptions): Promise<GenerateImageResult> {
     dotenv.config({ override: true });
@@ -45,14 +46,18 @@ export class ImageService {
       .trim()
       .slice(0, 300);
 
-    // 2. Universal general prompt template: works with ANY project based on its README
-    const universalPrompt = options.prompt || 
-      `High-quality 3D commercial visual concept and product showcase banner representing the software project "${title}". ` +
-      `Directly illustrating the core functionality and real-world domain described in its project overview: "${cleanReadme || title}". ` +
-      `Key technologies: ${tags.join(', ') || 'Modern Software Engineering'}. ` +
-      `Cinematic studio lighting, 8k octane render, photorealistic, elegant dark tech aesthetic, no text distortion.`;
+    // 2. Tier 1: If prompt is not already supplied, ask the LLM to design an expert clean UI prompt
+    let tailoredPrompt = (options.prompt || '').trim();
+    if (!tailoredPrompt) {
+      console.log(`[ImageService] Tier 1: Asking LLM to engineer a clean UI visual prompt for "${title}"...`);
+      tailoredPrompt = await generateImagePromptWithAi({
+        title,
+        description: cleanReadme,
+        tags,
+      });
+    }
 
-    console.log(`[ImageService] Calling Cloudflare Workers AI (FLUX.1-schnell) for "${title}"...`);
+    console.log(`[ImageService] Tier 2: Calling Cloudflare FLUX.1 for "${title}" with prompt: "${tailoredPrompt}"`);
 
     // 3. Call Cloudflare Workers AI endpoint (with a 25s timeout)
     const controller = new AbortController();
@@ -68,7 +73,7 @@ export class ImageService {
           'Authorization': `Bearer ${apiToken}`,
         },
         body: JSON.stringify({
-          prompt: universalPrompt,
+          prompt: tailoredPrompt,
           steps: 4,
         }),
       });
