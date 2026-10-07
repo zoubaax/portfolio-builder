@@ -8,6 +8,8 @@ import {
   THEME_PRESETS,
   createFreshPortfolio
 } from '../types/portfolio';
+import { doesPromptSpecifyColor, isPortfolioGenerationPrompt } from '../data/colorPalettes';
+import { fetchAiSuggestedPalettes } from '../services/aiPaletteService';
 
 const DEFAULT_WELCOME_MESSAGE = {
   id: 'msg-welcome',
@@ -730,6 +732,61 @@ export const PortfolioProvider = ({ children }) => {
 
     setActiveTab('chat'); // Auto-switch to chat tab in Studio Left Panel
 
+    // Intercept generation prompts that do NOT specify any color
+    if (
+      !options.skipColorCheck &&
+      isPortfolioGenerationPrompt(promptText, !hasGeneratedFirstPortfolio) &&
+      !doesPromptSpecifyColor(promptText)
+    ) {
+      const userMsg = {
+        id: `msg-${Date.now()}`,
+        role: 'user',
+        text: options.displayText || promptText,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      const assistantMsgId = `msg-ai-${Date.now()}`;
+      const loadingAssistantMsg = {
+        id: assistantMsgId,
+        role: 'assistant',
+        text: "L'IA analyse votre profil pour vous proposer les meilleures harmonies de couleurs adaptées...",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      const previousMessages = Array.isArray(chatMessagesRef.current) ? chatMessagesRef.current : [];
+      const activeMessages = [...previousMessages, userMsg, loadingAssistantMsg];
+      setChatMessages(activeMessages);
+      chatMessagesRef.current = activeMessages;
+
+      try {
+        const paletteData = await fetchAiSuggestedPalettes(promptText, getAuthHeaders);
+        const paletteMsg = {
+          id: assistantMsgId,
+          role: 'assistant',
+          text: paletteData.questionMessage || "Pour concevoir un portfolio qui valorise au mieux votre profil, quelle direction chromatique préférez-vous ?",
+          type: 'color_palette_selector',
+          originalPrompt: promptText,
+          detectedRole: paletteData.detectedRole,
+          questionMessage: paletteData.questionMessage,
+          palettes: paletteData.palettes,
+          isResolved: false,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+
+        setChatMessages((prev) =>
+          prev.map((m) => (m.id === assistantMsgId ? paletteMsg : m))
+        );
+        if (chatMessagesRef.current) {
+          chatMessagesRef.current = chatMessagesRef.current.map((m) =>
+            m.id === assistantMsgId ? paletteMsg : m
+          );
+        }
+      } catch (err) {
+        console.warn('Failed to load AI color palettes:', err);
+      }
+      return;
+    }
+
     const userMsg = {
       id: `msg-${Date.now()}`,
       role: 'user',
@@ -1120,6 +1177,28 @@ export const PortfolioProvider = ({ children }) => {
       } else if (lower.includes('cyan') || lower.includes('blue') || lower.includes('bleu')) {
         fallbackPortfolio.theme = THEME_PRESETS['cyber-dark'];
         replyText = options.summaryTitle || `Applied Cyber Dark theme with cyber cyan accents for ${personName}!`;
+      } else if (promptText.includes('[Palette imposée:')) {
+        const pMatch = promptText.match(/\[Palette imposée: Fond ([^,]+), Surface ([^,]+), Texte Principal ([^,]+), Texte Secondaire ([^,]+), Accent ([^\]]+)\]/i);
+        if (pMatch) {
+          const [, bg, surface, textPrimary, textSecondary, accent] = pMatch;
+          fallbackPortfolio.theme = {
+            ...fallbackPortfolio.theme,
+            palette: {
+              ...fallbackPortfolio.theme.palette,
+              bg: bg.trim(),
+              surface: surface.trim(),
+              surfaceHover: surface.trim(),
+              surfaceCard: surface.trim(),
+              textPrimary: textPrimary.trim(),
+              textSecondary: textSecondary.trim(),
+              accent: accent.trim(),
+              accentHover: accent.trim(),
+              accentGlow: `${accent.trim()}40`,
+              border: `${accent.trim()}30`,
+            },
+          };
+          replyText = options.summaryTitle || `Portfolio généré avec succès avec votre palette de couleurs validée !`;
+        }
       } else if (lower.match(/#[0-9a-f]{3,6}/i)) {
         const hex = lower.match(/#[0-9a-f]{3,6}/i)[0];
         const isBg = lower.includes('bg') || lower.includes('background') || lower.includes('fond');
@@ -1173,6 +1252,91 @@ export const PortfolioProvider = ({ children }) => {
       setIsGenerating(false);
     }
   }, [isGenerating, portfolio, pushState, getAuthHeaders, persistSession, hasGeneratedFirstPortfolio, firstName]);
+
+  // Handle Palette Confirmation from AI Color Card
+  const handleConfirmPalette = useCallback((msgId, originalPrompt, selectedPalette) => {
+    // 1. Mark the message in chat as resolved
+    setChatMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              isResolved: true,
+              selectedPaletteData: selectedPalette,
+            }
+          : m
+      )
+    );
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current = chatMessagesRef.current.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              isResolved: true,
+              selectedPaletteData: selectedPalette,
+            }
+          : m
+      );
+    }
+
+    // 2. Immediately update portfolio theme palette tokens
+    setPortfolio((curr) => {
+      const updatedTheme = {
+        ...curr.theme,
+        palette: {
+          ...curr.theme?.palette,
+          bg: selectedPalette.bg,
+          surface: selectedPalette.surface,
+          surfaceHover: selectedPalette.surface,
+          surfaceCard: selectedPalette.surface,
+          textPrimary: selectedPalette.textPrimary,
+          textSecondary: selectedPalette.textSecondary,
+          accent: selectedPalette.accent,
+          accentHover: selectedPalette.accentHover || selectedPalette.accent,
+          accentGlow: selectedPalette.accentGlow || 'rgba(59, 130, 246, 0.25)',
+          border: selectedPalette.border || 'rgba(255, 255, 255, 0.1)',
+        },
+      };
+      const updated = { ...curr, theme: updatedTheme };
+      pushState(updated);
+      return updated;
+    });
+
+    // 3. Inject palette constraints into prompt & resume generation
+    const enrichedPrompt = `${originalPrompt} [Palette imposée: Fond ${selectedPalette.bg}, Surface ${selectedPalette.surface}, Texte Principal ${selectedPalette.textPrimary}, Texte Secondaire ${selectedPalette.textSecondary}, Accent ${selectedPalette.accent}]`;
+
+    sendChatMessage(enrichedPrompt, {
+      skipColorCheck: true,
+      assistantPlaceholder: `Application de la palette ${selectedPalette.baseName} (${selectedPalette.subName}) et génération du portfolio...`,
+      summaryTitle: `✓ Portfolio généré avec la palette ${selectedPalette.baseName} (${selectedPalette.subName}) !`,
+    });
+  }, [pushState, sendChatMessage]);
+
+  // Handle Skipping Palette Choice
+  const handleSkipPalette = useCallback((msgId, originalPrompt) => {
+    setChatMessages((prev) =>
+      prev.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              isResolved: true,
+            }
+          : m
+      )
+    );
+    if (chatMessagesRef.current) {
+      chatMessagesRef.current = chatMessagesRef.current.map((m) =>
+        m.id === msgId
+          ? {
+              ...m,
+              isResolved: true,
+            }
+          : m
+      );
+    }
+
+    sendChatMessage(originalPrompt, { skipColorCheck: true });
+  }, [sendChatMessage]);
 
   return (
     <PortfolioContext.Provider
@@ -1233,6 +1397,8 @@ export const PortfolioProvider = ({ children }) => {
         loadPresetPortfolio,
         sendChatMessage,
         sendMessage: sendChatMessage,
+        handleConfirmPalette,
+        handleSkipPalette,
         portfolioId,
         saveStatus,
         isPublished,

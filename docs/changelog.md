@@ -1,5 +1,22 @@
 # Journal des Modifications du Projet
 
+## 🤖 Assistant IA Interactif "Jumeau Numérique / Recruteur" (Propulsé par OpenAI GPT-4o-mini)
+- **Sécurisation de la clé OpenAI :** Clé enregistrée de manière isolée dans le `.env` backend pour une sécurité totale sans fuite côté client.
+- **Backend Endpoint (`/api/v1/ai/portfolio-chat`) :**
+  - Prompt d'incarnation dynamique qui extrait en temps réel les données du portfolio (bio, compétences, expériences réelles, projets, emails).
+  - L'IA répond à la 1ère personne au nom du développeur avec politesse, concision et rigueur technique.
+- **Frontend Widget Flottant (`PortfolioChatWidget.jsx`) :**
+  - Bouton flottant premium avec badge "GPT-4o", badge vert pulsant "en ligne", et animations fluides.
+  - Fenêtre de chat modale avec design en verre (glassmorphism), suggestions de questions rapides en 1-clic (*"Quelles sont tes compétences clés ?"*, *"Présente-moi ton meilleur projet"*, etc.).
+  - Intégration directe dans le canvas et les rendus publics du portfolio (`PortfolioRenderer.jsx`).
+
+## 🎨 Génération Dynamique & Clarification des Palettes de Couleurs par l'IA
+- **Détection Intelligente de l'Absence de Couleurs :** Lorsque l'utilisateur formule une demande de génération ou de refonte sans spécifier de couleurs (`doesPromptSpecifyColor`), l'IA n'applique plus de couleurs arbitraires en aveugle.
+- **Backend AI (`/api/v1/ai/suggest-palettes`) :** Analyse le profil métier (ex: DevOps, UI/UX Designer, Data Scientist, Fullstack) et formule 4 à 5 palettes personnalisées adaptées à son univers.
+- **Dépliage Dynamique des Contrastes Adaptés :** Dès que l'utilisateur sélectionne une couleur de base dans le chat, une sous-liste dépliée présente les déclinaisons de texte et d'accents adaptées (WCAG AAA garanti).
+- **Couleur Personnalisée :** Sélecteur hexadécimal interactif avec calcul de luminance automatique et adaptation temps réel des couleurs de texte.
+- **Validation & Injection Transparente :** Validation directe en 1-clic réinjectant les tokens exacts de design dans le flux de streaming du portfolio.
+
 ## 📝 Résumé des Actions
 Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisateur (UX) et de logique métier (l'URL qui restait figée sur `/`), nous avons établi un plan d'action en 4 étapes et nous avons complété la première étape.
 
@@ -335,4 +352,19 @@ Suite à l'analyse de la vidéo décrivant les problèmes d'expérience utilisat
   - Suppression du point vert clignotant et du badge vert fluorescent (*"2 projets en ligne"*), remplacés par une icône de dossier propre (`RiFolder3Line`) et un badge Zinc sobre.
   - Remplacement du badge *"Import GitHub & AI Generator"* par *"Dépôts GitHub"*.
   - Remplacement du bouton d'action violet/indigo du chat par un bouton Zinc noir/blanc sobre.
+
+### 26. Gestionnaire de Compétences Personnalisées & Multi-Tenant (`SkillsTab.jsx`)
+- **Nouvel Onglet Dédié dans la Barre Supérieure (`V0Header.jsx`, `V0Canvas.jsx`) :**
+  - Ajout du bouton d'onglet `[ ⚡ Compétences ]` aux côtés de `[ 👁️ Aperçu ]`, `[ </> Code ]` et `[ 🐙 Projets ]`, activé dès la génération du portfolio.
+  - Bouton de raccourci interactif *"Gérer les compétences"* intégré directement dans l'en-tête de `SkillsSection.jsx` en mode édition.
+- **Catalogue Standard par Catégories (`frontend/src/data/skillsCatalog.js`) :**
+  - Organisation des compétences techniques majeures par domaines : *Frontend*, *Backend*, *Bases de Données*, *DevOps & Cloud*, *Mobile*, *IA & Data Science*, *Outils & Méthodes*.
+- **Sélection Interactive & Synchronisation Instantanée (`SkillsTab.jsx`) :**
+  - Mise en valeur des compétences déjà présentes dans le portfolio (badge noir/zinc avec coche `✓`).
+  - Bascule en un clic pour ajouter ou retirer une compétence sans rechargement.
+- **Ajouts Personnalisés & Isolation Multi-Tenant Stricte :**
+  - Possibilité pour chaque utilisateur d'ajouter une compétence personnalisée dans n'importe quelle catégorie.
+  - Possibilité de créer des catégories sur-mesure (ex: *Cybersécurité*, *Design UI/UX*, *Blockchain*).
+  - Suppression possible des compétences et catégories personnalisées.
+  - **Isolation garantie** : toutes les personnalisations sont enregistrées exclusivement dans le schéma JSON du portfolio de l'utilisateur (`sec-skills`), sans jamais polluer le catalogue global ni impacter les autres utilisateurs.
 

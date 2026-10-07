@@ -15,7 +15,8 @@ import {
   RiExternalLinkLine,
   RiEdit2Line,
   RiGithubFill,
-  RiHistoryLine
+  RiHistoryLine,
+  RiStackLine
 } from 'react-icons/ri';
 
 export const V0Header = () => {
@@ -155,18 +156,33 @@ export const V0Header = () => {
           </button>
 
           {hasGeneratedFirstPortfolio && (
-            <button
-              onClick={() => setViewMode('projects')}
-              className={`px-3 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200 ${
-                viewMode === 'projects'
-                  ? 'bg-zinc-800 text-white font-medium shadow-xs'
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-              title="Importer des projets depuis GitHub"
-            >
-              <RiGithubFill className="w-3.5 h-3.5" />
-              <span>Projets</span>
-            </button>
+            <>
+              <button
+                onClick={() => setViewMode('projects')}
+                className={`px-3 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200 ${
+                  viewMode === 'projects'
+                    ? 'bg-zinc-800 text-white font-medium shadow-xs'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+                title="Importer des projets depuis GitHub"
+              >
+                <RiGithubFill className="w-3.5 h-3.5" />
+                <span>Projets</span>
+              </button>
+
+              <button
+                onClick={() => setViewMode('skills')}
+                className={`px-3 py-1 rounded-md transition-all cursor-pointer flex items-center gap-1.5 animate-in fade-in zoom-in-95 duration-200 ${
+                  viewMode === 'skills'
+                    ? 'bg-zinc-800 text-white font-medium shadow-xs'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+                title="Gérer les compétences et technologies"
+              >
+                <RiStackLine className="w-3.5 h-3.5" />
+                <span>Compétences</span>
+              </button>
+            </>
           )}
         </div>
 

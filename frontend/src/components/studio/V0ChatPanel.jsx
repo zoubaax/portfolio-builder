@@ -18,6 +18,7 @@ import {
   RiArrowRightLine,
   RiHistoryLine
 } from 'react-icons/ri';
+import { ColorPaletteCard } from './ColorPaletteCard';
 
 export const V0ChatPanel = ({ onNewProject }) => {
   const { user } = useUser();
@@ -26,6 +27,8 @@ export const V0ChatPanel = ({ onNewProject }) => {
     setPortfolio,
     chatMessages,
     sendChatMessage,
+    handleConfirmPalette,
+    handleSkipPalette,
     isGenerating,
     activeTasks,
     isChatCollapsed,
@@ -229,6 +232,23 @@ export const V0ChatPanel = ({ onNewProject }) => {
                   <p className="whitespace-pre-line">
                     {renderAssistantMessageContent(msg.text)}
                   </p>
+
+                  {/* Dynamic AI Color Palette Selector Card */}
+                  {msg.type === 'color_palette_selector' && (
+                    <ColorPaletteCard
+                      messageId={msg.id}
+                      originalPrompt={msg.originalPrompt}
+                      detectedRole={msg.detectedRole}
+                      questionMessage={msg.questionMessage}
+                      palettes={msg.palettes}
+                      isResolved={msg.isResolved}
+                      selectedPaletteData={msg.selectedPaletteData}
+                      onConfirm={(selectedPalette) =>
+                        handleConfirmPalette?.(msg.id, msg.originalPrompt, selectedPalette)
+                      }
+                      onSkip={() => handleSkipPalette?.(msg.id, msg.originalPrompt)}
+                    />
+                  )}
 
                   {/* Optional Interactive Action Buttons (e.g. Open Projects Tab) */}
                   {msg.action === 'open_projects' && (
