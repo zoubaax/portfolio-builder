@@ -571,9 +571,19 @@ export const V0Canvas = () => {
                       )}
 
                       {/* Screen Viewport Container: Strictly bounds scrollable portfolio and keeps floating AI chat pinned at bottom-right */}
-                      <div className="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-white">
+                      <div 
+                        className="flex-1 w-full h-full relative overflow-hidden flex flex-col transition-colors duration-200"
+                        style={{
+                          backgroundColor: portfolio?.theme?.palette?.bg || '#ffffff',
+                        }}
+                      >
                         {/* 1. Scrollable Portfolio Sections - Navigates freely */}
-                        <div className="w-full h-full overflow-y-auto overflow-x-hidden flex flex-col">
+                        <div 
+                          className="w-full h-full overflow-y-auto overflow-x-hidden flex flex-col transition-colors duration-200"
+                          style={{
+                            backgroundColor: portfolio?.theme?.palette?.bg || '#ffffff',
+                          }}
+                        >
                           <PortfolioRenderer portfolio={portfolio} isPreview={true} />
                         </div>
 
