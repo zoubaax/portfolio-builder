@@ -426,41 +426,52 @@ export const generateImagePromptWithAi = async (
   const { title, description = '', tags = [] } = params;
   const ai = getAiClient(config);
 
+  // Preserve rich README context up to 3500 chars so LLM truly understands the project
   const cleanDesc = (description || '')
     .replace(/<[^>]*>/g, ' ')
     .replace(/!\[.*?\]\(.*?\)/g, '')
+    .replace(/\[!\[.*?\]\(.*?\)\]\(.*?\)/g, '')
+    .replace(/\[.*?\]\(.*?\)/g, '$1')
+    .replace(/https?:\/\/[^\s]+/g, '')
     .replace(/[#*`~_]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-    .slice(0, 300);
+    .slice(0, 3500);
 
-  const cleanFallbackPrompt = `Sleek dark-mode digital dashboard for software application "${title}", modern clean software interface, slate dark background (#090d16), subtle electric cyan accents, crisp vector UI telemetry cards and charts, studio display lighting, no text distortion, minimal aesthetic.`;
+  const cleanFallbackPrompt = `Editorial photography of a high-end workstation monitor showing the "${title}" interface in its authentic workplace environment, realistic software UI with domain data, Sony A7R V, 35mm f/1.8 lens, shallow depth of field, natural soft ambient light with screen reflections, light grain, ultra-detailed 8k, 16:9 aspect ratio.`;
 
   if (!ai) {
     return cleanFallbackPrompt;
   }
 
-  const systemPrompt = `You are an expert visual director and prompt engineer for state-of-the-art image diffusion models (FLUX.1).
-Your mission is to generate a single, highly tailored image prompt in English for a software project card in an engineering portfolio.
+  const systemPrompt = `Tu es un directeur artistique et prompt engineer d'élite pour les modèles de génération d'images ultra-réalistes (FLUX.1).
+Ta mission est d'analyser la documentation README et les métadonnées d'un projet logiciel, puis de concevoir directement UN SEUL prompt de génération d'image en anglais, hautement immersif, réaliste et professionnel.
 
-STRICT VISUAL STYLE RULES:
-- STRICTLY FORBIDDEN: NO 3D toys, NO cartoon characters, NO isometric plastic rendering, NO childish clay figurines, NO floating spheres or abstract geometric toys.
-- STYLE: Clean modern software interface mockup, sleek dark-mode digital dashboard, or minimalist high-tech engineering visual (inspired by Linear.app, Stripe, Vercel, Raycast).
-- CONTENT: Accurately represents the software's real domain and functionality:
-  * Network / Security: Sleek dark cybersecurity console, network topology telemetry with luminous nodes, connection latency charts, traffic inspection HUD.
-  * Web / SaaS / Mobile: Modern minimalist UI dashboard mockup, cards, data visualizations, sleek typography layout, subtle glassmorphic containers.
-  * AI / Data: Minimalist data analytics dashboard, neural node streams, clean metric widgets, prediction charts.
-  * DevOps / Cloud: Microservices mesh visual, container orchestration metrics, clean dark HUD, deployment pipeline diagram.
-- LIGHTING & PALETTE: Deep slate dark background (#090d16), subtle neon cyan or electric blue accents, soft ambient glow, crisp vector precision, studio photography of an ultra-thin OLED display.
-- NO JUMBLED TEXT: Avoid detailed readable text; specify clean abstract UI cards, charts, and vector graphs.
+Étapes de réflexion interne (ne les affiche pas) :
+1. Identifie ce que fait le projet, qui l'utilise et dans quel environnement professionnel réel il s'intègre.
+2. Choisis une scène concrète liée à ce domaine métier (ex : santé → cabinet médical / clinique moderne, DevOps/Cloud → salle serveur / poste d'ingénieur senior, e-commerce → entrepôt logistique ou studio design, finance/trading → bureau de trading, cybersécurité → centre opérationnel SOC, jeu vidéo → studio de game design, IA/Data → laboratoire de recherche).
+3. Détermine 3 à 4 données réalistes propres au projet (noms, métriques crédibles, chiffres, statuts opérationnels) affichées sur l'écran.
 
-Output ONLY the prompt string (1 to 2 sentences in English). No introductory text, no quotes, no markdown wrappers.`;
+Image à produire par le prompt (RÉDIGÉ STRICTEMENT EN ANGLAIS) :
+- Photographie éditoriale réaliste d'un écran ou d'un appareil moderne montrant l'interface du projet, placé dans son contexte réel d'utilisation.
+- L'interface affiche les vraies fonctionnalités du projet avec les données réalistes déduites du projet (texte court, net et lisible).
+- Palette de couleurs tirée du domaine du projet (JAMAIS de "dark mode cyan" par défaut).
+- Décor et accessoires crédibles et subtilement floutés pour le métier concerné.
+- Style photographique : Editorial photography, shot on Sony A7R V, 35mm f/1.8 lens, shallow depth of field, soft natural ambient light mixed with subtle screen reflections, fine film grain, ultra-detailed 8k, 16:9 aspect ratio.
+- À interdire formellement : NO 3D cartoon toys, NO isometric plastic rendering, NO lorem ipsum, NO cliché glowing neons, NO watermarks, NO distorted hands or text artifacts.
+
+Format de sortie STRICT :
+Génère UNIQUEMENT le prompt d'image en anglais (1 à 2 phrases descriptives riches et précises). Pas de texte explicatif, pas de markdown, juste le prompt anglais.`;
 
   const userPrompt = `Project Title: ${title}
-Project Overview: ${cleanDesc || title}
-Key Technologies: ${tags.join(', ') || 'Modern Software Engineering'}
+Technologies: ${tags.join(', ') || 'Modern Software Engineering'}
 
-Write the FLUX.1 image prompt:`;
+Documentation README / Description détaillée du projet :
+"""
+${cleanDesc || title}
+"""
+
+Génère directement le prompt d'image FLUX.1 en anglais :`;
 
   try {
     const response = await ai.client.chat.completions.create({
@@ -470,7 +481,7 @@ Write the FLUX.1 image prompt:`;
         { role: 'user', content: userPrompt },
       ],
       temperature: 0.3,
-      max_tokens: 150,
+      max_tokens: 180,
     });
 
     const rawPrompt = response.choices[0]?.message?.content?.trim();
@@ -517,7 +528,7 @@ Your mission is to analyze a developer's GitHub repository documentation (README
 2. "description": An impactful, crystal-clear 1 to 2 sentences (120 to 180 characters max) in French explaining the problem solved and value proposition. NEVER include raw markdown syntax (no **, *, #, backticks, emojis, bullet points, or development notes).
 3. "tags": An array of 3 to 5 key technologies/frameworks extracted from the README or metadata.
 4. "metrics": A concise technical highlight badge (e.g. "Diagnostic Temps Réel • Analyse Multi-Threads").
-5. "imagePrompt": A tailored 1 to 2 sentence English prompt for FLUX.1 to generate a clean, modern, ultra-professional software interface mockup (STRICTLY FORBIDDEN: NO 3D toys, NO cartoons, NO isometric plastic rendering; clean dark-mode UI dashboard, slate dark palette #090d16, subtle cyan/blue accents, crisp vector charts representing the project's actual features).
+5. "imagePrompt": A tailored 1 to 2 sentence English prompt for FLUX.1 following this exact standard: Editorial photography of a modern device/screen displaying the project's real interface in its authentic workplace setting (e.g. healthcare -> clinic/cabinet, DevOps/Cloud -> server room/workstation, e-commerce -> warehouse/studio, AI/fintech -> research lab/trading desk), realistic domain-specific metrics and data on screen, color palette drawn from the project's actual field (NEVER generic cyan neon), Sony A7R V, 35mm f/1.8 lens, shallow depth of field, natural soft ambient light with screen reflections, light grain, ultra-detailed 8k, 16:9 aspect ratio. STRICTLY FORBIDDEN: NO 3D cartoon toys, NO isometric plastic rendering, NO lorem ipsum, NO cliché neons.
 
 Output ONLY a valid JSON object matching:
 {
@@ -571,4 +582,451 @@ Synthesize the portfolio project summary and visual prompt JSON now.`;
 
   return fallbackResult;
 };
+
+export interface PaletteSubOption {
+  id: string;
+  name: string;
+  badge: string;
+  textPrimary: string;
+  textSecondary: string;
+  accent: string;
+  accentHover: string;
+  accentGlow: string;
+  border: string;
+  borderHover?: string;
+}
+
+export interface SuggestedBasePalette {
+  id: string;
+  name: string;
+  description: string;
+  bg: string;
+  surface: string;
+  isDark: boolean;
+  subOptions: PaletteSubOption[];
+}
+
+export interface SuggestPalettesResult {
+  detectedRole: string;
+  questionMessage: string;
+  palettes: SuggestedBasePalette[];
+}
+
+/**
+ * Dynamically generates bespoke, accessible color palettes and adapted text/accent sub-options
+ * via LLM based on user prompt and domain context.
+ */
+export const suggestPalettesForPrompt = async (
+  userPromptText: string,
+  config: AiClientConfig = {}
+): Promise<SuggestPalettesResult> => {
+  const ai = getAiClient(config);
+
+  const fallback = generateFallbackPalettes(userPromptText);
+
+  if (!ai) {
+    return fallback;
+  }
+
+  const systemPrompt = `You are a world-class digital Art Director and UI/UX design expert specializing in modern engineering portfolios.
+The user wants to generate a portfolio, but did NOT specify a color palette.
+
+Your mission:
+1. Identify the professional role, seniority, or technical discipline (e.g., DevOps Engineer, Full-Stack Developer, UI/UX Designer, Data Scientist, Cybersecurity Specialist, Student, etc.).
+2. Write a warm, professional, motivating 1-2 sentence French question message:
+   "Pour concevoir un portfolio qui valorise au mieux votre profil de [Rôle], quelle direction chromatique préférez-vous ? J'ai conçu ces harmonies adaptées à votre univers :"
+3. Generate 4 to 5 DISTINCT, bespoke base color palettes specifically curated for this discipline:
+   - Provide at least 2 dark palettes, at least 1 clean light/editorial palette, and 1 distinctive thematic palette (e.g. amber/yellow or vibrant cyber/forest).
+   - For EACH base palette, generate 2 to 3 adapted sub-options (subOptions) providing meticulously paired text colors and accent colors that GUARANTEE high readability (WCAG AA/AAA).
+   - CRITICAL: If the background (bg) is light or yellow/warm (e.g. #fef08a, #fffbeb, #ffffff, #f8fafc), textPrimary MUST BE DARK (#0f172a, #18181b), NEVER light.
+   - If the background is dark (#09090b, #0a0f1d, #050a07), textPrimary MUST BE LIGHT (#f8fafc, #ffffff).
+   - Provide exact hex color codes for bg, surface, textPrimary, textSecondary, accent, accentHover, accentGlow (rgba string), border (rgba string).
+   - All labels, badges, and descriptions MUST be in elegant French.
+
+Output ONLY a valid JSON object matching:
+{
+  "detectedRole": string,
+  "questionMessage": string,
+  "palettes": [
+    {
+      "id": string,
+      "name": string,
+      "description": string,
+      "bg": string,
+      "surface": string,
+      "isDark": boolean,
+      "subOptions": [
+        {
+          "id": string,
+          "name": string,
+          "badge": string,
+          "textPrimary": string,
+          "textSecondary": string,
+          "accent": string,
+          "accentHover": string,
+          "accentGlow": string,
+          "border": string
+        }
+      ]
+    }
+  ]
+}`;
+
+  try {
+    const callPromise = ai.client.chat.completions.create({
+      model: ai.model,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Prompt utilisateur : "${userPromptText}". Génère les propositions de palettes adaptées maintenant.` },
+      ],
+      temperature: 0.4,
+    });
+
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('AI palette generation timeout')), 8000)
+    );
+
+    const response: any = await Promise.race([callPromise, timeoutPromise]);
+
+    const content = response.choices[0]?.message?.content || '';
+    const parsed = extractJson(content);
+
+    if (parsed && Array.isArray(parsed.palettes) && parsed.palettes.length >= 3) {
+      return {
+        detectedRole: parsed.detectedRole || fallback.detectedRole,
+        questionMessage: parsed.questionMessage || fallback.questionMessage,
+        palettes: parsed.palettes.map((p: any, idx: number) => ({
+          id: p.id || `ai-palette-${idx + 1}`,
+          name: p.name || `Palette ${idx + 1}`,
+          description: p.description || '',
+          bg: p.bg || '#09090b',
+          surface: p.surface || '#18181b',
+          isDark: typeof p.isDark === 'boolean' ? p.isDark : true,
+          subOptions: Array.isArray(p.subOptions) && p.subOptions.length > 0
+            ? p.subOptions.map((s: any, sIdx: number) => ({
+                id: s.id || `sub-${idx}-${sIdx}`,
+                name: s.name || `Option ${sIdx + 1}`,
+                badge: s.badge || 'Contraste Garanti (AAA)',
+                textPrimary: s.textPrimary || (p.isDark ? '#f8fafc' : '#0f172a'),
+                textSecondary: s.textSecondary || (p.isDark ? '#94a3b8' : '#475569'),
+                accent: s.accent || '#3b82f6',
+                accentHover: s.accentHover || s.accent || '#2563eb',
+                accentGlow: s.accentGlow || 'rgba(59, 130, 246, 0.25)',
+                border: s.border || 'rgba(255, 255, 255, 0.08)',
+              }))
+            : fallback.palettes[0].subOptions,
+        })),
+      };
+    }
+  } catch (err) {
+    console.warn('AI palette suggestion fallback due to error:', err);
+  }
+
+  return fallback;
+};
+
+/**
+ * Robust fallback generator that dynamically adapts to prompt keywords
+ */
+function generateFallbackPalettes(prompt: string): SuggestPalettesResult {
+  const lower = prompt.toLowerCase();
+  let role = 'Ingénieur Logiciel & Développeur';
+  if (lower.includes('devops') || lower.includes('cloud') || lower.includes('kubernetes')) {
+    role = 'Ingénieur DevOps & Cloud';
+  } else if (lower.includes('design') || lower.includes('ui') || lower.includes('ux')) {
+    role = 'Designer UI/UX & Produit';
+  } else if (lower.includes('data') || lower.includes('ai') || lower.includes('ia') || lower.includes('ml')) {
+    role = 'Data Scientist & Ingénieur IA';
+  } else if (lower.includes('security') || lower.includes('cyber') || lower.includes('sécurité')) {
+    role = 'Expert en Cybersécurité';
+  } else if (lower.includes('frontend') || lower.includes('react')) {
+    role = 'Développeur Frontend';
+  } else if (lower.includes('backend') || lower.includes('node') || lower.includes('go')) {
+    role = 'Développeur Backend';
+  }
+
+  return {
+    detectedRole: role,
+    questionMessage: `Pour concevoir un portfolio qui valorise au mieux votre profil de ${role}, quelle direction chromatique préférez-vous ? J'ai préparé ces harmonies adaptées à votre univers :`,
+    palettes: [
+      {
+        id: 'palette-dark-tech',
+        name: 'Noir Profond & Zinc Moderne',
+        description: 'Ambiance technique haute précision, idéale pour mettre en valeur le code et l’architecture.',
+        bg: '#09090b',
+        surface: '#18181b',
+        isDark: true,
+        subOptions: [
+          {
+            id: 'sub-cyan',
+            name: 'Texte Blanc Titane + Cyan Cyber',
+            badge: 'Contraste Maximal (AAA)',
+            textPrimary: '#f8fafc',
+            textSecondary: '#94a3b8',
+            accent: '#06b6d4',
+            accentHover: '#0891b2',
+            accentGlow: 'rgba(6, 182, 212, 0.25)',
+            border: 'rgba(255, 255, 255, 0.08)',
+          },
+          {
+            id: 'sub-emerald',
+            name: 'Texte Blanc Pur + Vert Émeraude',
+            badge: 'Haute Précision',
+            textPrimary: '#ffffff',
+            textSecondary: '#a1a1aa',
+            accent: '#10b981',
+            accentHover: '#059669',
+            accentGlow: 'rgba(16, 185, 129, 0.25)',
+            border: 'rgba(16, 185, 129, 0.2)',
+          },
+          {
+            id: 'sub-violet',
+            name: 'Texte Zinc Clair + Violet SaaS',
+            badge: 'Tendance Produit',
+            textPrimary: '#faf5ff',
+            textSecondary: '#a1a1aa',
+            accent: '#8b5cf6',
+            accentHover: '#7c3aed',
+            accentGlow: 'rgba(139, 92, 246, 0.25)',
+            border: 'rgba(139, 92, 246, 0.2)',
+          },
+        ],
+      },
+      {
+        id: 'palette-clean-light',
+        name: 'Blanc Pur & Minimaliste',
+        description: 'Clarté absolue, esprit éditorial et élégant avec une lisibilité maximale pour les recruteurs.',
+        bg: '#ffffff',
+        surface: '#f8fafc',
+        isDark: false,
+        subOptions: [
+          {
+            id: 'sub-slate-blue',
+            name: 'Texte Noir Ardoise + Bleu Royal',
+            badge: 'Haute Lisibilité (AAA)',
+            textPrimary: '#0f172a',
+            textSecondary: '#475569',
+            accent: '#2563eb',
+            accentHover: '#1d4ed8',
+            accentGlow: 'rgba(37, 99, 235, 0.15)',
+            border: 'rgba(15, 23, 42, 0.08)',
+          },
+          {
+            id: 'sub-monochrome',
+            name: 'Texte Noir Profond + Anthracite Zinc',
+            badge: 'Monochrome Pur',
+            textPrimary: '#09090b',
+            textSecondary: '#52525b',
+            accent: '#18181b',
+            accentHover: '#27272a',
+            accentGlow: 'rgba(24, 24, 27, 0.1)',
+            border: 'rgba(0, 0, 0, 0.08)',
+          },
+          {
+            id: 'sub-forest',
+            name: 'Texte Ardoise + Vert Forêt Luxueux',
+            badge: 'Prestige & Sérénité',
+            textPrimary: '#111827',
+            textSecondary: '#4b5563',
+            accent: '#059669',
+            accentHover: '#047857',
+            accentGlow: 'rgba(5, 150, 105, 0.15)',
+            border: 'rgba(5, 150, 105, 0.15)',
+          },
+        ],
+      },
+      {
+        id: 'palette-modern-yellow',
+        name: 'Jaune Solaire & Ambre Moderne',
+        description: 'Énergique, distinctif et mémorable avec un contraste sombre ultra-sécurisé.',
+        bg: '#fef08a',
+        surface: '#fffbeb',
+        isDark: false,
+        subOptions: [
+          {
+            id: 'sub-yellow-slate',
+            name: 'Texte Noir Ardoise + Ambre Doré',
+            badge: 'Fort Contraste Garanti (AAA)',
+            textPrimary: '#0f172a',
+            textSecondary: '#334155',
+            accent: '#b45309',
+            accentHover: '#92400e',
+            accentGlow: 'rgba(180, 83, 9, 0.2)',
+            border: 'rgba(0, 0, 0, 0.12)',
+          },
+          {
+            id: 'sub-yellow-cobalt',
+            name: 'Texte Noir Zinc + Bleu Cobalt',
+            badge: 'Contraste Complémentaire',
+            textPrimary: '#18181b',
+            textSecondary: '#3f3f46',
+            accent: '#1d4ed8',
+            accentHover: '#1e40af',
+            accentGlow: 'rgba(29, 78, 216, 0.2)',
+            border: 'rgba(29, 78, 216, 0.2)',
+          },
+          {
+            id: 'sub-yellow-ebony',
+            name: 'Texte Brun Ébène + Orange Feu',
+            badge: 'Harmonie Chaude',
+            textPrimary: '#451a03',
+            textSecondary: '#78350f',
+            accent: '#ea580c',
+            accentHover: '#c2410c',
+            accentGlow: 'rgba(234, 88, 12, 0.2)',
+            border: 'rgba(234, 88, 12, 0.2)',
+          },
+        ],
+      },
+      {
+        id: 'palette-cyber-blue',
+        name: 'Bleu Nuit / Cyber Cloud',
+        description: 'Inspiré des consoles Cloud (AWS, Azure, GCP) et des métriques réseau haute performance.',
+        bg: '#0a0f1d',
+        surface: '#111827',
+        isDark: true,
+        subOptions: [
+          {
+            id: 'sub-ice-cyan',
+            name: 'Texte Blanc Glacier + Cyan Électrique',
+            badge: 'Cloud & Kubernetes',
+            textPrimary: '#f0fdfa',
+            textSecondary: '#94a3b8',
+            accent: '#38bdf8',
+            accentHover: '#0284c7',
+            accentGlow: 'rgba(56, 189, 248, 0.25)',
+            border: 'rgba(56, 189, 248, 0.2)',
+          },
+          {
+            id: 'sub-stellar-gold',
+            name: 'Texte Blanc Pur + Or Stellaire',
+            badge: 'Prestige Cloud',
+            textPrimary: '#ffffff',
+            textSecondary: '#cbd5e1',
+            accent: '#fbbf24',
+            accentHover: '#f59e0b',
+            accentGlow: 'rgba(251, 191, 36, 0.25)',
+            border: 'rgba(251, 191, 36, 0.2)',
+          },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * Chat with AI about a specific portfolio context (Recruiter / AI Avatar Chat)
+ * Supports multiple providers: OpenAI, Gemini, Groq, NVIDIA NIM, and BYOK custom keys
+ */
+export async function chatWithPortfolioAi(
+  portfolio: any,
+  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>,
+  userQuestion: string,
+  options: {
+    provider?: 'openai' | 'gemini' | 'groq' | 'nvidia' | 'byok';
+    apiKey?: string;
+    model?: string;
+  } = {}
+) {
+  // Extract custom or portfolio settings
+  const botConfig = portfolio?.aiChatbot || {};
+  const provider = options.provider || botConfig.provider || 'openai';
+  const apiKey = options.apiKey || botConfig.apiKey;
+  const requestedModel = options.model || botConfig.model;
+
+  let client: OpenAI;
+  let modelName = 'gpt-4o-mini';
+
+  if (provider === 'gemini') {
+    // Google Gemini via OpenAI-compatible endpoint
+    client = new OpenAI({
+      apiKey: apiKey || process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '',
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+    });
+    modelName = requestedModel || 'gemini-1.5-flash';
+  } else if (provider === 'groq') {
+    client = new OpenAI({
+      apiKey: apiKey || process.env.GROQ_API_KEY || '',
+      baseURL: 'https://api.groq.com/openai/v1',
+    });
+    modelName = requestedModel || 'llama-3.3-70b-versatile';
+  } else if (provider === 'nvidia') {
+    client = new OpenAI({
+      apiKey: apiKey || process.env.NVIDIA_API_KEY || '',
+      baseURL: 'https://integrate.api.nvidia.com/v1',
+    });
+    modelName = requestedModel || process.env.NVIDIA_MODEL || 'meta/llama-3.2-11b-vision-instruct';
+  } else {
+    // Default to OpenAI
+    client = new OpenAI({
+      apiKey: apiKey || process.env.OPENAI_API_KEY || '',
+    });
+    modelName = requestedModel || 'gpt-4o-mini';
+  }
+
+  // Extract key information from portfolio schema
+  const hero = portfolio?.sections?.find((s: any) => s.type === 'hero')?.data || {};
+  const about = portfolio?.sections?.find((s: any) => s.type === 'about')?.data || {};
+  const skills = portfolio?.sections?.find((s: any) => s.type === 'skills')?.data || {};
+  const projects = portfolio?.sections?.find((s: any) => s.type === 'projects')?.data || {};
+  const experience = portfolio?.sections?.find((s: any) => s.type === 'experience')?.data || {};
+  const contact = portfolio?.sections?.find((s: any) => s.type === 'contact')?.data || {};
+
+  const developerName = hero.name || portfolio?.meta?.title || 'le développeur';
+  const developerTitle = hero.title || 'Développeur / Ingénieur';
+  const developerBio = Array.isArray(about.bio) ? about.bio.join('\n') : (about.bio || hero.tagline || '');
+
+  const skillsList = skills.categories 
+    ? skills.categories.map((c: any) => `${c.name}: ${c.skills?.join(', ')}`).join('\n')
+    : 'Non spécifié';
+
+  const projectsList = projects.projects 
+    ? projects.projects.map((p: any) => `- ${p.title}: ${p.description} (Tech: ${p.tags?.join(', ') || 'N/A'})`).join('\n')
+    : 'Aucun projet spécifié';
+
+  const experienceList = experience.items
+    ? experience.items.map((e: any) => `- ${e.role} chez ${e.company} (${e.period}): ${e.description}`).join('\n')
+    : 'Aucune expérience spécifiée';
+
+  const contactInfo = `Email: ${contact.email || 'Non spécifié'}`;
+
+  const systemPrompt = `Tu es l'assistant personnel IA et le jumeau numérique officiel de ${developerName}.
+Ton rôle est de représenter ${developerName} avec courtoisie, professionnalisme et enthousiasme auprès des recruteurs, collègues et clients visitant son portfolio.
+
+Voici les informations officielles concernant ${developerName} :
+- Nom : ${developerName}
+- Titre / Métier : ${developerTitle}
+- Bio / Présentation : ${developerBio}
+- Compétences techniques :
+${skillsList}
+- Projets réalisés :
+${projectsList}
+- Expériences professionnelles :
+${experienceList}
+- Contact : ${contactInfo}
+
+DIRECTIVES STRICTES :
+1. Tu réponds à la 1ère personne du singulier ("Je...").
+2. FIDÉLITÉ FACTUELLE ABSOLUE : Base tes réponses STRICTEMENT et UNIQUEMENT sur les informations fournies ci-dessus. N'invente AUCUNE technologie, diplôme, entreprise, expérience ou projet qui ne figure pas explicitement dans ce document.
+3. Si une information demandée n'est pas mentionnée dans le portfolio, dis-le clairement et poliment sans spéculer, et invite l'utilisateur à contacter ${developerName} directement via email.
+4. Sois concis, précis, factuel et direct.
+5. Réponds dans la langue employée par l'interlocuteur (français si en français, anglais si en anglais).`;
+
+  const conversationHistory = [
+    { role: 'system' as const, content: systemPrompt },
+    ...messages.slice(-6), // Keep last 6 messages for context
+    { role: 'user' as const, content: userQuestion }
+  ];
+
+  const completion = await client.chat.completions.create({
+    model: modelName,
+    messages: conversationHistory,
+    temperature: 0.0, // Strictest determinism, zero creativity/hallucination
+    max_tokens: 500,
+  });
+
+  return completion.choices[0]?.message?.content || "Je n'ai pas pu générer de réponse pour le moment.";
+}
+
+
 

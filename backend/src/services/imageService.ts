@@ -44,7 +44,7 @@ export class ImageService {
       .replace(/[#*`~_]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
-      .slice(0, 300);
+      .slice(0, 3500);
 
     // 2. Tier 1: If prompt is not already supplied, ask the LLM to design an expert clean UI prompt
     let tailoredPrompt = (options.prompt || '').trim();

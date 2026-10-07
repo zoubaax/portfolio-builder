@@ -411,7 +411,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     try {
       const imgUrl = await generateProjectImageAi({
         title: displayTitle,
-        description: summary.description || proj.readmeSnippet || proj.description,
+        description: proj.readmeSnippet || summary.description || proj.description,
         tags,
         prompt: summary.imagePrompt,
       });
