@@ -1,24 +1,43 @@
 import React from 'react';
 import { Layers, Cpu, Code2, Globe } from 'lucide-react';
+import { RiStackLine } from 'react-icons/ri';
 import { usePortfolio } from '../../../context/PortfolioContext';
 
 export const SkillsSection = ({ data, variant = 'category-cards' }) => {
-  const { isMobileViewport } = usePortfolio();
+  const { isMobileViewport, isEditMode, setViewMode } = usePortfolio();
   const { heading, subheading, categories = [] } = data || {};
 
   return (
     <section id="skills" className={`${isMobileViewport ? 'py-10 px-4' : 'py-16 px-6 md:px-12'} max-w-6xl mx-auto`}>
-      <div className="mb-8 sm:mb-12">
-        {subheading && (
-          <p className="text-xs uppercase tracking-widest font-bold mb-2"
-             style={{ color: 'var(--theme-accent)' }}>
-            {subheading}
-          </p>
+      <div className="mb-8 sm:mb-12 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          {subheading && (
+            <p className="text-xs uppercase tracking-widest font-bold mb-2"
+               style={{ color: 'var(--theme-accent)' }}>
+              {subheading}
+            </p>
+          )}
+          <h2 className={`${isMobileViewport ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'} font-extrabold tracking-tight`}
+              style={{ fontFamily: 'var(--theme-heading-font)', color: 'var(--theme-text-primary)' }}>
+            {heading || 'Skills & Technologies'}
+          </h2>
+        </div>
+
+        {isEditMode && (
+          <button
+            onClick={() => setViewMode('skills')}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer shadow-xs shrink-0 self-start sm:self-auto hover:scale-105"
+            style={{
+              backgroundColor: 'var(--theme-surface)',
+              borderColor: 'var(--theme-border)',
+              color: 'var(--theme-text-primary)'
+            }}
+            title="Gérer les compétences"
+          >
+            <RiStackLine className="w-3.5 h-3.5" />
+            <span>Gérer les compétences</span>
+          </button>
         )}
-        <h2 className={`${isMobileViewport ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'} font-extrabold tracking-tight`}
-            style={{ fontFamily: 'var(--theme-heading-font)', color: 'var(--theme-text-primary)' }}>
-          {heading || 'Skills & Technologies'}
-        </h2>
       </div>
 
       {variant === 'category-cards' ? (
