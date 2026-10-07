@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { streamAiEdit, generatePortfolioFromPrompt, summarizeProjectWithAi } from '../services/aiService.js';
+import { streamAiEdit, generatePortfolioFromPrompt, summarizeProjectWithAi, suggestPalettesForPrompt, chatWithPortfolioAi } from '../services/aiService.js';
 import { imageService } from '../services/imageService.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
@@ -106,6 +106,46 @@ export const aiController = {
       return sendSuccess(res, summary, 'Project synthesized successfully');
     } catch (err: any) {
       return sendError(res, 'AI_SUMMARIZE_FAILED', err.message || 'Failed to summarize project', 500);
+    }
+  },
+
+  /**
+   * Dynamically generate tailored color palettes and adapted sub-options when prompt lacks color
+   */
+  async suggestPalettes(req: Request, res: Response) {
+    try {
+      const { prompt, provider, byokKey } = req.body;
+
+      if (!prompt || typeof prompt !== 'string') {
+        return sendError(res, 'BAD_REQUEST', 'Prompt string is required', 400);
+      }
+
+      const result = await suggestPalettesForPrompt(prompt, { provider, byokKey });
+      return sendSuccess(res, result, 'AI Color palettes generated successfully');
+    } catch (err: any) {
+      return sendError(res, 'PALETTE_SUGGEST_FAILED', err.message || 'Failed to suggest color palettes', 500);
+    }
+  },
+
+  /**
+   * Chat directly with AI as the portfolio's digital twin / recruiter assistant
+   */
+  async chatWithPortfolio(req: Request, res: Response) {
+    try {
+      const { portfolio, messages, question, provider, apiKey, model } = req.body;
+
+      if (!portfolio || !question) {
+        return sendError(res, 'BAD_REQUEST', 'Portfolio data and question are required', 400);
+      }
+
+      const reply = await chatWithPortfolioAi(portfolio, messages || [], question, {
+        provider,
+        apiKey,
+        model,
+      });
+      return sendSuccess(res, { reply }, 'AI response generated');
+    } catch (err: any) {
+      return sendError(res, 'PORTFOLIO_CHAT_FAILED', err.message || 'Failed to chat with portfolio AI', 500);
     }
   },
 };

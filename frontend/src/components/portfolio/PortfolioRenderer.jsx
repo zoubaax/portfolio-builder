@@ -8,6 +8,7 @@ import { ContactSection } from './sections/ContactSection';
 import { SectionWrapper } from '../studio/SectionWrapper';
 import { ExternalLink, Sparkles, Menu, X, ArrowUpRight } from 'lucide-react';
 import { usePortfolio } from '../../context/PortfolioContext';
+import { PortfolioChatWidget } from './PortfolioChatWidget';
 
 export const PortfolioRenderer = ({ portfolio, isPreview = false }) => {
   const { isMobileViewport } = usePortfolio();
@@ -40,7 +41,7 @@ export const PortfolioRenderer = ({ portfolio, isPreview = false }) => {
   const heroName = heroSection?.data?.name || meta?.title?.split('—')[0]?.trim() || 'Portfolio';
 
   return (
-    <div className="w-full min-h-full transition-colors duration-300 selection:bg-[var(--theme-accent)] selection:text-white"
+    <div className="w-full min-h-full relative transition-colors duration-300 selection:bg-[var(--theme-accent)] selection:text-white"
          style={{
            ...styleVariables,
            backgroundColor: 'var(--theme-bg)',
@@ -198,6 +199,11 @@ export const PortfolioRenderer = ({ portfolio, isPreview = false }) => {
           </div>
         </div>
       </footer>
+
+      {/* Floating AI Digital Twin Recruiter Chatbot (Rendered on standalone/public pages) */}
+      {!isPreview && (
+        <PortfolioChatWidget portfolio={portfolio} />
+      )}
     </div>
   );
 };

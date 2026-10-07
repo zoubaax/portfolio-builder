@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
 import { PortfolioRenderer } from '../portfolio/PortfolioRenderer';
+import { PortfolioChatWidget } from '../portfolio/PortfolioChatWidget';
 import { THEME_PRESETS } from '../../types/portfolio';
 import {
   RiGlobalLine,
@@ -22,9 +23,13 @@ import {
   RiCloseLine,
   RiArrowRightLine,
   RiLoader4Line,
-  RiGithubFill
+  RiGithubFill,
+  RiStackLine,
+  RiRobot2Line
 } from 'react-icons/ri';
 import { GithubProjectsTab } from './GithubProjectsTab';
+import { SkillsTab } from './SkillsTab';
+import { AiChatbotSettingsModal } from './AiChatbotSettingsModal';
 
 const QUICK_ACCENT_COLORS = [
   { name: 'Flame Orange', hex: '#FF4500' },
@@ -39,6 +44,7 @@ const QUICK_ACCENT_COLORS = [
 export const V0Canvas = () => {
   const {
     portfolio,
+    setPortfolio,
     deviceView,
     setDeviceView,
     simulatedWidth,
@@ -60,6 +66,7 @@ export const V0Canvas = () => {
 
   const [publishedUrl, setPublishedUrl] = useState(null);
   const [showColorPopover, setShowColorPopover] = useState(false);
+  const [isAiBotModalOpen, setIsAiBotModalOpen] = useState(false);
   const [copiedCode, setCopiedCode] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const codeScrollRef = useRef(null);
@@ -174,18 +181,33 @@ export const V0Canvas = () => {
 
           {/* GitHub Projects Tab (Only visible after first generation) */}
           {hasGeneratedFirstPortfolio && (
-            <button
-              onClick={() => setViewMode('projects')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer animate-in fade-in zoom-in-95 duration-200 ${
-                viewMode === 'projects'
-                  ? 'bg-zinc-100 text-zinc-900 font-semibold border border-zinc-300 shadow-xs'
-                  : 'text-zinc-500 hover:text-zinc-800'
-              }`}
-              title="Importer des projets GitHub"
-            >
-              <RiGithubFill className="w-3.5 h-3.5 text-zinc-800" />
-              <span>Projets</span>
-            </button>
+            <>
+              <button
+                onClick={() => setViewMode('projects')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer animate-in fade-in zoom-in-95 duration-200 ${
+                  viewMode === 'projects'
+                    ? 'bg-zinc-100 text-zinc-900 font-semibold border border-zinc-300 shadow-xs'
+                    : 'text-zinc-500 hover:text-zinc-800'
+                }`}
+                title="Importer des projets GitHub"
+              >
+                <RiGithubFill className="w-3.5 h-3.5 text-zinc-800" />
+                <span>Projets</span>
+              </button>
+
+              <button
+                onClick={() => setViewMode('skills')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer animate-in fade-in zoom-in-95 duration-200 ${
+                  viewMode === 'skills'
+                    ? 'bg-zinc-100 text-zinc-900 font-semibold border border-zinc-300 shadow-xs'
+                    : 'text-zinc-500 hover:text-zinc-800'
+                }`}
+                title="Gérer les compétences et technologies"
+              >
+                <RiStackLine className="w-3.5 h-3.5 text-zinc-800" />
+                <span>Compétences</span>
+              </button>
+            </>
           )}
         </div>
 
@@ -243,8 +265,21 @@ export const V0Canvas = () => {
           <RiArrowDownSLine className="w-3 h-3 text-zinc-400 cursor-pointer" />
         </div>
 
-        {/* Right: Palette Button + Invite + Publish */}
+        {/* Right: AI Bot Settings + Palette Button + Invite + Publish */}
         <div className="flex items-center gap-2">
+          {/* AI Chatbot BYOK Settings Button */}
+          <button
+            onClick={() => setIsAiBotModalOpen(true)}
+            className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+              isAiBotModalOpen
+                ? 'bg-zinc-200 text-zinc-900'
+                : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-900'
+            }`}
+            title="Configurer l'Assistant IA (Modèle, Clé API, Activation)"
+          >
+            <RiRobot2Line className="w-4 h-4" />
+          </button>
+
           {/* Floating Palette Trigger in Navbar */}
           <button
             onClick={() => setShowColorPopover(!showColorPopover)}
@@ -452,13 +487,13 @@ export const V0Canvas = () => {
       )}
 
       {/* 4. Main Viewport (Preview OR Real Code Stream) */}
-      <div className="flex-1 overflow-y-auto relative flex flex-col bg-white">
+      <div className="flex-1 overflow-hidden relative flex flex-col bg-white">
         
         {/* ========================================================================= */}
         {/* TAB 1: PREVIEW MODE                                                       */}
         {/* ========================================================================= */}
         {viewMode === 'preview' && (
-          <div className="flex-1 flex flex-col justify-center items-center">
+          <div className="flex-1 h-full w-full flex flex-col justify-center items-center overflow-hidden">
             {/* STATE A: EMPTY STATE (Matching Screenshot) */}
             {!hasGeneratedFirstPortfolio && !isGenerating && (
               <div className="flex flex-col items-center justify-center text-center p-8 select-none">
@@ -496,10 +531,10 @@ export const V0Canvas = () => {
             {hasGeneratedFirstPortfolio && !isGenerating && (
               <div className="w-full h-full flex flex-col overflow-hidden bg-zinc-100/60">
                 {/* Scrollable Canvas Area with Drag-to-Resize Frame */}
-                <div className="w-full flex-1 overflow-y-auto overflow-x-auto flex justify-center items-start p-2 sm:p-6 relative">
+                <div className={`w-full flex-1 overflow-hidden flex justify-center items-center relative ${activeWidth ? 'p-2 sm:p-4' : 'p-0'}`}>
                   <div
                     ref={frameContainerRef}
-                    className="relative transition-[width] duration-75 flex justify-center items-start origin-top shrink-0"
+                    className="relative transition-[width] duration-75 flex justify-center items-center origin-top shrink-0 h-full max-h-full"
                     style={{
                       width: activeWidth ? `${activeWidth}px` : '100%',
                       maxWidth: '100%',
@@ -520,27 +555,35 @@ export const V0Canvas = () => {
 
                     {/* Mockup Shell */}
                     <div
-                      className={`w-full overflow-hidden transition-all ${
+                      className={`w-full transition-all flex flex-col relative ${
                         activeWidth && activeWidth < 900
-                          ? 'my-3 rounded-[2.8rem] border-[9px] border-zinc-900 shadow-2xl bg-black'
-                          : 'w-full border-0'
+                          ? 'h-[calc(100vh-140px)] max-h-205 rounded-[2.8rem] border-[9px] border-zinc-900 shadow-2xl bg-black overflow-hidden'
+                          : 'h-full w-full border-0 overflow-hidden'
                       }`}
                     >
                       {/* iPhone Dynamic Island */}
                       {activeWidth && activeWidth < 900 && (
-                        <div className="h-7 bg-zinc-900 flex items-center justify-center relative select-none">
+                        <div className="h-7 bg-zinc-900 flex items-center justify-center relative select-none shrink-0">
                           <div className="w-24 h-4 bg-black rounded-full flex items-center justify-end px-3">
                             <div className="w-2.5 h-2.5 rounded-full bg-[#151515] border border-zinc-700/60" />
                           </div>
                         </div>
                       )}
 
-                      {/* Content */}
-                      <PortfolioRenderer portfolio={portfolio} isPreview={true} />
+                      {/* Screen Viewport Container: Strictly bounds scrollable portfolio and keeps floating AI chat pinned at bottom-right */}
+                      <div className="flex-1 w-full h-full relative overflow-hidden flex flex-col bg-white">
+                        {/* 1. Scrollable Portfolio Sections - Navigates freely */}
+                        <div className="w-full h-full overflow-y-auto overflow-x-hidden flex flex-col">
+                          <PortfolioRenderer portfolio={portfolio} isPreview={true} />
+                        </div>
+
+                        {/* 2. Floating AI Chatbot Widget - Strictly INSIDE the screen, pinned at bottom-right, fixed across all sections */}
+                        <PortfolioChatWidget portfolio={portfolio} isAbsolute={true} />
+                      </div>
 
                       {/* Home Indicator */}
                       {activeWidth && activeWidth < 900 && (
-                        <div className="h-6 bg-zinc-900 flex items-center justify-center select-none">
+                        <div className="h-6 bg-zinc-900 flex items-center justify-center select-none shrink-0">
                           <div className="w-32 h-1 bg-zinc-600 rounded-full" />
                         </div>
                       )}
@@ -663,6 +706,15 @@ export const V0Canvas = () => {
           </div>
         )}
 
+        {/* ========================================================================= */}
+        {/* TAB 4: SKILLS MANAGEMENT MODE                                            */}
+        {/* ========================================================================= */}
+        {viewMode === 'skills' && (
+          <div className="w-full h-full flex flex-col flex-1 overflow-hidden">
+            <SkillsTab onApplyComplete={() => setViewMode('preview')} />
+          </div>
+        )}
+
       </div>
 
       {/* Published URL Toast Modal */}
@@ -698,6 +750,19 @@ export const V0Canvas = () => {
           </div>
         </div>
       )}
+
+      {/* AI Chatbot Settings Modal (BYOK & Multi-Provider config) */}
+      <AiChatbotSettingsModal
+        isOpen={isAiBotModalOpen}
+        onClose={() => setIsAiBotModalOpen(false)}
+        portfolio={portfolio}
+        onSave={(updatedConfig) => {
+          setPortfolio((prev) => ({
+            ...prev,
+            aiChatbot: updatedConfig,
+          }));
+        }}
+      />
 
     </main>
   );
