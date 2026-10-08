@@ -55,7 +55,7 @@ export const StudioSidebar = ({ onNewProject }) => {
     setExpandedCategory((prev) => ({ ...prev, [cat]: !prev[cat] }));
   };
 
-  const userEmail = user?.primaryEmailAddress?.emailAddress || 'zoubaax@gmail.com';
+  const userEmail = user?.primaryEmailAddress?.emailAddress || user?.emailAddresses?.[0]?.emailAddress || '';
   const recentPrompts = chatMessages.filter((m) => m.role === 'user').slice(-5).reverse();
 
   return (

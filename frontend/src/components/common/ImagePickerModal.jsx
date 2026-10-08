@@ -9,13 +9,14 @@ import {
 } from 'react-icons/ri';
 import { GithubIcon } from './BrandIcons';
 
-export const ImagePickerModal = ({ isOpen, onClose, currentImage, onSave, title = "Changer l'image" }) => {
-  const { studioTheme } = usePortfolio();
+export const ImagePickerModal = ({ isOpen, onClose, currentImage, onSave, title = "Changer l'image", initialGithubUser = '' }) => {
+  const { studioTheme, githubUsername } = usePortfolio();
   const isLight = studioTheme === 'light';
 
+  const defaultGhUser = initialGithubUser || githubUsername || '';
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' | 'github' | 'url'
   const [previewUrl, setPreviewUrl] = useState(currentImage || '');
-  const [githubUser, setGithubUser] = useState('');
+  const [githubUser, setGithubUser] = useState(defaultGhUser);
   const [urlInput, setUrlInput] = useState(currentImage || '');
   const [isDragging, setIsDragging] = useState(false);
 

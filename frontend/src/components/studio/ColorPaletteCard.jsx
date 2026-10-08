@@ -1,475 +1,328 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import {
   RiPaletteLine,
   RiCheckLine,
-  RiArrowRightLine,
-  RiSparkling2Fill,
-  RiContrastLine,
-  RiShieldCheckLine,
-  RiArrowDownSLine
+  RiUser3Line,
+  RiFocus2Line,
+  RiSparkling2Line,
+  RiBrainLine,
+  RiCodeSSlashLine,
+  RiLayoutMasonryLine,
+  RiServerLine,
+  RiPaintBrushLine,
+  RiGitRepositoryLine,
+  RiStackLine,
+  RiLineChartLine,
+  RiCompass3Line,
 } from 'react-icons/ri';
-import { getLuminance, generateCustomSubPalettes } from '../../data/colorPalettes';
+
+/**
+ * Resolves option icons to modern, lightweight React Icons (Zero raw emojis)
+ */
+export const getOptionReactIcon = (opt) => {
+  if (!opt) return null;
+  if (React.isValidElement(opt.icon)) return opt.icon;
+
+  const key = (opt.iconKey || opt.id || opt.icon || '').toString().toLowerCase();
+
+  switch (key) {
+    // Role step options
+    case 'ai':
+    case '🧠':
+    case 'brain':
+    case 'data':
+      return <RiBrainLine className="w-3.5 h-3.5 text-purple-600 shrink-0" />;
+    case 'fullstack':
+    case '💻':
+    case 'code':
+    case 'dev':
+      return <RiCodeSSlashLine className="w-3.5 h-3.5 text-blue-600 shrink-0" />;
+    case 'frontend':
+    case '⚡':
+    case 'react':
+      return <RiLayoutMasonryLine className="w-3.5 h-3.5 text-amber-600 shrink-0" />;
+    case 'backend':
+    case '☁️':
+    case 'cloud':
+    case 'server':
+      return <RiServerLine className="w-3.5 h-3.5 text-emerald-600 shrink-0" />;
+    case 'designer':
+    case '🎨':
+    case 'design':
+    case 'ui':
+      return <RiPaintBrushLine className="w-3.5 h-3.5 text-pink-600 shrink-0" />;
+
+    // Focus step options
+    case 'projects':
+    case '🚀':
+    case 'github':
+    case 'repo':
+      return <RiGitRepositoryLine className="w-3.5 h-3.5 text-indigo-600 shrink-0" />;
+    case 'skills':
+    case 'tech':
+    case 'stack':
+      return <RiStackLine className="w-3.5 h-3.5 text-cyan-600 shrink-0" />;
+    case 'experience':
+    case '📈':
+    case 'career':
+      return <RiLineChartLine className="w-3.5 h-3.5 text-emerald-600 shrink-0" />;
+    case 'balanced':
+    case '✨':
+    case 'overview':
+      return <RiCompass3Line className="w-3.5 h-3.5 text-violet-600 shrink-0" />;
+
+    default:
+      return <RiSparkling2Line className="w-3.5 h-3.5 text-zinc-500 shrink-0" />;
+  }
+};
+
+/**
+ * 4 Curated 100% Light, High-Contrast Palettes (Zero Dark Colors)
+ */
+export const CLEAN_LIGHT_PALETTES = [
+  {
+    id: 'palette-clean-light',
+    name: 'Blanc Pur & Minimaliste',
+    nameEn: 'Pure Minimalist White',
+    desc: 'Clarté absolue, esprit éditorial moderne et lisibilité maximale.',
+    descEn: 'Ultra-crisp editorial clarity with royal sapphire accents.',
+    bg: '#ffffff',
+    surface: '#f8fafc',
+    isDark: false,
+    textPrimary: '#0f172a',
+    textSecondary: '#475569',
+    accent: '#2563eb',
+    dotColor: '#2563eb',
+    ringColor: '#dbeafe',
+  },
+  {
+    id: 'palette-warm-cream',
+    name: 'Crème Éditoriale & Ambre',
+    nameEn: 'Warm Cream & Amber',
+    desc: 'Ambiance chaleureuse, raffinée et élégante avec touches dorées.',
+    descEn: 'Warm, refined luxury with golden amber highlights.',
+    bg: '#fdfbf7',
+    surface: '#ffffff',
+    isDark: false,
+    textPrimary: '#1c1917',
+    textSecondary: '#78716c',
+    accent: '#d97706',
+    dotColor: '#d97706',
+    ringColor: '#fef3c7',
+  },
+  {
+    id: 'palette-nordic-frost',
+    name: 'Glace Nordique & Cyan',
+    nameEn: 'Nordic Frost & Cyan',
+    desc: 'Ultra-propre, moderne et net, inspiré des interfaces cloud tech.',
+    descEn: 'Clean high-precision slate with electric sky cyan accents.',
+    bg: '#f8fafc',
+    surface: '#ffffff',
+    isDark: false,
+    textPrimary: '#0f172a',
+    textSecondary: '#334155',
+    accent: '#0284c7',
+    dotColor: '#0284c7',
+    ringColor: '#e0f2fe',
+  },
+  {
+    id: 'palette-sage-emerald',
+    name: 'Sauge Douce & Émeraude',
+    nameEn: 'Soft Sage & Emerald',
+    desc: 'Nuances végétales fraîches, apaisantes et équilibrées.',
+    descEn: 'Fresh, organic and modern with vibrant emerald accents.',
+    bg: '#f0fdf4',
+    surface: '#ffffff',
+    isDark: false,
+    textPrimary: '#14532d',
+    textSecondary: '#374151',
+    accent: '#059669',
+    dotColor: '#059669',
+    ringColor: '#dcfce7',
+  },
+];
 
 export const ColorPaletteCard = ({
   messageId,
-  originalPrompt,
+  originalPrompt = '',
   detectedRole,
   questionMessage,
-  palettes = [],
+  step = 1,
+  stepType = 'color',
+  options = null,
   isResolved = false,
   selectedPaletteData = null,
+  selectedOption = null,
+  onSelectOption,
   onConfirm,
   onSkip,
 }) => {
-  const [selectedBaseId, setSelectedBaseId] = useState(() => palettes[0]?.id || 'palette-dark-tech');
-  const [selectedSubId, setSelectedSubId] = useState(() => palettes[0]?.subOptions?.[0]?.id || 'sub-0');
-  
-  // Custom Color State
-  const [isCustomMode, setIsCustomMode] = useState(false);
-  const [customBg, setCustomBg] = useState('#09090b');
-  const [customAccent, setCustomAccent] = useState('#06b6d4');
-  const [customSubId, setCustomSubId] = useState('custom-cyan');
+  const isEn = Boolean(
+    originalPrompt &&
+      /^(i want|create|build|make|portfolio|design|show)/i.test(originalPrompt.trim())
+  );
 
-  // Currently selected base palette
-  const activeBase = useMemo(() => {
-    if (isCustomMode) {
-      const lum = getLuminance(customBg);
-      const isDark = lum <= 0.45;
-      const subPalettes = generateCustomSubPalettes(customBg);
-      return {
-        id: 'custom',
-        name: 'Couleur Personnalisée',
-        description: 'Harmonie calculée sur mesure selon votre couleur d’arrière-plan.',
-        bg: customBg,
-        surface: isDark ? '#18181b' : '#ffffff',
-        isDark,
-        subOptions: subPalettes,
-      };
-    }
-    return palettes.find((p) => p.id === selectedBaseId) || palettes[0] || null;
-  }, [palettes, selectedBaseId, isCustomMode, customBg]);
+  // 1. Resolved State: Compact, Clean Confirmation Badge
+  if (isResolved) {
+    const title =
+      selectedOption ||
+      selectedPaletteData?.baseName ||
+      selectedPaletteData?.name ||
+      (isEn ? 'Preference saved' : 'Préférence validée');
 
-  // Currently selected sub-option
-  const activeSub = useMemo(() => {
-    if (!activeBase) return null;
-    if (isCustomMode) {
-      return activeBase.subOptions.find((s) => s.id === customSubId) || activeBase.subOptions[0];
-    }
-    return activeBase.subOptions.find((s) => s.id === selectedSubId) || activeBase.subOptions[0];
-  }, [activeBase, selectedSubId, isCustomMode, customSubId]);
-
-  // Handle Base Color Selection
-  const handleSelectBase = (palette) => {
-    setIsCustomMode(false);
-    setSelectedBaseId(palette.id);
-    if (palette.subOptions?.length > 0) {
-      setSelectedSubId(palette.subOptions[0].id);
-    }
-  };
-
-  const handleSelectCustom = () => {
-    setIsCustomMode(true);
-    const customSubs = generateCustomSubPalettes(customBg);
-    if (customSubs.length > 0) {
-      setCustomSubId(customSubs[0].id);
-    }
-  };
-
-  const handleConfirm = () => {
-    if (!activeBase || !activeSub) return;
-    const resolvedPalette = {
-      baseId: activeBase.id,
-      baseName: activeBase.name,
-      subName: activeSub.name,
-      bg: activeBase.bg,
-      surface: activeBase.surface,
-      isDark: activeBase.isDark,
-      textPrimary: activeSub.textPrimary,
-      textSecondary: activeSub.textSecondary,
-      accent: isCustomMode && customAccent ? customAccent : activeSub.accent,
-      accentHover: activeSub.accentHover || activeSub.accent,
-      accentGlow: activeSub.accentGlow || 'rgba(59, 130, 246, 0.25)',
-      border: activeSub.border || 'rgba(255, 255, 255, 0.1)',
-    };
-    onConfirm?.(resolvedPalette);
-  };
-
-  // If already resolved, display a compact confirmed badge
-  if (isResolved && selectedPaletteData) {
     return (
-      <div className="mt-2.5 p-3 rounded-xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between text-xs animate-in fade-in duration-200">
-        <div className="flex items-center gap-2.5">
-          <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
-            <RiCheckLine className="w-3.5 h-3.5" />
+      <div className="mt-2 px-3 py-2 rounded-xl bg-zinc-50 border border-zinc-200/80 flex items-center justify-between text-xs animate-in fade-in duration-150">
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px] shrink-0 font-bold">
+            <RiCheckLine className="w-3 h-3" />
           </div>
-          <div>
-            <p className="font-medium text-zinc-900">
-              Palette validée : <span className="font-semibold">{selectedPaletteData.baseName}</span> ({selectedPaletteData.subName})
+          <span className="font-medium text-zinc-900 text-xs">
+            {isEn ? 'Selected: ' : 'Choisi : '}
+            <span className="font-semibold text-zinc-950">{title}</span>
+          </span>
+        </div>
+        <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+          ✓ {isEn ? 'Confirmed' : 'Validé'}
+        </span>
+      </div>
+    );
+  }
+
+  // 2. Interactive Step 1: Color & Style Selection (100% Light, Clean, No Dark Colors)
+  if (step === 1 || stepType === 'color') {
+    const list = CLEAN_LIGHT_PALETTES;
+
+    const handleSelectPalette = (palette) => {
+      const resolved = {
+        baseId: palette.id,
+        baseName: isEn ? palette.nameEn : palette.name,
+        name: isEn ? palette.nameEn : palette.name,
+        subName: 'Standard Light',
+        bg: palette.bg,
+        surface: palette.surface,
+        isDark: false,
+        textPrimary: palette.textPrimary,
+        textSecondary: palette.textSecondary,
+        accent: palette.accent,
+        accentHover: palette.accent,
+        accentGlow: `${palette.accent}33`,
+        border: 'rgba(0, 0, 0, 0.08)',
+      };
+
+      if (onSelectOption) {
+        onSelectOption({
+          ...resolved,
+          title: isEn ? palette.nameEn : palette.name,
+        });
+      } else if (onConfirm) {
+        onConfirm(resolved);
+      }
+    };
+
+    return (
+      <div className="mt-2.5 p-3.5 rounded-2xl bg-white border border-zinc-200 shadow-2xs space-y-3 text-zinc-900 animate-in fade-in duration-150">
+        {/* Header */}
+        <div className="flex items-center gap-2 text-xs">
+          <div className="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100/80 text-indigo-600 flex items-center justify-center shrink-0">
+            <RiPaletteLine className="w-3.5 h-3.5" />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-xs font-semibold text-zinc-900 leading-tight">
+              {isEn ? 'Visual Style & Palette' : 'Style Visuel & Harmonie de Couleurs'}
+            </h4>
+            <p className="text-[11px] text-zinc-500 mt-0.5">
+              {isEn
+                ? 'Choose a clean, light palette for your portfolio:'
+                : 'Sélectionnez une ambiance lumineuse et épurée (1 clic) :'}
             </p>
-            <div className="flex items-center gap-2 mt-1 text-[11px] text-zinc-500 font-mono">
-              <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full border border-zinc-300" style={{ backgroundColor: selectedPaletteData.bg }} />
-                Fond {selectedPaletteData.bg}
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full border border-zinc-300" style={{ backgroundColor: selectedPaletteData.textPrimary }} />
-                Texte {selectedPaletteData.textPrimary}
-              </span>
-              <span>•</span>
-              <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 rounded-full border border-zinc-300" style={{ backgroundColor: selectedPaletteData.accent }} />
-                Accent {selectedPaletteData.accent}
-              </span>
-            </div>
           </div>
+        </div>
+
+        {/* 4 Clean Light Options (Zero Dark Colors, Single Click) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+          {list.map((pal) => (
+            <button
+              key={pal.id}
+              type="button"
+              onClick={() => handleSelectPalette(pal)}
+              className="p-2.5 rounded-xl border border-zinc-200 hover:border-zinc-400 bg-white hover:bg-zinc-50/80 transition-all text-left flex items-start gap-2.5 group cursor-pointer shadow-2xs active:scale-[0.99]"
+            >
+              {/* Swatch indicator */}
+              <div
+                className="w-5 h-5 rounded-full border border-black/10 shrink-0 mt-0.5 flex items-center justify-center shadow-xs"
+                style={{ backgroundColor: pal.bg }}
+              >
+                <div
+                  className="w-2.5 h-2.5 rounded-full"
+                  style={{ backgroundColor: pal.dotColor }}
+                />
+              </div>
+
+              {/* Title & Description */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-zinc-800 group-hover:text-black">
+                    {isEn ? pal.nameEn : pal.name}
+                  </span>
+                  <span
+                    className="w-2 h-2 rounded-full opacity-60 group-hover:opacity-100 transition-opacity"
+                    style={{ backgroundColor: pal.accent }}
+                  />
+                </div>
+                <p className="text-[10px] text-zinc-500 leading-snug line-clamp-1 mt-0.5">
+                  {isEn ? pal.descEn : pal.desc}
+                </p>
+              </div>
+            </button>
+          ))}
         </div>
       </div>
     );
   }
 
+  // 3. Interactive Step 2 (Role) or Step 3 (Focus) or Generic Options
+  const stepIcons = {
+    role: <RiUser3Line className="w-3.5 h-3.5" />,
+    focus: <RiFocus2Line className="w-3.5 h-3.5" />,
+    default: <RiSparkling2Line className="w-3.5 h-3.5" />,
+  };
+
+  const currentIcon = stepIcons[stepType] || stepIcons.default;
+  const currentOptions = options || [];
+
   return (
-    <div className="mt-3 p-4 rounded-2xl bg-white border border-zinc-200 shadow-sm text-zinc-900 space-y-4 animate-in fade-in duration-200">
-      
+    <div className="mt-2.5 p-3.5 rounded-2xl bg-white border border-zinc-200 shadow-2xs space-y-3 text-zinc-900 animate-in fade-in duration-150">
       {/* Header */}
-      <div className="flex items-start gap-2.5">
-        <div className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
-          <RiPaletteLine className="w-4 h-4" />
+      <div className="flex items-center gap-2 text-xs">
+        <div className="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-100/80 text-indigo-600 flex items-center justify-center shrink-0">
+          {currentIcon}
         </div>
         <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h4 className="text-xs font-semibold text-zinc-900">
-              Harmonies de Couleurs Suggérées par l'IA
-            </h4>
-            {detectedRole && (
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600">
-                {detectedRole}
-              </span>
-            )}
-          </div>
-          <p className="text-[11px] text-zinc-600 leading-relaxed mt-1">
-            {questionMessage || "Pour concevoir un portfolio qui vous ressemble, quelle direction chromatique préférez-vous ?"}
-          </p>
+          <h4 className="text-xs font-semibold text-zinc-900 leading-tight">
+            {questionMessage || (isEn ? 'Please choose an option:' : 'Veuillez choisir une option :')}
+          </h4>
         </div>
       </div>
 
-      {/* 1. Base Colors List */}
-      <div className="space-y-2">
-        <label className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold block">
-          1. Sélectionnez une ambiance de base :
-        </label>
+      {/* Clean Option Chips / Buttons with React Icons (Zero Emojis) */}
+      <div className="flex flex-wrap gap-2 pt-1">
+        {currentOptions.map((opt, idx) => {
+          const label = typeof opt === 'string' ? opt : opt.label || opt.name;
+          const iconElement = typeof opt === 'object' ? getOptionReactIcon(opt) : null;
 
-        <div className="space-y-1.5">
-          {palettes.map((palette) => {
-            const isSelected = !isCustomMode && selectedBaseId === palette.id;
-            return (
-              <div
-                key={palette.id}
-                onClick={() => handleSelectBase(palette)}
-                className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-                  isSelected
-                    ? 'border-zinc-900 bg-zinc-50 shadow-xs'
-                    : 'border-zinc-100 hover:border-zinc-200 bg-white'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2.5">
-                    {/* Radio indicator */}
-                    <div
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                        isSelected
-                          ? 'border-zinc-900 bg-zinc-900 text-white'
-                          : 'border-zinc-300 bg-white'
-                      }`}
-                    >
-                      {isSelected && <RiCheckLine className="w-2.5 h-2.5" />}
-                    </div>
-
-                    {/* Color Swatch Dot */}
-                    <div
-                      className="w-4 h-4 rounded-full border border-black/10 shadow-xs shrink-0"
-                      style={{ backgroundColor: palette.bg }}
-                    />
-
-                    <div>
-                      <span className="text-xs font-medium text-zinc-800">{palette.name}</span>
-                      <p className="text-[10px] text-zinc-500 leading-snug">{palette.description}</p>
-                    </div>
-                  </div>
-
-                  <span className="text-[10px] text-zinc-400 font-mono">
-                    {palette.isDark ? 'Sombre' : 'Clair'}
-                  </span>
-                </div>
-
-                {/* DYNAMIC UNFOLDED SUB-LIST UNDER SELECTED BASE COLOR */}
-                {isSelected && palette.subOptions?.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-zinc-200/60 pl-6 space-y-2 animate-in fade-in duration-150">
-                    <p className="text-[10px] font-semibold text-zinc-700 flex items-center gap-1.5">
-                      <RiContrastLine className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Nuances de texte & accents adaptées (Contraste garanti) :</span>
-                    </p>
-
-                    <div className="space-y-1.5">
-                      {palette.subOptions.map((sub) => {
-                        const isSubSelected = selectedSubId === sub.id;
-                        return (
-                          <div
-                            key={sub.id}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedSubId(sub.id);
-                            }}
-                            className={`p-2 rounded-lg border text-xs transition-all flex items-center justify-between cursor-pointer ${
-                              isSubSelected
-                                ? 'border-indigo-600 bg-indigo-50/50 text-indigo-950 font-medium'
-                                : 'border-zinc-100 hover:border-zinc-200 bg-white text-zinc-700'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2">
-                              <div
-                                className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                                  isSubSelected
-                                    ? 'border-indigo-600 bg-indigo-600 text-white'
-                                    : 'border-zinc-300 bg-white'
-                                }`}
-                              >
-                                {isSubSelected && <RiCheckLine className="w-2 h-2" />}
-                              </div>
-                              <span className="text-[11px]">{sub.name}</span>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                              {/* Swatch Mini Badge */}
-                              <div
-                                className="px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 border border-black/10"
-                                style={{ backgroundColor: palette.bg, color: sub.textPrimary }}
-                              >
-                                <span>Aa</span>
-                                <span
-                                  className="w-2 h-2 rounded-full inline-block"
-                                  style={{ backgroundColor: sub.accent }}
-                                />
-                              </div>
-
-                              <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-zinc-100 text-zinc-600">
-                                {sub.badge}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Option: Custom Color */}
-          <div
-            onClick={handleSelectCustom}
-            className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
-              isCustomMode
-                ? 'border-zinc-900 bg-zinc-50 shadow-xs'
-                : 'border-zinc-100 hover:border-zinc-200 bg-white'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div
-                  className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                    isCustomMode
-                      ? 'border-zinc-900 bg-zinc-900 text-white'
-                      : 'border-zinc-300 bg-white'
-                  }`}
-                >
-                  {isCustomMode && <RiCheckLine className="w-2.5 h-2.5" />}
-                </div>
-
-                <div
-                  className="w-4 h-4 rounded-full border border-zinc-300 shrink-0"
-                  style={{ backgroundColor: customBg }}
-                />
-
-                <div>
-                  <span className="text-xs font-medium text-zinc-800">Ajouter une autre couleur personnalisée</span>
-                  <p className="text-[10px] text-zinc-500">Définissez votre propre hexadécimal avec contraste calculé</p>
-                </div>
-              </div>
-
-              <span className="text-[10px] text-zinc-400 font-mono">Personnalisé</span>
-            </div>
-
-            {/* DYNAMIC CUSTOM COLOR PICKER */}
-            {isCustomMode && (
-              <div className="mt-3 pt-3 border-t border-zinc-200/60 pl-6 space-y-3 animate-in fade-in duration-150">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-[10px] text-zinc-500 font-medium block mb-1">
-                      Couleur d'arrière-plan :
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={customBg}
-                        onChange={(e) => setCustomBg(e.target.value)}
-                        className="w-7 h-7 rounded border border-zinc-200 cursor-pointer p-0"
-                      />
-                      <input
-                        type="text"
-                        value={customBg}
-                        onChange={(e) => setCustomBg(e.target.value)}
-                        className="w-20 px-2 py-1 text-xs font-mono rounded border border-zinc-200 bg-white text-zinc-800"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="text-[10px] text-zinc-500 font-medium block mb-1">
-                      Couleur d'accentuation :
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="color"
-                        value={customAccent}
-                        onChange={(e) => setCustomAccent(e.target.value)}
-                        className="w-7 h-7 rounded border border-zinc-200 cursor-pointer p-0"
-                      />
-                      <input
-                        type="text"
-                        value={customAccent}
-                        onChange={(e) => setCustomAccent(e.target.value)}
-                        className="w-20 px-2 py-1 text-xs font-mono rounded border border-zinc-200 bg-white text-zinc-800"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Contrast Harmony Options for Custom */}
-                <div className="space-y-1.5">
-                  <p className="text-[10px] font-semibold text-zinc-700 flex items-center gap-1.5">
-                    <RiShieldCheckLine className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Contraste texte calculé automatiquement :</span>
-                  </p>
-                  {generateCustomSubPalettes(customBg).map((sub) => {
-                    const isSelected = customSubId === sub.id;
-                    return (
-                      <div
-                        key={sub.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setCustomSubId(sub.id);
-                        }}
-                        className={`p-2 rounded-lg border text-xs transition-all flex items-center justify-between cursor-pointer ${
-                          isSelected
-                            ? 'border-indigo-600 bg-indigo-50/50 text-indigo-950 font-medium'
-                            : 'border-zinc-100 hover:border-zinc-200 bg-white text-zinc-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div
-                            className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
-                              isSelected
-                                ? 'border-indigo-600 bg-indigo-600 text-white'
-                                : 'border-zinc-300 bg-white'
-                            }`}
-                          >
-                            {isSelected && <RiCheckLine className="w-2 h-2" />}
-                          </div>
-                          <span className="text-[11px]">{sub.name}</span>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="px-2 py-0.5 rounded text-[10px] font-mono flex items-center gap-1 border border-black/10"
-                            style={{ backgroundColor: customBg, color: sub.textPrimary }}
-                          >
-                            <span>Aa</span>
-                            <span
-                              className="w-2 h-2 rounded-full inline-block"
-                              style={{ backgroundColor: customAccent }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Live Mini Preview */}
-      {activeBase && activeSub && (
-        <div className="p-3 rounded-xl border border-zinc-200/80 space-y-2 bg-zinc-50">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 font-semibold">
-              Aperçu en Direct :
-            </span>
-            <span className="text-[10px] font-medium text-emerald-600 flex items-center gap-1">
-              <RiShieldCheckLine className="w-3 h-3" />
-              <span>Contraste Sécurisé</span>
-            </span>
-          </div>
-
-          <div
-            className="p-3 rounded-lg border transition-colors shadow-xs"
-            style={{
-              backgroundColor: activeBase.bg,
-              borderColor: activeSub.border || 'rgba(0,0,0,0.1)',
-            }}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span
-                className="text-xs font-bold truncate"
-                style={{ color: activeSub.textPrimary }}
-              >
-                {detectedRole || 'Portfolio Professionnel'}
-              </span>
-              <span
-                className="text-[10px] px-2 py-0.5 rounded-full font-medium"
-                style={{
-                  backgroundColor: isCustomMode ? customAccent : activeSub.accent,
-                  color: activeBase.isDark ? '#000000' : '#ffffff',
-                }}
-              >
-                Disponible
-              </span>
-            </div>
-            <p
-              className="text-[11px] line-clamp-2 leading-relaxed"
-              style={{ color: activeSub.textSecondary }}
+          return (
+            <button
+              key={opt?.id || idx}
+              type="button"
+              onClick={() => onSelectOption && onSelectOption(opt)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-zinc-50 hover:bg-zinc-100 text-zinc-800 hover:text-black border border-zinc-200 hover:border-zinc-400 transition-all cursor-pointer shadow-2xs active:scale-[0.98]"
             >
-              Building high-throughput scalable distributed architectures and reactive design systems.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* 3. Action Buttons */}
-      <div className="flex items-center justify-between pt-1">
-        <button
-          type="button"
-          onClick={onSkip}
-          className="text-xs text-zinc-500 hover:text-zinc-800 underline transition-colors cursor-pointer py-1"
-        >
-          Ignorer et utiliser le thème par défaut
-        </button>
-
-        <button
-          type="button"
-          onClick={handleConfirm}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-900 hover:bg-black text-white shadow-xs transition-all active:scale-[0.98] cursor-pointer"
-        >
-          <RiSparkling2Fill className="w-3.5 h-3.5 text-amber-400" />
-          <span>Valider et Générer le Portfolio</span>
-          <RiArrowRightLine className="w-3.5 h-3.5" />
-        </button>
+              {iconElement}
+              <span>{label}</span>
+            </button>
+          );
+        })}
       </div>
-
     </div>
   );
 };

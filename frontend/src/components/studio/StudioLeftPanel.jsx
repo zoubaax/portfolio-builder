@@ -297,23 +297,41 @@ export const StudioLeftPanel = () => {
               </div>
             ))}
 
-            {/* Live Step-by-Step Task Checklist during AI Generation */}
-            {isGenerating && activeTasks && (
-              <div className="w-full bg-[#121215]/95 backdrop-blur-2xl border border-white/12 rounded-2xl p-4 shadow-xl text-left animate-in fade-in duration-300">
-                <div className="flex items-center gap-2.5 mb-3.5 pb-2.5 border-b border-white/10">
-                  <div className="w-7 h-7 rounded-xl bg-[#FF4500]/20 text-[#FF4500] flex items-center justify-center text-sm animate-spin">
-                    <RiSparkling2Fill />
-                  </div>
-                  <div>
-                    <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
-                      <span>Agentic Architect at Work</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#FF4500] animate-ping" />
-                    </h3>
-                    <p className="text-[10px] text-gray-400">
-                      Synthesizing custom portfolio schema from prompt...
-                    </p>
+            {/* Live ChatGPT-style 3-Dots Thinking & Task Checklist during AI Generation */}
+            {isGenerating && (
+              <div className="space-y-3 animate-in fade-in duration-300">
+                {/* 3-Dots Assistant Bubble */}
+                <div className="flex items-start gap-2.5">
+                  <div className={`p-3 rounded-2xl ${
+                    isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/10 text-white/80'
+                  } inline-flex items-center gap-1.5 shadow-sm`}>
+                    <span className="ai-typing-dot shrink-0" />
+                    <span className="ai-typing-dot shrink-0" />
+                    <span className="ai-typing-dot shrink-0" />
                   </div>
                 </div>
+
+                {activeTasks && (
+                  <div className="w-full bg-[#121215]/95 backdrop-blur-2xl border border-white/12 rounded-2xl p-4 shadow-xl text-left">
+                    <div className="flex items-center gap-2.5 mb-3.5 pb-2.5 border-b border-white/10">
+                      <div className="w-7 h-7 rounded-xl bg-[#FF4500]/20 text-[#FF4500] flex items-center justify-center text-sm animate-spin">
+                        <RiSparkling2Fill />
+                      </div>
+                      <div>
+                        <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                          <span>Thinking</span>
+                          <span className="inline-flex items-center gap-1 text-[#FF4500]">
+                            <span className="ai-typing-dot shrink-0" />
+                            <span className="ai-typing-dot shrink-0" />
+                            <span className="ai-typing-dot shrink-0" />
+                          </span>
+                        </h3>
+                        <p className="text-[10px] text-gray-400">
+                          Synthesizing custom portfolio schema from prompt...
+                        </p>
+                      </div>
+                    </div>
+
 
                 {/* Step-by-Step Task Checklist */}
                 <div className="space-y-2.5">

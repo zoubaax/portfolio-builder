@@ -28,6 +28,7 @@ export const V0ChatPanel = ({ onNewProject }) => {
     chatMessages,
     sendChatMessage,
     handleConfirmPalette,
+    handleSelectStepOption,
     handleSkipPalette,
     isGenerating,
     activeTasks,
@@ -37,6 +38,7 @@ export const V0ChatPanel = ({ onNewProject }) => {
     isHistoryOpen,
     setIsHistoryOpen,
     createNewSession,
+    effectiveAvatar,
   } = usePortfolio();
 
   const [prompt, setPrompt] = useState('');
@@ -184,9 +186,17 @@ export const V0ChatPanel = ({ onNewProject }) => {
                 <div className="max-w-[85%] bg-zinc-100 text-zinc-900 rounded-2xl px-3.5 py-2 leading-relaxed text-xs font-normal">
                   {renderUserMessageContent(msg.text)}
                 </div>
-                <div className="w-6 h-6 rounded-full bg-zinc-800 text-white flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                  {user?.firstName?.charAt(0) || 'Z'}
-                </div>
+                {effectiveAvatar ? (
+                  <img
+                    src={effectiveAvatar}
+                    alt={user?.firstName || 'User'}
+                    className="w-6 h-6 rounded-full object-cover shrink-0 mt-0.5 shadow-2xs border border-zinc-200"
+                  />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5 shadow-2xs">
+                    {user?.firstName?.charAt(0) || 'Z'}
+                  </div>
+                )}
               </div>
             ) : (
               /* Assistant Message (Matching Screenshot: > Worked for 4s ... + text) */
@@ -229,37 +239,71 @@ export const V0ChatPanel = ({ onNewProject }) => {
 
                 {/* Main AI Text (Natural, Clean, No Raw JSON) */}
                 <div className="text-xs text-zinc-800 leading-relaxed font-normal pl-5">
-                  <p className="whitespace-pre-line">
-                    {renderAssistantMessageContent(msg.text)}
-                  </p>
+                  {msg.isLoading ||
+                  (typeof msg.text === 'string' &&
+                    (msg.text.includes("analyse votre profil") ||
+                     msg.text.includes("Finding optimal color") ||
+                     msg.text.includes("Analyzing your profile") ||
+                     msg.text.includes("Synthesizing custom portfolio architecture"))) ? (
+                    <div className="space-y-2 py-1">
+                      <div className="flex items-center gap-2 text-zinc-500 text-xs font-normal">
+                        <span>{renderAssistantMessageContent(msg.text)}</span>
+                        <span className="inline-flex items-center gap-1">
+                          <span className="ai-typing-dot shrink-0" />
+                          <span className="ai-typing-dot shrink-0" />
+                          <span className="ai-typing-dot shrink-0" />
+                        </span>
+                      </div>
+                      <div className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-zinc-100 text-zinc-600 shadow-2xs">
+                        <span className="ai-typing-dot shrink-0" />
+                        <span className="ai-typing-dot shrink-0" />
+                        <span className="ai-typing-dot shrink-0" />
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="whitespace-pre-line">
+                      {renderAssistantMessageContent(msg.text)}
+                    </p>
+                  )}
 
-                  {/* Dynamic AI Color Palette Selector Card */}
-                  {msg.type === 'color_palette_selector' && (
+                  {/* Dynamic Multi-Step Interactive Question Card (Step 1: Color -> Step 2: Role -> Step 3: Focus) */}
+                  {(msg.type === 'color_palette_selector' || msg.type === 'interactive_step') && (
                     <ColorPaletteCard
                       messageId={msg.id}
                       originalPrompt={msg.originalPrompt}
                       detectedRole={msg.detectedRole}
                       questionMessage={msg.questionMessage}
                       palettes={msg.palettes}
+                      step={msg.step || 1}
+                      stepType={msg.stepType || 'color'}
+                      options={msg.options}
                       isResolved={msg.isResolved}
                       selectedPaletteData={msg.selectedPaletteData}
+                      selectedOption={msg.selectedOption}
+                      onSelectOption={(opt) =>
+                        handleSelectStepOption
+                          ? handleSelectStepOption(msg.id, msg.step || 1, opt)
+                          : handleConfirmPalette?.(msg.id, msg.originalPrompt, opt)
+                      }
                       onConfirm={(selectedPalette) =>
-                        handleConfirmPalette?.(msg.id, msg.originalPrompt, selectedPalette)
+                        handleSelectStepOption
+                          ? handleSelectStepOption(msg.id, 1, selectedPalette)
+                          : handleConfirmPalette?.(msg.id, msg.originalPrompt, selectedPalette)
                       }
                       onSkip={() => handleSkipPalette?.(msg.id, msg.originalPrompt)}
                     />
                   )}
 
-                  {/* Optional Interactive Action Buttons (e.g. Open Projects Tab) */}
+                  {/* Optional Interactive Action Buttons (Clean Light Button, Zero Dark) */}
                   {msg.action === 'open_projects' && (
                     <button
                       type="button"
                       onClick={() => setViewMode('projects')}
-                      className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium bg-zinc-900 hover:bg-black text-white transition-all shadow-xs cursor-pointer active:scale-[0.98]"
+                      className="mt-3 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 transition-all shadow-2xs cursor-pointer active:scale-[0.98]"
                     >
-                      <RiGithubFill className="w-3.5 h-3.5" />
+                      <RiGithubFill className="w-3.5 h-3.5 text-indigo-600" />
                       <span>Accéder à l'onglet Projets</span>
-                      <RiArrowRightLine className="w-3.5 h-3.5" />
+                      <RiArrowRightLine className="w-3.5 h-3.5 text-indigo-600" />
                     </button>
                   )}
                 </div>
@@ -268,16 +312,34 @@ export const V0ChatPanel = ({ onNewProject }) => {
           </div>
         ))}
 
-        {/* Live Generating State: > Working... with live timer */}
-        {isGenerating && (
-          <div className="space-y-2 text-xs text-zinc-800 animate-in fade-in duration-200">
-            <div className="flex items-center gap-1.5 text-zinc-500 font-normal py-1">
-              <RiLoader4Line className="w-3.5 h-3.5 animate-spin text-zinc-600" />
-              <span>Working for {secondsElapsed}s...</span>
+        {/* Live Generating State: ChatGPT-style Thinking & Typing 3-Dots Indicator */}
+        {isGenerating && !chatMessages.some((m) => m.role === 'assistant' && (m.isLoading || (typeof m.text === 'string' && (m.text.includes("analyse votre profil") || m.text.includes("Analyzing your profile") || m.text.includes("Synthesizing custom portfolio architecture"))))) && (
+          <div className="space-y-2.5 text-xs text-zinc-800 animate-in fade-in duration-200">
+            {/* Thinking status header with live seconds and animated 3 dots */}
+            <div className="flex items-center justify-between text-xs text-zinc-500 font-normal py-0.5">
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-zinc-700">Thinking</span>
+                <span className="inline-flex items-center gap-1 text-zinc-500">
+                  <span className="ai-typing-dot shrink-0" />
+                  <span className="ai-typing-dot shrink-0" />
+                  <span className="ai-typing-dot shrink-0" />
+                </span>
+                <span className="text-[11px] text-zinc-400 font-mono">({secondsElapsed}s)</span>
+              </div>
             </div>
 
-            {activeTasks && (
-              <div className="ml-5 p-2.5 bg-zinc-50 border border-zinc-100 rounded-xl space-y-1.5">
+            {/* Classic ChatGPT-style Typing Bubble with 3 bouncing dots */}
+            <div className="flex items-start gap-2">
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-zinc-100 text-zinc-600 shadow-2xs">
+                <span className="ai-typing-dot shrink-0" />
+                <span className="ai-typing-dot shrink-0" />
+                <span className="ai-typing-dot shrink-0" />
+              </div>
+            </div>
+
+            {/* Active Execution Tasks Breakdown if present */}
+            {activeTasks && activeTasks.length > 0 && (
+              <div className="ml-1 p-2.5 bg-zinc-50 border border-zinc-100 rounded-xl space-y-1.5">
                 {activeTasks.map((t) => (
                   <div
                     key={t.id}
@@ -327,7 +389,7 @@ export const V0ChatPanel = ({ onNewProject }) => {
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isGenerating}
-            placeholder={isGenerating ? "Working..." : "Ask a follow-up..."}
+            placeholder={isGenerating ? "Thinking..." : "Ask a follow-up..."}
             className="flex-1 bg-transparent border-0 outline-none text-xs text-zinc-900 placeholder-zinc-400 font-sans"
           />
 
@@ -350,13 +412,13 @@ export const V0ChatPanel = ({ onNewProject }) => {
               <RiArrowDownSLine className="w-2.5 h-2.5 -ml-0.5" />
             </button>
 
-            {/* Circular Black Send Button with White Arrow */}
+            {/* Circular Send Button */}
             <button
               type="submit"
               disabled={!prompt.trim() || isGenerating}
               className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer ${
                 prompt.trim() && !isGenerating
-                  ? 'bg-black text-white hover:bg-zinc-800'
+                  ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-xs'
                   : 'bg-zinc-100 text-zinc-400 cursor-not-allowed'
               }`}
               title="Send"

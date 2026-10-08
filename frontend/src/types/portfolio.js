@@ -443,7 +443,7 @@ export const MOCK_MINIMALIST_PORTFOLIO = {
  * Creates a clean, unpolluted fresh portfolio template with strictly empty projects.
  * Guaranteed deep clone with no shared references across sessions.
  */
-export const createFreshPortfolio = (userName = 'Mon Portfolio') => ({
+export const createFreshPortfolio = (userName = 'Mon Portfolio', defaultAvatar = null) => ({
   meta: {
     title: `${userName} — Portfolio`,
     slug: `portfolio-${Date.now().toString(36)}`,
@@ -461,7 +461,7 @@ export const createFreshPortfolio = (userName = 'Mon Portfolio') => ({
         name: userName || 'Développeur',
         title: 'Ingénieur Logiciel & Cloud',
         tagline: 'Passionné par la conception de solutions logicielles modernes, performantes et scalables.',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&h=400&q=80',
+        avatar: defaultAvatar || '',
         primaryCta: { text: 'Voir mes Projets', link: '#projects' },
         secondaryCta: { text: 'Me Contacter', link: '#contact' },
         socials: [

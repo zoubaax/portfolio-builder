@@ -14,15 +14,16 @@ import {
   RiTerminalBoxLine,
   RiLayoutMasonryLine,
   RiChat1Line,
-  RiCheckDoubleLine
+  RiCheckDoubleLine,
+  RiGitRepositoryLine,
 } from 'react-icons/ri';
 
 const QUICK_SUGGESTIONS = [
-  { label: '⚡ Cyber Dark & Terminal', prompt: 'Switch to cyber-dark theme with a terminal-dev hero and high-tech typography' },
-  { label: '✨ Bento Violet Layout', prompt: 'Apply the bento-violet theme and reorganize projects into an asymmetric bento grid' },
-  { label: '🖋️ Minimal Editorial', prompt: 'Use minimal-editorial theme with elegant serif typography and centered hero' },
-  { label: '🛠️ Add DevOps Skills', prompt: 'Add Kubernetes, Terraform, Docker, AWS, and GitOps to my technical skills section' },
-  { label: '💼 Add Cloud Case Studies', prompt: 'Add 3 production cloud infrastructure case studies with real deployment metrics' },
+  { icon: <RiTerminalBoxLine className="w-3 h-3 text-cyan-400" />, label: 'Cyber Dark & Terminal', prompt: 'Switch to cyber-dark theme with a terminal-dev hero and high-tech typography' },
+  { icon: <RiPaletteLine className="w-3 h-3 text-violet-400" />, label: 'Bento Violet Layout', prompt: 'Apply the bento-violet theme and reorganize projects into an asymmetric bento grid' },
+  { icon: <RiFileTextLine className="w-3 h-3 text-amber-400" />, label: 'Minimal Editorial', prompt: 'Use minimal-editorial theme with elegant serif typography and centered hero' },
+  { icon: <RiCodeSSlashLine className="w-3 h-3 text-emerald-400" />, label: 'Add DevOps Skills', prompt: 'Add Kubernetes, Terraform, Docker, AWS, and GitOps to my technical skills section' },
+  { icon: <RiGitRepositoryLine className="w-3 h-3 text-blue-400" />, label: 'Add Cloud Case Studies', prompt: 'Add 3 production cloud infrastructure case studies with real deployment metrics' },
 ];
 
 export const GeminiOmnibar = () => {
@@ -233,6 +234,7 @@ export const GeminiOmnibar = () => {
                 onClick={() => handleChipClick(chip.prompt)}
                 className="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium bg-[#121215]/80 hover:bg-[#1a1f2c] text-zinc-300 hover:text-white border border-white/10 hover:border-[#FF4500]/40 backdrop-blur-xl transition-all shadow-md cursor-pointer flex items-center gap-1.5"
               >
+                {chip.icon}
                 <span>{chip.label}</span>
               </button>
             ))}

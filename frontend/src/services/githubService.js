@@ -89,6 +89,57 @@ export async function fetchUserRepos(username, userId = '') {
 }
 
 /**
+ * Extracts preview image from README markdown (screenshot, banner, demo GIF/PNG)
+ * Falls back to GitHub OpenGraph dynamic repo card: https://opengraph.githubassets.com/1/{owner}/{repo}
+ */
+export function extractRepoImage(owner, repo, rawReadme = '') {
+  if (rawReadme && typeof rawReadme === 'string') {
+    // 1. Look for markdown images: ![alt](url)
+    const mdImgRegex = /!\[.*?\]\((https?:\/\/[^\s\)]+\.(?:png|jpe?g|webp|gif|svg)[^\s\)]*)\)/i;
+    const mdMatch = rawReadme.match(mdImgRegex);
+    if (
+      mdMatch &&
+      mdMatch[1] &&
+      !mdMatch[1].includes('shields.io') &&
+      !mdMatch[1].includes('badgen.net') &&
+      !mdMatch[1].includes('travis-ci') &&
+      !mdMatch[1].includes('codecov') &&
+      !mdMatch[1].includes('github.com/badges')
+    ) {
+      return mdMatch[1];
+    }
+
+    // 2. Look for HTML <img src="url">
+    const htmlImgRegex = /<img[^>]+src=["'](https?:\/\/[^"']+\.(?:png|jpe?g|webp|gif|svg)[^"']*)["']/i;
+    const htmlMatch = rawReadme.match(htmlImgRegex);
+    if (
+      htmlMatch &&
+      htmlMatch[1] &&
+      !htmlMatch[1].includes('shields.io') &&
+      !htmlMatch[1].includes('badgen.net') &&
+      !htmlMatch[1].includes('codecov')
+    ) {
+      return htmlMatch[1];
+    }
+
+    // 3. Look for relative images in README (e.g. ![Preview](screenshots/app.png) or <img src="assets/banner.jpg">)
+    const relMdRegex = /!\[.*?\]\(((?!https?:\/\/)[^\s\)]+\.(?:png|jpe?g|webp|gif|svg))\)/i;
+    const relMatch = rawReadme.match(relMdRegex);
+    if (relMatch && relMatch[1] && !relMatch[1].startsWith('#')) {
+      const cleanPath = relMatch[1].replace(/^\.?\//, '');
+      return `https://raw.githubusercontent.com/${owner}/${repo}/main/${cleanPath}`;
+    }
+  }
+
+  // 4. Default: GitHub authentic dynamic OpenGraph social card
+  if (owner && repo) {
+    return `https://opengraph.githubassets.com/1/${owner}/${repo}`;
+  }
+
+  return '';
+}
+
+/**
  * Fetch README content snippet for a repository
  */
 export async function fetchRepoReadme(owner, repo) {
@@ -119,6 +170,49 @@ export async function fetchRepoReadme(owner, repo) {
     console.warn(`README not fetched for ${repo}:`, e.message);
   }
   return '';
+}
+
+/**
+ * Fetch detailed README content and extract authentic GitHub repo images
+ */
+export async function fetchRepoReadmeDetails(owner, repo) {
+  try {
+    const url = `https://raw.githubusercontent.com/${owner}/${repo}/main/README.md`;
+    let res = await fetch(url);
+    if (!res.ok) {
+      res = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/master/README.md`);
+    }
+    if (res.ok) {
+      const rawText = await res.text();
+      const extractedImage = extractRepoImage(owner, repo, rawText);
+      const cleanSnippet = rawText
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/!\[.*?\]\(.*?\)/g, '')
+        .replace(/\[!\[.*?\]\(.*?\)\]\(.*?\)/g, '')
+        .replace(/\[.*?\]\(.*?\)/g, '$1')
+        .replace(/#{1,6}\s+/g, '')
+        .replace(/```[\s\S]*?```/g, '')
+        .replace(/`.*?`/g, '')
+        .replace(/https?:\/\/[^\s]+/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 3500);
+
+      return {
+        cleanSnippet,
+        rawText,
+        extractedImage: extractedImage || `https://opengraph.githubassets.com/1/${owner}/${repo}`,
+      };
+    }
+  } catch (e) {
+    console.warn(`README details not fetched for ${repo}:`, e.message);
+  }
+
+  return {
+    cleanSnippet: '',
+    rawText: '',
+    extractedImage: `https://opengraph.githubassets.com/1/${owner}/${repo}`,
+  };
 }
 
 /**

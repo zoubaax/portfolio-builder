@@ -4,6 +4,7 @@ import { usePortfolio } from '../../context/PortfolioContext';
 import {
   fetchUserRepos,
   fetchRepoReadme,
+  fetchRepoReadmeDetails,
   summarizeProjectAi,
   generateProjectImageAi,
   parseGitHubUsername,
@@ -38,7 +39,15 @@ import { ImagePickerModal } from '../common/ImagePickerModal';
 export const GithubProjectsTab = ({ onApplyComplete }) => {
   const { user } = useUser();
   const { openUserProfile } = useClerk();
-  const { sendChatMessage, sendMessage, setViewMode, studioTheme, portfolio, updateSection } = usePortfolio();
+  const {
+    sendChatMessage,
+    sendMessage,
+    setViewMode,
+    studioTheme,
+    portfolio,
+    updateSection,
+    updateSectionField,
+  } = usePortfolio();
   const isLight = studioTheme === 'light';
 
   // State for direct Neon DB linked GitHub account
@@ -52,7 +61,18 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
 
   const verifiedUsername = linkedAccount.username || clerkGitHubAccount?.username || '';
   const verifiedAvatar =
-    linkedAccount.avatarUrl || (verifiedUsername ? `https://github.com/${verifiedUsername}.png?size=80` : null);
+    linkedAccount.avatarUrl || (verifiedUsername ? `https://github.com/${verifiedUsername}.png` : null);
+
+  // Auto-sync portfolio Hero avatar with GitHub avatar if current avatar is stock Unsplash
+  useEffect(() => {
+    if (verifiedAvatar && updateSectionField) {
+      const heroSec = portfolio?.sections?.find((s) => s.type === 'hero');
+      const isUnsplash = !heroSec?.data?.avatar || heroSec.data.avatar.includes('unsplash.com');
+      if (isUnsplash) {
+        updateSectionField('sec-hero', 'avatar', verifiedAvatar);
+      }
+    }
+  }, [verifiedAvatar, portfolio?.sections, updateSectionField]);
 
   const [isLinkingOAuth, setIsLinkingOAuth] = useState(false);
   const [repos, setRepos] = useState([]);
@@ -349,7 +369,10 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
         metrics: summary.metrics || `${p.stars || 0} Stars • GitHub Certified`,
         github: p.url,
         link: p.homepage || p.url,
-        image: projectImages[p.name] || '',
+        image:
+          projectImages[p.name] ||
+          p.githubImage ||
+          (p.owner || verifiedUsername ? `https://opengraph.githubassets.com/1/${p.owner || verifiedUsername}/${p.name}` : ''),
         featured: false,
       };
     });
@@ -442,18 +465,18 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     setApplyStep('Lecture des READMEs GitHub...');
 
     try {
-      // 1. Fetch README snippets in parallel
+      // 1. Fetch README snippets and extract authentic GitHub images in parallel
       const readmes = await Promise.all(
         selectedList.map(async (repo) => {
-          const readmeSnippet = await fetchRepoReadme(repo.owner, repo.name);
-          return { repo, readmeSnippet };
+          const details = await fetchRepoReadmeDetails(repo.owner, repo.name);
+          return { repo, readmeSnippet: details.cleanSnippet, githubImage: details.extractedImage };
         })
       );
 
       // 2. Synthesize clean titles, descriptions, tags, and metrics via LLM in parallel
       setApplyStep('Synthèse intelligente par IA (résumés, tags, métriques)...');
       const enrichedProjects = await Promise.all(
-        readmes.map(async ({ repo, readmeSnippet }) => {
+        readmes.map(async ({ repo, readmeSnippet, githubImage }) => {
           const summary = await summarizeProjectAi({
             name: repo.name,
             owner: repo.owner,
@@ -466,6 +489,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
           return {
             ...repo,
             readmeSnippet,
+            githubImage,
             aiSummary: summary,
           };
         })

@@ -8,10 +8,16 @@ import { usePortfolio } from '../../../context/PortfolioContext';
 import { RiCameraLine, RiAddLine } from 'react-icons/ri';
 
 export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => {
-  const { updateSectionField, isEditMode, isMobileViewport } = usePortfolio();
+  const { updateSectionField, isEditMode, isMobileViewport, effectiveAvatar, githubUsername } = usePortfolio();
   const { badge, name, title, tagline, avatar, primaryCta, secondaryCta, socials } = data || {};
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
   const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
+
+  // Automatically prefer user profile/GitHub avatar over generic Unsplash placeholder
+  const isUnsplash = !avatar || avatar.includes('unsplash.com');
+  const displayAvatar = isUnsplash
+    ? (effectiveAvatar || (githubUsername ? `https://github.com/${githubUsername}.png` : ''))
+    : avatar;
 
   // 1. Split Portrait Variant
   if (variant === 'split-portrait') {
@@ -163,7 +169,7 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                   borderColor: 'var(--theme-border)'
                 }}
               >
-                <img src={avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80'}
+                <img src={displayAvatar}
                      alt={name}
                      className="w-full h-full object-cover rounded-2xl filter saturate-[1.05] contrast-[1.02]" />
 
@@ -186,7 +192,8 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
         <ImagePickerModal
           isOpen={isImagePickerOpen}
           onClose={() => setIsImagePickerOpen(false)}
-          currentImage={avatar}
+          currentImage={displayAvatar}
+          initialGithubUser={githubUsername || ''}
           onSave={(newImg) => updateSectionField(sectionId, 'avatar', newImg)}
           title="Changer la photo de profil"
         />

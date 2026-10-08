@@ -10,11 +10,12 @@ import {
 } from '../types/portfolio';
 import { doesPromptSpecifyColor, isPortfolioGenerationPrompt } from '../data/colorPalettes';
 import { fetchAiSuggestedPalettes } from '../services/aiPaletteService';
+import { CLEAN_LIGHT_PALETTES } from '../components/studio/ColorPaletteCard';
 
 const DEFAULT_WELCOME_MESSAGE = {
   id: 'msg-welcome',
   role: 'assistant',
-  text: "👋 Hi! I'm your AI Portfolio Agent. You can describe what you need in chat (e.g. 'Senior DevOps Engineer with terminal hero and dark cyber theme') or customize your layout directly.",
+  text: "Hello! I'm your AI Portfolio Agent. You can describe what you need in chat (e.g. 'Full-Stack Developer with clean light theme') or customize your layout directly.",
   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 };
 
@@ -42,22 +43,103 @@ export const PortfolioProvider = ({ children }) => {
   const { user } = useUser();
   const firstName = user?.firstName || 'Guest';
 
-  // Main portfolio state - initialized with fresh empty projects
-  const [portfolio, setPortfolio] = useState(() => createFreshPortfolio(user?.firstName || 'Guest'));
+  // Certified GitHub account verified cryptographically (Clerk OAuth or Neon DB)
+  const clerkGitHubAccount = user?.externalAccounts?.find(
+    (acc) => acc.provider === 'oauth_github' || acc.verification?.strategy === 'oauth_github' || acc.provider === 'github'
+  );
+
+  const [githubProfile, setGithubProfile] = useState({
+    username: null,
+    avatarUrl: null,
+    connected: false,
+  });
+
+  // Query linked GitHub account status from backend Neon DB
+  useEffect(() => {
+    let isMounted = true;
+    const fetchGhStatus = async () => {
+      const uid = user?.id || userId;
+      if (!uid) return;
+      try {
+        const res = await fetch(`http://localhost:5050/api/v1/github/status?userId=${encodeURIComponent(uid)}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (isMounted && json.success && json.data?.connected) {
+            setGithubProfile(json.data);
+          }
+        }
+      } catch (e) {
+        console.warn('PortfolioContext GitHub status check:', e);
+      }
+    };
+    fetchGhStatus();
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, userId]);
+
+  // Detected GitHub username from connected OAuth or Clerk account
+  const detectedGithubUsername =
+    githubProfile.username || clerkGitHubAccount?.username || user?.username || '';
+
+  // Dynamic user profile avatar: prioritize authentic GitHub avatar, fallback to Clerk user profile image
+  const effectiveAvatar =
+    githubProfile.avatarUrl ||
+    (detectedGithubUsername ? `https://github.com/${detectedGithubUsername}.png` : '') ||
+    user?.imageUrl ||
+    '';
+
+  // Main portfolio state - initialized with fresh empty projects and user's profile image if available
+  const [portfolio, setPortfolio] = useState(() => createFreshPortfolio(user?.firstName || 'Guest', user?.imageUrl || ''));
   const [portfolioId, setPortfolioId] = useState(null);
   const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
   const [isPublished, setIsPublished] = useState(false);
   const [versions, setVersions] = useState([]);
   
   // History for Undo / Redo
-  const [history, setHistory] = useState(() => [createFreshPortfolio(user?.firstName || 'Guest')]);
+  const [history, setHistory] = useState(() => [createFreshPortfolio(user?.firstName || 'Guest', user?.imageUrl || '')]);
   const [historyIndex, setHistoryIndex] = useState(0);
+
+  // Automatic Avatar Synchronization:
+  // When authentic GitHub avatar is resolved, if the portfolio currently has the stock Unsplash photo, update to GitHub avatar
+  useEffect(() => {
+    if (!effectiveAvatar) return;
+    setPortfolio((curr) => {
+      const heroSec = curr.sections?.find((s) => s.type === 'hero');
+      const isUnsplashOrEmpty = !heroSec?.data?.avatar || heroSec.data.avatar.includes('unsplash.com');
+      if (isUnsplashOrEmpty) {
+        return {
+          ...curr,
+          sections: curr.sections.map((s) =>
+            s.type === 'hero'
+              ? {
+                  ...s,
+                  data: {
+                    ...s.data,
+                    avatar: effectiveAvatar,
+                  },
+                }
+              : s
+          ),
+        };
+      }
+      return curr;
+    });
+  }, [effectiveAvatar]);
 
   // Chat & Multi-session management state
   const [chatMessages, setChatMessages] = useState([DEFAULT_WELCOME_MESSAGE]);
   const chatMessagesRef = useRef([DEFAULT_WELCOME_MESSAGE]);
   const portfolioIdRef = useRef(null);
   const activeLoadingIdRef = useRef(null);
+  const setupStateRef = useRef({
+    activeStep: 0,
+    originalPrompt: '',
+    palette: null,
+    role: null,
+    focus: null,
+    activeMsgId: null,
+  });
 
   useEffect(() => {
     chatMessagesRef.current = chatMessages;
@@ -732,12 +814,26 @@ export const PortfolioProvider = ({ children }) => {
 
     setActiveTab('chat'); // Auto-switch to chat tab in Studio Left Panel
 
-    // Intercept generation prompts that do NOT specify any color
+    // 1. If currently in interactive setup steps and user types an answer:
+    if (setupStateRef.current.activeStep === 2) {
+      handleSelectStepOption(setupStateRef.current.activeMsgId || 'step-2', 2, { name: promptText.trim(), iconKey: 'role' });
+      return;
+    }
+    if (setupStateRef.current.activeStep === 3) {
+      handleSelectStepOption(setupStateRef.current.activeMsgId || 'step-3', 3, { name: promptText.trim(), iconKey: 'balanced' });
+      return;
+    }
+
+    // 2. Intercept generation prompts that do NOT specify any color -> Start Step 1 directly!
     if (
       !options.skipColorCheck &&
       isPortfolioGenerationPrompt(promptText, !hasGeneratedFirstPortfolio) &&
       !doesPromptSpecifyColor(promptText)
     ) {
+      const isEn = Boolean(
+        /^(i want|create|build|make|portfolio|design|show)/i.test(promptText.trim())
+      );
+
       const userMsg = {
         id: `msg-${Date.now()}`,
         role: 'user',
@@ -745,45 +841,37 @@ export const PortfolioProvider = ({ children }) => {
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
-      const assistantMsgId = `msg-ai-${Date.now()}`;
-      const loadingAssistantMsg = {
+      const assistantMsgId = `msg-step1-${Date.now()}`;
+      setupStateRef.current = {
+        activeStep: 1,
+        originalPrompt: promptText,
+        palette: null,
+        role: null,
+        focus: null,
+        activeMsgId: assistantMsgId,
+      };
+
+      const step1Msg = {
         id: assistantMsgId,
         role: 'assistant',
-        text: "L'IA analyse votre profil pour vous proposer les meilleures harmonies de couleurs adaptées...",
+        type: 'interactive_step',
+        step: 1,
+        stepType: 'color',
+        text: isEn
+          ? "What visual style and color tone would you prefer for your portfolio?"
+          : "Quelle direction chromatique et esthétique préférez-vous pour votre portfolio ?",
+        questionMessage: isEn
+          ? "Choose your visual style & palette:"
+          : "Choisissez votre style visuel & couleurs :",
+        originalPrompt: promptText,
+        isResolved: false,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
       const previousMessages = Array.isArray(chatMessagesRef.current) ? chatMessagesRef.current : [];
-      const activeMessages = [...previousMessages, userMsg, loadingAssistantMsg];
+      const activeMessages = [...previousMessages, userMsg, step1Msg];
       setChatMessages(activeMessages);
       chatMessagesRef.current = activeMessages;
-
-      try {
-        const paletteData = await fetchAiSuggestedPalettes(promptText, getAuthHeaders);
-        const paletteMsg = {
-          id: assistantMsgId,
-          role: 'assistant',
-          text: paletteData.questionMessage || "Pour concevoir un portfolio qui valorise au mieux votre profil, quelle direction chromatique préférez-vous ?",
-          type: 'color_palette_selector',
-          originalPrompt: promptText,
-          detectedRole: paletteData.detectedRole,
-          questionMessage: paletteData.questionMessage,
-          palettes: paletteData.palettes,
-          isResolved: false,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        };
-
-        setChatMessages((prev) =>
-          prev.map((m) => (m.id === assistantMsgId ? paletteMsg : m))
-        );
-        if (chatMessagesRef.current) {
-          chatMessagesRef.current = chatMessagesRef.current.map((m) =>
-            m.id === assistantMsgId ? paletteMsg : m
-          );
-        }
-      } catch (err) {
-        console.warn('Failed to load AI color palettes:', err);
-      }
       return;
     }
 
@@ -799,6 +887,7 @@ export const PortfolioProvider = ({ children }) => {
       id: assistantMsgId,
       role: 'assistant',
       text: options.assistantPlaceholder || `Synthesizing custom portfolio architecture from prompt...`,
+      isLoading: true,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
@@ -918,6 +1007,20 @@ export const PortfolioProvider = ({ children }) => {
           }
         }
 
+        // Automatic GitHub Avatar Attachment to Hero
+        if (updatedPortfolio.sections && effectiveAvatar) {
+          updatedPortfolio.sections = updatedPortfolio.sections.map((s) => {
+            if (s.type === 'hero') {
+              const currentAv = s.data?.avatar;
+              const isUnsplashOrEmpty = !currentAv || currentAv.includes('unsplash.com');
+              if (isUnsplashOrEmpty) {
+                return { ...s, data: { ...s.data, avatar: effectiveAvatar } };
+              }
+            }
+            return s;
+          });
+        }
+
         // Authentic Project Isolation & Integrity:
         // Projects in 'sec-projects' MUST ONLY come from genuine user GitHub imports or explicit selections, NEVER from AI hallucinations.
         if (updatedPortfolio.sections) {
@@ -975,6 +1078,7 @@ export const PortfolioProvider = ({ children }) => {
           text: confirmationText,
           tasks: finalTasks,
           duration: Math.max(1, currentStep),
+          isLoading: false,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         };
 
@@ -1217,7 +1321,18 @@ export const PortfolioProvider = ({ children }) => {
         replyText = options.summaryTitle || `Updated portfolio color to ${hex}!`;
       } else {
         fallbackPortfolio.sections = fallbackPortfolio.sections.map((s) =>
-          s.type === 'hero' ? { ...s, data: { ...s.data, name: personName } } : s
+          s.type === 'hero'
+            ? {
+                ...s,
+                data: {
+                  ...s.data,
+                  name: personName,
+                  avatar: (!s.data?.avatar || s.data.avatar.includes('unsplash.com')) && effectiveAvatar
+                    ? effectiveAvatar
+                    : s.data?.avatar,
+                },
+              }
+            : s
         );
       }
 
@@ -1253,64 +1368,173 @@ export const PortfolioProvider = ({ children }) => {
     }
   }, [isGenerating, portfolio, pushState, getAuthHeaders, persistSession, hasGeneratedFirstPortfolio, firstName]);
 
-  // Handle Palette Confirmation from AI Color Card
-  const handleConfirmPalette = useCallback((msgId, originalPrompt, selectedPalette) => {
-    // 1. Mark the message in chat as resolved
+  // Handle Multi-Step Conversational Choice (Step 1: Color -> Step 2: Role -> Step 3: Focus -> Synthesize)
+  const handleSelectStepOption = useCallback((msgId, step, option) => {
+    const isEn = Boolean(
+      setupStateRef.current.originalPrompt &&
+      /^(i want|create|build|make|portfolio|design|show)/i.test(setupStateRef.current.originalPrompt.trim())
+    );
+
+    const optionLabel = typeof option === 'string' ? option : option.name || option.title || option.baseName;
+    // Clean user message without prepended raw emojis
+    const userText = optionLabel;
+
+    // 1. Mark current question step as resolved
     setChatMessages((prev) =>
       prev.map((m) =>
-        m.id === msgId
+        m.id === msgId || (m.type === 'interactive_step' && m.step === step && !m.isResolved) || (m.type === 'color_palette_selector' && !m.isResolved)
           ? {
               ...m,
               isResolved: true,
-              selectedPaletteData: selectedPalette,
+              selectedOption: optionLabel,
+              selectedPaletteData: typeof option === 'object' && option.bg ? option : m.selectedPaletteData,
             }
           : m
       )
     );
-    if (chatMessagesRef.current) {
-      chatMessagesRef.current = chatMessagesRef.current.map((m) =>
-        m.id === msgId
-          ? {
-              ...m,
-              isResolved: true,
-              selectedPaletteData: selectedPalette,
-            }
-          : m
-      );
+
+    // 2. Append user reply bubble
+    const userMsg = {
+      id: `msg-user-ans-${Date.now()}`,
+      role: 'user',
+      text: userText,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    if (step === 1) {
+      // Step 1: Color / Theme selected -> Save and proceed to Step 2
+      const selectedPalette = typeof option === 'object' && option.bg ? option : CLEAN_LIGHT_PALETTES[0];
+      setupStateRef.current.palette = selectedPalette;
+      setupStateRef.current.activeStep = 2;
+
+      // Update palette in portfolio immediately
+      setPortfolio((curr) => {
+        const updatedTheme = {
+          ...curr.theme,
+          palette: {
+            ...curr.theme?.palette,
+            bg: selectedPalette.bg,
+            surface: selectedPalette.surface,
+            surfaceHover: selectedPalette.surface,
+            surfaceCard: selectedPalette.surface,
+            textPrimary: selectedPalette.textPrimary,
+            textSecondary: selectedPalette.textSecondary,
+            accent: selectedPalette.accent,
+            accentHover: selectedPalette.accent,
+            accentGlow: `${selectedPalette.accent}33`,
+            border: 'rgba(0, 0, 0, 0.08)',
+          },
+        };
+        const updated = { ...curr, theme: updatedTheme };
+        pushState(updated);
+        return updated;
+      });
+
+      const step2MsgId = `msg-step2-${Date.now()}`;
+      setupStateRef.current.activeMsgId = step2MsgId;
+
+      const nextStepMsg = {
+        id: step2MsgId,
+        role: 'assistant',
+        type: 'interactive_step',
+        step: 2,
+        stepType: 'role',
+        text: isEn
+          ? "Awesome choice! What is your primary title or specialization?"
+          : "Excellent choix ! Deuxième étape : quel est votre rôle ou spécialité principale ?",
+        questionMessage: isEn
+          ? "Select your primary role or title:"
+          : "Sélectionnez votre rôle ou spécialité :",
+        options: [
+          { id: 'fullstack', iconKey: 'fullstack', name: isEn ? 'Full-Stack Developer' : 'Développeur Full-Stack' },
+          { id: 'frontend', iconKey: 'frontend', name: isEn ? 'Frontend Engineer' : 'Ingénieur Frontend (React)' },
+          { id: 'backend', iconKey: 'backend', name: isEn ? 'Backend & Cloud Engineer' : 'Développeur Backend & Cloud' },
+          { id: 'designer', iconKey: 'designer', name: isEn ? 'UI/UX & Product Designer' : 'Designer UI/UX & Produit' },
+          { id: 'ai', iconKey: 'ai', name: isEn ? 'AI & Data Specialist' : 'Data Scientist & Ingénieur IA' },
+        ],
+        isResolved: false,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      setChatMessages((prev) => {
+        const next = [...prev, userMsg, nextStepMsg];
+        chatMessagesRef.current = next;
+        return next;
+      });
+      return;
     }
 
-    // 2. Immediately update portfolio theme palette tokens
-    setPortfolio((curr) => {
-      const updatedTheme = {
-        ...curr.theme,
-        palette: {
-          ...curr.theme?.palette,
-          bg: selectedPalette.bg,
-          surface: selectedPalette.surface,
-          surfaceHover: selectedPalette.surface,
-          surfaceCard: selectedPalette.surface,
-          textPrimary: selectedPalette.textPrimary,
-          textSecondary: selectedPalette.textSecondary,
-          accent: selectedPalette.accent,
-          accentHover: selectedPalette.accentHover || selectedPalette.accent,
-          accentGlow: selectedPalette.accentGlow || 'rgba(59, 130, 246, 0.25)',
-          border: selectedPalette.border || 'rgba(255, 255, 255, 0.1)',
-        },
+    if (step === 2) {
+      // Step 2: Role selected -> Save and proceed to Step 3
+      setupStateRef.current.role = optionLabel;
+      setupStateRef.current.activeStep = 3;
+
+      const step3MsgId = `msg-step3-${Date.now()}`;
+      setupStateRef.current.activeMsgId = step3MsgId;
+
+      const nextStepMsg = {
+        id: step3MsgId,
+        role: 'assistant',
+        type: 'interactive_step',
+        step: 3,
+        stepType: 'focus',
+        text: isEn
+          ? "Great! What would you like to highlight most on your portfolio?"
+          : "Parfait ! Une dernière précision : que souhaitez-vous mettre le plus en valeur ?",
+        questionMessage: isEn
+          ? "What would you like to highlight most?"
+          : "Priorité de mise en valeur sur votre portfolio :",
+        options: [
+          { id: 'projects', iconKey: 'projects', name: isEn ? 'Featured Projects & Code' : 'Projets GitHub & Réalisations' },
+          { id: 'skills', iconKey: 'skills', name: isEn ? 'Tech Stack & Architecture' : 'Compétences & Stack Technique' },
+          { id: 'experience', iconKey: 'experience', name: isEn ? 'Career Track Record' : 'Expérience & Parcours Pro' },
+          { id: 'balanced', iconKey: 'balanced', name: isEn ? 'Balanced Overview' : 'Présentation Équilibrée' },
+        ],
+        isResolved: false,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
-      const updated = { ...curr, theme: updatedTheme };
-      pushState(updated);
-      return updated;
-    });
 
-    // 3. Inject palette constraints into prompt & resume generation
-    const enrichedPrompt = `${originalPrompt} [Palette imposée: Fond ${selectedPalette.bg}, Surface ${selectedPalette.surface}, Texte Principal ${selectedPalette.textPrimary}, Texte Secondaire ${selectedPalette.textSecondary}, Accent ${selectedPalette.accent}]`;
+      setChatMessages((prev) => {
+        const next = [...prev, userMsg, nextStepMsg];
+        chatMessagesRef.current = next;
+        return next;
+      });
+      return;
+    }
 
-    sendChatMessage(enrichedPrompt, {
-      skipColorCheck: true,
-      assistantPlaceholder: `Application de la palette ${selectedPalette.baseName} (${selectedPalette.subName}) et génération du portfolio...`,
-      summaryTitle: `✓ Portfolio généré avec la palette ${selectedPalette.baseName} (${selectedPalette.subName}) !`,
-    });
-  }, [pushState, sendChatMessage]);
+    if (step === 3) {
+      // Step 3: Focus selected -> Synthesize Portfolio!
+      setupStateRef.current.focus = optionLabel;
+      setupStateRef.current.activeStep = 0;
+
+      const palette = setupStateRef.current.palette || CLEAN_LIGHT_PALETTES[0];
+      const role = setupStateRef.current.role || (isEn ? 'Full-Stack Developer' : 'Développeur Full-Stack');
+      const focus = optionLabel;
+      const original = setupStateRef.current.originalPrompt || (isEn ? 'Personal Portfolio' : 'Portfolio Personnel');
+
+      const enrichedPrompt = `${original} [Rôle: ${role}, Priorité: ${focus}, Thème Clair: ${palette.name}, Fond ${palette.bg}, Surface ${palette.surface}, Texte ${palette.textPrimary}, Accent ${palette.accent}]`;
+
+      setChatMessages((prev) => {
+        const next = [...prev, userMsg];
+        chatMessagesRef.current = next;
+        return next;
+      });
+
+      sendChatMessage(enrichedPrompt, {
+        skipColorCheck: true,
+        assistantPlaceholder: isEn
+          ? `Synthesizing custom portfolio architecture for ${role}...`
+          : `Génération de votre portfolio ${role} avec la palette ${palette.name}...`,
+        summaryTitle: isEn
+          ? `✓ Portfolio generated for ${role} (${palette.name}) !`
+          : `✓ Portfolio généré pour ${role} (${palette.name}) !`,
+      });
+    }
+  }, [pushState, sendChatMessage, setPortfolio]);
+
+  const handleConfirmPalette = useCallback((msgId, originalPrompt, selectedPalette) => {
+    handleSelectStepOption(msgId, 1, selectedPalette);
+  }, [handleSelectStepOption]);
 
   // Handle Skipping Palette Choice
   const handleSkipPalette = useCallback((msgId, originalPrompt) => {
@@ -1397,6 +1621,7 @@ export const PortfolioProvider = ({ children }) => {
         loadPresetPortfolio,
         sendChatMessage,
         sendMessage: sendChatMessage,
+        handleSelectStepOption,
         handleConfirmPalette,
         handleSkipPalette,
         portfolioId,
@@ -1406,6 +1631,9 @@ export const PortfolioProvider = ({ children }) => {
         savePortfolio,
         fetchVersions,
         rollbackToVersion,
+        githubUsername: detectedGithubUsername,
+        githubAvatarUrl: effectiveAvatar,
+        effectiveAvatar,
       }}
     >
       {children}
