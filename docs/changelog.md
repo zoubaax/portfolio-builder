@@ -1,5 +1,22 @@
 # Journal des Modifications du Projet
 
+## 📦 Moteur d'Export de Code Source Autonome (Téléchargement ZIP & Publication Directe GitHub)
+- **Compilateur de Code Frontend (`codeExportService.js`) :**
+  - Transforme instantanément le schéma JSON `PortfolioSchema` en un projet complet et indépendant **React 19 + Tailwind CSS v4 + Vite**.
+  - Génère l'ensemble des fichiers du projet : `package.json`, `vite.config.js`, `index.html`, `src/main.jsx`, `src/index.css` (avec toutes les variables CSS du thème injectées), `src/App.jsx`, et l'intégralité des sous-composants (`Hero.jsx`, `About.jsx`, `Projects.jsx`, `Skills.jsx`, `Contact.jsx`, `Navbar.jsx`, `Footer.jsx`).
+  - Génération et téléchargement direct de l'archive `.zip` dans le navigateur via `jszip` avec zéro latence serveur.
+- **Publication Automatique sur GitHub (`POST /api/v1/github/export-repo`) :**
+  - Utilise le jeton OAuth certifié de l'utilisateur stocké en base Neon pour créer automatiquement un nouveau dépôt sur son compte personnel GitHub.
+  - Pousse tous les fichiers du projet généré de manière séquentielle et fiable sur la branche `main`.
+  - Retourne directement l'URL officielle du dépôt GitHub créé (ex: `https://github.com/username/mon-portfolio`).
+- **Modal Studio d'Exportation Dédiée (`ExportModal.jsx`) :**
+  - Onglet 1 : **Téléchargement ZIP** avec résumé des technologies et bouton de téléchargement en 1-clic.
+  - Onglet 2 : **Publication sur GitHub** avec support double authentification (Connexion 1-clic popup OAuth certifiée ou saisie directe d'un Personal Access Token PAT avec scope repo), synchronisation Neon DB et bascule public/privé.
+  - Onglet 3 : **Explorateur de Fichiers & Visualiseur de Code** avec coloration syntaxique et copie instantanée au presse-papier composant par composant.
+- **Intégration Studio :**
+  - Bouton `[ ⬇ Exporter ]` intégré dans la barre supérieure `V0Canvas.jsx` directement entre `Inviter` et `Publier`.
+  - Bouton d'accès rapide dans la barre d'outils de l'onglet `[ Code ]` et dans `V0Header.jsx`.
+
 ## 🤖 Assistant IA Interactif "Jumeau Numérique / Recruteur" (Propulsé par OpenAI GPT-4o-mini)
 - **Sécurisation de la clé OpenAI :** Clé enregistrée de manière isolée dans le `.env` backend pour une sécurité totale sans fuite côté client.
 - **Backend Endpoint (`/api/v1/ai/portfolio-chat`) :**

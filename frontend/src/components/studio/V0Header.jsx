@@ -16,8 +16,10 @@ import {
   RiEdit2Line,
   RiGithubFill,
   RiHistoryLine,
-  RiStackLine
+  RiStackLine,
+  RiDownloadLine
 } from 'react-icons/ri';
+import { ExportModal } from './ExportModal';
 
 export const V0Header = () => {
   const {
@@ -48,6 +50,7 @@ export const V0Header = () => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(portfolio.meta?.title || 'my-portfolio');
   const [publishedUrl, setPublishedUrl] = useState(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const currentVersion = historyIndex + 1;
   const totalVersions = Math.max(history.length, 1);
@@ -278,6 +281,16 @@ export const V0Header = () => {
           <RiHistoryLine className="w-4 h-4" />
         </button>
 
+        {/* Export Source Code (ZIP / GitHub) */}
+        <button
+          onClick={() => setIsExportModalOpen(true)}
+          className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-200 hover:text-white font-medium text-xs px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
+          title="Exporter le code source (ZIP / GitHub)"
+        >
+          <RiDownloadLine className="w-3.5 h-3.5 text-zinc-400" />
+          <span className="hidden sm:inline">Exporter</span>
+        </button>
+
         {/* High-Contrast Solid White Vercel "Deploy" Button */}
         <button
           onClick={handleDeploy}
@@ -297,6 +310,12 @@ export const V0Header = () => {
         {/* Clerk User Avatar */}
         <UserButton afterSignOutUrl="/" />
       </div>
+
+      {/* Export Source Code Modal (ZIP Download & GitHub Push) */}
+      <ExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+      />
 
       {/* Published URL Toast Modal */}
       {publishedUrl && (

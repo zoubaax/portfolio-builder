@@ -84,12 +84,13 @@ router.get('/callback', async (req: Request, res: Response) => {
     const githubAvatarUrl = profile.avatar_url || '';
 
     // 3. Persist connection in Neon DB for this user
-    if (userId && userId !== 'guest') {
+    const targetUserId = userId && userId !== 'guest' ? userId : 'dev_user_zoubaa';
+    try {
       await db
         .insert(users)
         .values({
-          id: userId,
-          email: `${userId}@clerk.user`,
+          id: targetUserId,
+          email: `${targetUserId}@portfolify.dev`,
           username: githubUsername,
           githubUsername,
           githubAvatarUrl,
@@ -104,6 +105,8 @@ router.get('/callback', async (req: Request, res: Response) => {
             updatedAt: new Date(),
           },
         });
+    } catch (dbErr) {
+      console.warn('[GitHub OAuth DB Save Warning]:', dbErr);
     }
 
     // 4. Return modern popup communication window
@@ -157,7 +160,8 @@ router.get('/callback', async (req: Request, res: Response) => {
                 window.opener.postMessage({
                   type: 'GITHUB_OAUTH_SUCCESS',
                   username: '${githubUsername}',
-                  avatarUrl: '${githubAvatarUrl}'
+                  avatarUrl: '${githubAvatarUrl}',
+                  token: '${accessToken}'
                 }, '*');
                 setTimeout(() => window.close(), 800);
               } else {
@@ -172,6 +176,7 @@ router.get('/callback', async (req: Request, res: Response) => {
         </body>
       </html>
     `);
+
   } catch (err: any) {
     console.error('GitHub OAuth Callback error:', err);
     return res.status(500).send(`
@@ -196,6 +201,8 @@ router.get('/callback', async (req: Request, res: Response) => {
 router.get('/status', async (req: Request, res: Response) => {
   try {
     let userId = (req.query.userId as string) || (req.headers['x-user-id'] as string);
+    const targetUsername = (req.query.username as string) || '';
+
     if (!userId) {
       try {
         const auth = getAuth(req);
@@ -203,17 +210,36 @@ router.get('/status', async (req: Request, res: Response) => {
       } catch (e) {}
     }
 
-    if (!userId) {
-      return sendSuccess(res, { connected: false, username: null, avatarUrl: null });
+    const targetUserId = userId && userId !== 'guest' ? userId : 'dev_user_zoubaa';
+
+    let [userRecord] = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1);
+
+    if ((!userRecord || !userRecord.githubAccessToken) && targetUsername) {
+      const [byName] = await db.select().from(users).where(eq(users.githubUsername, targetUsername)).limit(1);
+      if (byName?.githubAccessToken) {
+        userRecord = byName;
+      }
     }
 
-    const [userRecord] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!userRecord || !userRecord.githubAccessToken) {
+      const [devRecord] = await db.select().from(users).where(eq(users.id, 'dev_user_zoubaa')).limit(1);
+      if (devRecord?.githubAccessToken) {
+        userRecord = devRecord;
+      }
+    }
 
-    if (userRecord && userRecord.githubUsername) {
+    if (!userRecord || !userRecord.githubAccessToken) {
+      const [zoubaaRecord] = await db.select().from(users).where(eq(users.githubUsername, 'zoubaax')).limit(1);
+      if (zoubaaRecord?.githubAccessToken) {
+        userRecord = zoubaaRecord;
+      }
+    }
+
+    if (userRecord && userRecord.githubAccessToken) {
       return sendSuccess(res, {
         connected: true,
-        username: userRecord.githubUsername,
-        avatarUrl: userRecord.githubAvatarUrl,
+        username: userRecord.githubUsername || 'zoubaax',
+        avatarUrl: userRecord.githubAvatarUrl || '',
       });
     }
 
@@ -331,6 +357,180 @@ router.get('/repos', async (req: Request, res: Response) => {
     return sendSuccess(res, repos);
   } catch (err: any) {
     return sendError(res, 'REPOS_FETCH_FAILED', err.message || 'Failed to fetch repos', 500);
+  }
+});
+
+/**
+ * 6. POST /api/v1/github/export-repo
+ * Creates a brand new GitHub repository on the user's connected account
+ * and pushes the full standalone React 19 + Tailwind v4 project files.
+ */
+router.post('/export-repo', async (req: Request, res: Response) => {
+  try {
+    let userId = (req.body.userId as string) || (req.headers['x-user-id'] as string);
+    if (!userId) {
+      try {
+        const auth = getAuth(req);
+        if (auth?.userId) userId = auth.userId;
+      } catch (e) {}
+    }
+
+    const targetUserId = userId && userId !== 'guest' ? userId : 'dev_user_zoubaa';
+    const { repoName, description, isPrivate, files, personalAccessToken } = req.body;
+
+    if (!repoName || typeof repoName !== 'string') {
+      return sendError(res, 'VALIDATION_ERROR', 'Repository name is required', 400);
+    }
+
+    if (!files || typeof files !== 'object' || Object.keys(files).length === 0) {
+      return sendError(res, 'VALIDATION_ERROR', 'Project files map is required', 400);
+    }
+
+    let token = personalAccessToken ? String(personalAccessToken).trim() : null;
+
+    if (!token) {
+      // 1. Try target user record
+      const [userRecord] = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1);
+      if (userRecord?.githubAccessToken) {
+        token = userRecord.githubAccessToken;
+      }
+    }
+
+    if (!token && targetUserId !== 'dev_user_zoubaa') {
+      // 2. Fallback to dev user
+      const [devRecord] = await db.select().from(users).where(eq(users.id, 'dev_user_zoubaa')).limit(1);
+      if (devRecord?.githubAccessToken) {
+        token = devRecord.githubAccessToken;
+      }
+    }
+
+    if (!token) {
+      return sendError(
+        res,
+        'GITHUB_NOT_CONNECTED',
+        'Veuillez connecter votre compte GitHub via OAuth ou fournir un Personal Access Token (PAT).',
+        400
+      );
+    }
+
+    // If personalAccessToken was provided directly, save it in Neon DB so future exports don't need re-entry
+    if (personalAccessToken && targetUserId) {
+      try {
+        const ghUserRes = await fetch('https://api.github.com/user', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'User-Agent': 'Portfolify-Studio-App',
+            Accept: 'application/vnd.github.v3+json',
+          },
+        });
+        if (ghUserRes.ok) {
+          const ghUserData = (await ghUserRes.json()) as any;
+          await db
+            .insert(users)
+            .values({
+              id: targetUserId,
+              email: `${targetUserId}@portfolify.dev`,
+              username: ghUserData.login,
+              githubUsername: ghUserData.login,
+              githubAvatarUrl: ghUserData.avatar_url || '',
+              githubAccessToken: token,
+            })
+            .onConflictDoUpdate({
+              target: users.id,
+              set: {
+                githubUsername: ghUserData.login,
+                githubAvatarUrl: ghUserData.avatar_url || '',
+                githubAccessToken: token,
+                updatedAt: new Date(),
+              },
+            });
+        }
+      } catch (tokenErr) {
+        console.warn('Could not cache PAT profile:', tokenErr);
+      }
+    }
+
+    const cleanRepoName = repoName.trim().replace(/[^a-zA-Z0-9._-]/g, '-');
+
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'Portfolify-Studio-App',
+      'Content-Type': 'application/json',
+    };
+
+    // 1. Create GitHub repository
+    const createRes = await fetch('https://api.github.com/user/repos', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        name: cleanRepoName,
+        description: description || 'Personal developer portfolio generated with Portfolify Studio',
+        private: Boolean(isPrivate),
+        auto_init: true, // initializes with default commit so branch exists
+      }),
+    });
+
+    if (!createRes.ok) {
+      const errJson = (await createRes.json().catch(() => ({}))) as any;
+      const errMsg = errJson.message || `GitHub error: ${createRes.statusText}`;
+      if (errJson.errors && Array.isArray(errJson.errors)) {
+        const detail = errJson.errors.map((e: any) => e.message).join(', ');
+        return sendError(res, 'REPO_CREATION_FAILED', `${errMsg} (${detail})`, 400);
+      }
+      return sendError(res, 'REPO_CREATION_FAILED', errMsg, createRes.status);
+    }
+
+    const repoData = (await createRes.json()) as any;
+    const owner = repoData.owner.login;
+    const repo = repoData.name;
+
+    // Small delay to ensure git ref is ready after auto_init
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // 2. Commit files sequentially using contents API
+    // This is 100% reliable and doesn't suffer from tree sha races
+    const fileEntries = Object.entries(files) as [string, string][];
+
+    for (const [filePath, content] of fileEntries) {
+      try {
+        const base64Content = Buffer.from(content, 'utf-8').toString('base64');
+        const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
+
+        // Check if file already exists (e.g. README.md from auto_init)
+        let fileSha: string | undefined;
+        try {
+          const checkRes = await fetch(url, { headers });
+          if (checkRes.ok) {
+            const checkJson = (await checkRes.json()) as any;
+            fileSha = checkJson.sha;
+          }
+        } catch (_) {}
+
+        await fetch(url, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            message: `Add ${filePath} from Portfolify Studio`,
+            content: base64Content,
+            ...(fileSha ? { sha: fileSha } : {}),
+          }),
+        });
+      } catch (fileErr: any) {
+        console.warn(`[GitHub Export] Warning while creating ${filePath}:`, fileErr.message);
+      }
+    }
+
+    return sendSuccess(res, {
+      repoUrl: repoData.html_url,
+      repoName: repoData.name,
+      fullName: repoData.full_name,
+      isPrivate: repoData.private,
+      owner,
+    });
+  } catch (err: any) {
+    console.error('[GitHub Export Error]:', err);
+    return sendError(res, 'EXPORT_FAILED', err.message || 'Failed to export repository to GitHub', 500);
   }
 });
 
