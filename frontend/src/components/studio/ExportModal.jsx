@@ -250,6 +250,7 @@ export const ExportModal = ({ isOpen, onClose }) => {
 
           <button
             onClick={onClose}
+            aria-label="Close modal"
             className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             <RiCloseLine className="w-5 h-5" />

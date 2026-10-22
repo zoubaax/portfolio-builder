@@ -29,3 +29,8 @@ Thumbs.db
 
 # Drizzle migrations / scratch
 scratch/
+
+# Test Coverage Reports
+coverage/
+*.lcov
+.nyc_output/
