@@ -1,6 +1,6 @@
 import { db } from '../db/index.js';
 import { portfolios, portfolioVersions, users } from '../db/schema.js';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, sql } from 'drizzle-orm';
 
 /**
  * Portfolio Service Layer
@@ -12,7 +12,18 @@ export const portfolioService = {
    */
   async getUserPortfolios(userId: string) {
     return await db
-      .select()
+      .select({
+        id: portfolios.id,
+        userId: portfolios.userId,
+        title: portfolios.title,
+        subdomainSlug: portfolios.subdomainSlug,
+        isPublished: portfolios.isPublished,
+        publishedAt: portfolios.publishedAt,
+        version: portfolios.version,
+        createdAt: portfolios.createdAt,
+        updatedAt: portfolios.updatedAt,
+        msgCount: sql<number>`jsonb_array_length(CASE WHEN jsonb_typeof(${portfolios.chatHistory}) = 'array' THEN ${portfolios.chatHistory} ELSE '[]'::jsonb END)`,
+      })
       .from(portfolios)
       .where(eq(portfolios.userId, userId))
       .orderBy(desc(portfolios.updatedAt));

@@ -114,14 +114,8 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                   {socials?.map((s, idx) => (
                     <a
                       key={idx}
-                      href={isEditMode ? '#' : s.url}
-                      onClick={(e) => {
-                        if (isEditMode) {
-                          e.preventDefault();
-                          setIsSocialModalOpen(true);
-                        }
-                      }}
-                      target={isEditMode ? undefined : "_blank"}
+                      href={s.url}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="p-2 rounded-lg border transition-all hover:scale-105 cursor-pointer relative group/social"
                       style={{
@@ -129,7 +123,7 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                         borderColor: 'var(--theme-border)',
                         color: 'var(--theme-text-secondary)'
                       }}
-                      title={isEditMode ? `Manage ${s.platform}` : s.platform}
+                      title={s.platform}
                     >
                       {getSocialIcon(s.platform, 'w-4 h-4')}
                     </a>
@@ -288,14 +282,8 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                 {socials?.map((s, idx) => (
                   <a
                     key={idx}
-                    href={isEditMode ? '#' : s.url}
-                    onClick={(e) => {
-                      if (isEditMode) {
-                        e.preventDefault();
-                        setIsSocialModalOpen(true);
-                      }
-                    }}
-                    target={isEditMode ? undefined : "_blank"}
+                    href={s.url}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded border transition-all hover:scale-105 cursor-pointer"
                     style={{
@@ -303,7 +291,7 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                       borderColor: 'var(--theme-border)',
                       color: 'var(--theme-accent)'
                     }}
-                    title={isEditMode ? `Manage ${s.platform}` : s.platform}
+                    title={s.platform}
                   >
                     {getSocialIcon(s.platform, 'w-3.5 h-3.5')}
                     <span className="capitalize">{s.platform}</span>
@@ -406,14 +394,8 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
           {socials?.map((s, idx) => (
             <a
               key={idx}
-              href={isEditMode ? '#' : s.url}
-              onClick={(e) => {
-                if (isEditMode) {
-                  e.preventDefault();
-                  setIsSocialModalOpen(true);
-                }
-              }}
-              target={isEditMode ? undefined : "_blank"}
+              href={s.url}
+              target="_blank"
               rel="noopener noreferrer"
               className="p-2.5 rounded-full border transition-all hover:scale-110 cursor-pointer"
               style={{
@@ -421,7 +403,7 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
                 borderColor: 'var(--theme-border)',
                 color: 'var(--theme-text-secondary)'
               }}
-              title={isEditMode ? `Manage ${s.platform}` : s.platform}
+              title={s.platform}
             >
               {getSocialIcon(s.platform, 'w-4 h-4')}
             </a>

@@ -261,7 +261,7 @@ export const PortfolioChatWidget = ({ portfolio, isAbsolute = false }) => {
                   )}
 
                   <div
-                    className="max-w-[85%] px-3.5 py-2.5 text-xs leading-relaxed font-normal shadow-xs"
+                    className="max-w-[85%] px-3.5 py-2.5 text-xs leading-relaxed font-normal shadow-xs whitespace-pre-wrap"
                     style={{
                       borderRadius: '0.75rem',
                       backgroundColor: isUser ? rawAccent : chatBubbleAiBg,
@@ -269,7 +269,17 @@ export const PortfolioChatWidget = ({ portfolio, isAbsolute = false }) => {
                       border: isUser ? 'none' : `1.5px solid ${border}`,
                     }}
                   >
-                    {msg.content}
+                    {msg.content.split('\n').map((line, i) => (
+                      <React.Fragment key={i}>
+                        {line.split(/(\*\*.*?\*\*)/g).map((part, j) => {
+                          if (part.startsWith('**') && part.endsWith('**')) {
+                            return <strong key={j} className="font-bold">{part.slice(2, -2)}</strong>;
+                          }
+                          return part;
+                        })}
+                        {i < msg.content.split('\n').length - 1 && <br />}
+                      </React.Fragment>
+                    ))}
                   </div>
 
                   {isUser && (

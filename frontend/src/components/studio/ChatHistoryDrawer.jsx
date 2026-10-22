@@ -192,7 +192,7 @@ export const ChatHistoryDrawer = () => {
           ) : (
             filteredSessions.map((s) => {
               const isActive = s.id === portfolioId;
-              const msgCount = Array.isArray(s.chatHistory) ? s.chatHistory.length : 0;
+              const msgCount = s.msgCount !== undefined ? s.msgCount : (Array.isArray(s.chatHistory) ? s.chatHistory.length : 0);
               const isEditing = editingId === s.id;
               const isConfirmingDelete = confirmDeleteId === s.id;
 
