@@ -1,0 +1,65 @@
+name: CI Quality Gate & Tests
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  test-and-scan:
+    name: Unit Tests, Coverage & SonarCloud
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Shallow clones disabled for accurate Sonar analysis
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      # 1. Backend Pipeline
+      - name: Install Backend Dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Run Backend Unit Tests & Coverage
+        working-directory: backend
+        run: npm run test:coverage
+
+      # 2. Frontend Pipeline
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run Frontend Unit Tests & Coverage
+        working-directory: frontend
+        run: npm run test:coverage
+
+      # 3. SonarCloud Quality Gate Analysis
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to comment on PRs
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   # Added in GitHub Repo Secrets
+        with:
+          args: >
+            -Dsonar.organization=zoubaax
+            -Dsonar.projectKey=zoubaax_portfolio-builder
