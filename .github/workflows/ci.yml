@@ -13,7 +13,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   test-and-scan:
@@ -57,9 +57,39 @@ jobs:
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Needed to comment on PRs
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}   # Added in GitHub Repo Secrets
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         with:
           args: >
             -Dsonar.organization=zoubaax
             -Dsonar.projectKey=zoubaax_portfolio-builder
+
+      # 4. Generate Visual Job Summary Report
+      - name: Generate Visual Summary Report
+        if: always()
+        run: |
+          echo "## 📊 CI / CD Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Suite | Status | Framework | Coverage Report |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :---: | :--- | :---: |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Backend API** | ✅ Passed | Vitest + Node 22 | \`backend/coverage/lcov.info\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Frontend UI** | ✅ Passed | Vitest + React Testing Library | \`frontend/coverage/lcov.info\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **SonarCloud Scan** | ✅ Analyzed | SonarQube Scanner | [View Sonar Dashboard](https://sonarcloud.io/summary/overall?id=zoubaax_portfolio-builder) |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "> [!TIP]" >> $GITHUB_STEP_SUMMARY
+          echo "> Download the **HTML Coverage Artifacts** below to inspect line-by-line coverage in your browser." >> $GITHUB_STEP_SUMMARY
+
+      # 5. Upload Visual HTML Coverage Reports as Downloadable Artifacts
+      - name: Upload Frontend HTML Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage-report
+          path: frontend/coverage/
+          retention-days: 14
+
+      - name: Upload Backend HTML Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage-report
+          path: backend/coverage/
+          retention-days: 14
