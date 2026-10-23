@@ -20,7 +20,7 @@ jobs:
   # JOB 1: Backend Unit Tests & Coverage (Parallel Runner)
   # ========================================================
   backend-tests:
-    name: ⚙️ Backend API Tests
+    name: Backend API Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -52,7 +52,7 @@ jobs:
   # JOB 2: Frontend Unit Tests & Coverage (Parallel Runner)
   # ========================================================
   frontend-tests:
-    name: 🎨 Frontend UI Tests
+    name: Frontend UI Tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -84,7 +84,7 @@ jobs:
   # JOB 3: SonarCloud Quality Gate (Waits for Jobs 1 & 2)
   # ========================================================
   sonarcloud-quality-gate:
-    name: 🛡️ SonarCloud Quality Gate
+    name: SonarCloud Quality Gate
     needs: [backend-tests, frontend-tests]
     runs-on: ubuntu-latest
     steps:
@@ -118,13 +118,13 @@ jobs:
       - name: Generate Pipeline Summary Report
         if: always()
         run: |
-          echo "## 🚀 CI / CD Pipeline Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## CI / CD Pipeline Execution Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Pipeline Stage | Execution | Status | Output Artifact |" >> $GITHUB_STEP_SUMMARY
           echo "| :--- | :--- | :---: | :--- |" >> $GITHUB_STEP_SUMMARY
-          echo "| **⚙️ Backend API** | Parallel Job | ✅ Passed | \`backend/coverage/lcov.info\` (11 tests) |" >> $GITHUB_STEP_SUMMARY
-          echo "| **🎨 Frontend UI** | Parallel Job | ✅ Passed | \`frontend/coverage/lcov.info\` (46 tests) |" >> $GITHUB_STEP_SUMMARY
-          echo "| **🛡️ SonarCloud Gate** | Quality Gate | ✅ Evaluated | [SonarCloud Dashboard](https://sonarcloud.io/summary/overall?id=zoubaax_portfolio-builder) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Backend API** | Parallel Job | Passed | \`backend/coverage/lcov.info\` (11 tests) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Frontend UI** | Parallel Job | Passed | \`frontend/coverage/lcov.info\` (46 tests) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **SonarCloud Gate** | Quality Gate | Evaluated | [SonarCloud Dashboard](https://sonarcloud.io/summary/overall?id=zoubaax_portfolio-builder) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> [!TIP]" >> $GITHUB_STEP_SUMMARY
-          echo "> Both Backend and Frontend tests ran simultaneously in parallel, cutting total pipeline execution time!" >> $GITHUB_STEP_SUMMARY
+          echo "> Both Backend and Frontend tests ran simultaneously in parallel, cutting total pipeline execution time." >> $GITHUB_STEP_SUMMARY
