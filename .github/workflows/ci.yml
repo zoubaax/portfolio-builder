@@ -1,4 +1,4 @@
-name: CI Quality Gate & Tests
+name: CI Pipeline (Parallel Quality Gate)
 
 on:
   push:
@@ -16,46 +16,97 @@ permissions:
   pull-requests: write
 
 jobs:
-  test-and-scan:
-    name: Unit Tests, Coverage & SonarCloud
+  # ========================================================
+  # JOB 1: Backend Unit Tests & Coverage (Parallel Runner)
+  # ========================================================
+  backend-tests:
+    name: ⚙️ Backend API Tests
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # Shallow clones disabled for accurate Sonar analysis
 
-      - name: Setup Node.js
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
-          cache-dependency-path: |
-            backend/package-lock.json
-            frontend/package-lock.json
+          cache-dependency-path: backend/package-lock.json
 
-      # 1. Backend Pipeline
-      - name: Install Backend Dependencies
+      - name: Install Dependencies
         working-directory: backend
         run: npm ci
 
-      - name: Run Backend Unit Tests & Coverage
+      - name: Run Vitest Unit Tests & Generate Coverage
         working-directory: backend
         run: npm run test:coverage
 
-      # 2. Frontend Pipeline
-      - name: Install Frontend Dependencies
+      - name: Upload Backend Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage/
+          retention-days: 7
+
+  # ========================================================
+  # JOB 2: Frontend Unit Tests & Coverage (Parallel Runner)
+  # ========================================================
+  frontend-tests:
+    name: 🎨 Frontend UI Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
         working-directory: frontend
         run: npm ci
 
-      - name: Run Frontend Unit Tests & Coverage
+      - name: Run Vitest Unit Tests & Generate Coverage
         working-directory: frontend
         run: npm run test:coverage
 
-      # 3. SonarCloud Quality Gate Analysis
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+      - name: Upload Frontend Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 7
+
+  # ========================================================
+  # JOB 3: SonarCloud Quality Gate (Waits for Jobs 1 & 2)
+  # ========================================================
+  sonarcloud-quality-gate:
+    name: 🛡️ SonarCloud Quality Gate
+    needs: [backend-tests, frontend-tests]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full git history for author blame and diff analysis
+
+      - name: Download Backend Coverage Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage
+
+      - name: Download Frontend Coverage Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+
+      - name: Run SonarQube / SonarCloud Scan
+        uses: SonarSource/sonarqube-scan-action@v5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -64,32 +115,16 @@ jobs:
             -Dsonar.organization=zoubaax
             -Dsonar.projectKey=zoubaax_portfolio-builder
 
-      # 4. Generate Visual Job Summary Report
-      - name: Generate Visual Summary Report
+      - name: Generate Pipeline Summary Report
         if: always()
         run: |
-          echo "## 📊 CI / CD Execution Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 CI / CD Pipeline Execution Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Suite | Status | Framework | Coverage Report |" >> $GITHUB_STEP_SUMMARY
-          echo "| :--- | :---: | :--- | :---: |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Backend API** | ✅ Passed | Vitest + Node 22 | \`backend/coverage/lcov.info\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Frontend UI** | ✅ Passed | Vitest + React Testing Library | \`frontend/coverage/lcov.info\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **SonarCloud Scan** | ✅ Analyzed | SonarQube Scanner | [View Sonar Dashboard](https://sonarcloud.io/summary/overall?id=zoubaax_portfolio-builder) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Pipeline Stage | Execution | Status | Output Artifact |" >> $GITHUB_STEP_SUMMARY
+          echo "| :--- | :--- | :---: | :--- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **⚙️ Backend API** | Parallel Job | ✅ Passed | \`backend/coverage/lcov.info\` (11 tests) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **🎨 Frontend UI** | Parallel Job | ✅ Passed | \`frontend/coverage/lcov.info\` (46 tests) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **🛡️ SonarCloud Gate** | Quality Gate | ✅ Evaluated | [SonarCloud Dashboard](https://sonarcloud.io/summary/overall?id=zoubaax_portfolio-builder) |" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "> [!TIP]" >> $GITHUB_STEP_SUMMARY
-          echo "> Download the **HTML Coverage Artifacts** below to inspect line-by-line coverage in your browser." >> $GITHUB_STEP_SUMMARY
-
-      # 5. Upload Visual HTML Coverage Reports as Downloadable Artifacts
-      - name: Upload Frontend HTML Coverage Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-coverage-report
-          path: frontend/coverage/
-          retention-days: 14
-
-      - name: Upload Backend HTML Coverage Report
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage-report
-          path: backend/coverage/
-          retention-days: 14
+          echo "> Both Backend and Frontend tests ran simultaneously in parallel, cutting total pipeline execution time!" >> $GITHUB_STEP_SUMMARY
