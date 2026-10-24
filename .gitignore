@@ -34,3 +34,5 @@ scratch/
 coverage/
 *.lcov
 .nyc_output/
+.vercel
+.env*
