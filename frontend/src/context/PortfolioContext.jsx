@@ -35,6 +35,8 @@ const stripHeavyBase64 = (obj) => {
   return clean;
 };
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:5050' : '');
+
 const PortfolioContext = createContext(null);
 
 export const PortfolioProvider = ({ children }) => {
@@ -61,7 +63,7 @@ export const PortfolioProvider = ({ children }) => {
       const uid = user?.id || userId;
       if (!uid) return;
       try {
-        const res = await fetch(`http://localhost:5050/api/v1/github/status?userId=${encodeURIComponent(uid)}`);
+        const res = await fetch(`${API_BASE_URL}/api/v1/github/status?userId=${encodeURIComponent(uid)}`);
         if (res.ok) {
           const json = await res.json();
           if (isMounted && json.success && json.data?.connected) {
@@ -187,7 +189,7 @@ export const PortfolioProvider = ({ children }) => {
     if (!id) return;
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`http://localhost:5050/api/v1/portfolios/${id}/versions`, { headers });
+      const res = await fetch(`${API_BASE_URL}/api/v1/portfolios/${id}/versions`, { headers });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setVersions(data.data);
@@ -202,7 +204,7 @@ export const PortfolioProvider = ({ children }) => {
     setIsLoadingSessions(true);
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch('http://localhost:5050/api/v1/portfolios', { headers });
+      const res = await fetch(`${API_BASE_URL}/api/v1/portfolios`, { headers });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
         setSessions(data.data);
@@ -227,7 +229,7 @@ export const PortfolioProvider = ({ children }) => {
     activeLoadingIdRef.current = id;
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`http://localhost:5050/api/v1/portfolios/${id}`, { headers });
+      const res = await fetch(`${API_BASE_URL}/api/v1/portfolios/${id}`, { headers });
       const data = await res.json();
       if (activeLoadingIdRef.current !== id) return; // Cancelled if user switched or clicked + New
       if (data.success && data.data) {
@@ -288,7 +290,7 @@ export const PortfolioProvider = ({ children }) => {
     if (!id) return;
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`http://localhost:5050/api/v1/portfolios/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/portfolios/${id}`, {
         method: 'DELETE',
         headers,
       });
@@ -309,7 +311,7 @@ export const PortfolioProvider = ({ children }) => {
     if (!id || !newTitle?.trim()) return;
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`http://localhost:5050/api/v1/portfolios/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/portfolios/${id}`, {
         method: 'PUT',
         headers,
         body: JSON.stringify({ title: newTitle.trim() }),
@@ -350,7 +352,7 @@ export const PortfolioProvider = ({ children }) => {
         : (chatMessagesRef.current || []);
 
       if (currentId) {
-        await fetch(`http://localhost:5050/api/v1/portfolios/${currentId}`, {
+        await fetch(`${API_BASE_URL}/api/v1/portfolios/${currentId}`, {
           method: 'PUT',
           headers,
           body: JSON.stringify({
@@ -363,7 +365,7 @@ export const PortfolioProvider = ({ children }) => {
         fetchVersions(currentId);
         fetchUserSessions();
       } else {
-        const res = await fetch(`http://localhost:5050/api/v1/portfolios`, {
+        const res = await fetch(`${API_BASE_URL}/api/v1/portfolios`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
@@ -405,7 +407,7 @@ export const PortfolioProvider = ({ children }) => {
       let response;
       const currentChatHistory = chatMessagesRef.current || chatMessages;
       if (portfolioId) {
-        response = await fetch(`http://localhost:5050/api/v1/portfolios/${portfolioId}`, {
+        response = await fetch(`${API_BASE_URL}/api/v1/portfolios/${portfolioId}`, {
           method: 'PUT',
           headers,
           body: JSON.stringify({
@@ -417,7 +419,7 @@ export const PortfolioProvider = ({ children }) => {
           }),
         });
       } else {
-        response = await fetch(`http://localhost:5050/api/v1/portfolios`, {
+        response = await fetch(`${API_BASE_URL}/api/v1/portfolios`, {
           method: 'POST',
           headers,
           body: JSON.stringify({
@@ -458,7 +460,7 @@ export const PortfolioProvider = ({ children }) => {
     setSaveStatus('saving');
     try {
       const headers = await getAuthHeaders();
-      const res = await fetch(`http://localhost:5050/api/v1/portfolios/${portfolioId}/versions/${versionId}/rollback`, {
+      const res = await fetch(`${API_BASE_URL}/api/v1/portfolios/${portfolioId}/versions/${versionId}/rollback`, {
         method: 'POST',
         headers,
       });
@@ -932,7 +934,7 @@ export const PortfolioProvider = ({ children }) => {
 
     try {
       const headers = await getAuthHeaders();
-      const response = await fetch('http://localhost:5050/api/v1/ai/stream-chat', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/ai/stream-chat`, {
         method: 'POST',
         headers,
         body: JSON.stringify({

@@ -4,7 +4,9 @@
  * accessible color palettes and adapted sub-options (text and accent colors).
  */
 
-const API_BASE_URL = 'http://localhost:5050/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL 
+  ? `${import.meta.env.VITE_API_BASE_URL}/api/v1` 
+  : (import.meta.env.DEV ? 'http://localhost:5050/api/v1' : '/api/v1');
 
 export async function fetchAiSuggestedPalettes(promptText, getAuthHeadersFn) {
   try {
