@@ -1627,6 +1627,7 @@ export const PortfolioProvider = ({ children }) => {
         handleConfirmPalette,
         handleSkipPalette,
         portfolioId,
+        setPortfolioId,
         saveStatus,
         isPublished,
         versions,

@@ -14,9 +14,12 @@ describe('getSubdomain Utility', () => {
     expect(getSubdomain('dev.portfolify.dev')).toBeNull();
   });
 
-  it('returns null for bare root domains', () => {
+  it('returns null for bare root domains and vercel default domains', () => {
     expect(getSubdomain('portfolify.dev')).toBeNull();
     expect(getSubdomain('localhost')).toBeNull();
+    expect(getSubdomain('portfoliobuilder-omega.vercel.app')).toBeNull();
+    expect(getSubdomain('portfoliobuilder-8cn0ni35z-zoubaax-8385s-projects.vercel.app')).toBeNull();
+    expect(getSubdomain('alex.portfoliobuilder.vercel.app')).toBe('alex');
   });
 
   it('supports local development multi-tenant subdomains (e.g. lvh.me, localhost)', () => {

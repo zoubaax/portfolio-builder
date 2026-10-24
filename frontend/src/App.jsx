@@ -70,9 +70,9 @@ function SubdomainPortfolioWrapper({ slug }) {
 
   useEffect(() => {
     if (slug) {
-      setPortfolioId(slug);
-      fetchVersions(slug);
-      loadPortfolioSession(slug);
+      if (typeof setPortfolioId === 'function') setPortfolioId(slug);
+      if (typeof fetchVersions === 'function') fetchVersions(slug);
+      if (typeof loadPortfolioSession === 'function') loadPortfolioSession(slug);
     }
   }, [slug, setPortfolioId, fetchVersions, loadPortfolioSession]);
 

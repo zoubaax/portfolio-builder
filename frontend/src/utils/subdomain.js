@@ -23,7 +23,22 @@ export function getSubdomain(hostname = window.location?.hostname) {
     return null;
   }
 
-  // 2. Production custom domain patterns (e.g., alex.yourdomain.com)
+  // 2. Vercel deployment domains (*.vercel.app)
+  if (cleanHost.endsWith('.vercel.app')) {
+    const parts = cleanHost.split('.');
+    // Standard app: <app-name>.vercel.app (3 parts) -> null
+    // Custom user subdomain on vercel: <user>.<app-name>.vercel.app (4+ parts) -> <user>
+    if (parts.length >= 4) {
+      const sub = parts[0];
+      const systemSubdomains = ['www', 'app', 'api', 'admin', 'preview', 'dev', 'staging'];
+      if (!systemSubdomains.includes(sub)) {
+        return sub;
+      }
+    }
+    return null;
+  }
+
+  // 3. Production custom domain patterns (e.g., alex.yourdomain.com)
   const parts = cleanHost.split('.');
   // Standard domain format: <subdomain>.<domain>.<tld> (at least 3 parts)
   if (parts.length >= 3) {
