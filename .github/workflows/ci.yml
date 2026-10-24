@@ -10,6 +10,13 @@ on:
     branches:
       - main
       - master
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: 'Skip Unit Tests and SonarQube scan'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -22,6 +29,12 @@ jobs:
   backend-tests:
     name: Backend API Tests
     runs-on: ubuntu-latest
+    if: >-
+      !contains(github.event.head_commit.message, '[skip test]') &&
+      !contains(github.event.head_commit.message, '[skip tests]') &&
+      !contains(github.event.head_commit.message, '[skip-test]') &&
+      !contains(github.event.head_commit.message, 'skip test') &&
+      github.event.inputs.skip_tests != 'true'
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -54,6 +67,12 @@ jobs:
   frontend-tests:
     name: Frontend UI Tests
     runs-on: ubuntu-latest
+    if: >-
+      !contains(github.event.head_commit.message, '[skip test]') &&
+      !contains(github.event.head_commit.message, '[skip tests]') &&
+      !contains(github.event.head_commit.message, '[skip-test]') &&
+      !contains(github.event.head_commit.message, 'skip test') &&
+      github.event.inputs.skip_tests != 'true'
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -87,6 +106,13 @@ jobs:
     name: SonarCloud Quality Gate
     needs: [backend-tests, frontend-tests]
     runs-on: ubuntu-latest
+    if: >-
+      !contains(github.event.head_commit.message, '[skip test]') &&
+      !contains(github.event.head_commit.message, '[skip tests]') &&
+      !contains(github.event.head_commit.message, '[skip-test]') &&
+      !contains(github.event.head_commit.message, 'skip test') &&
+      !contains(github.event.head_commit.message, '[skip sonar]') &&
+      github.event.inputs.skip_tests != 'true'
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4

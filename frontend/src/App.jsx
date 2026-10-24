@@ -8,6 +8,7 @@ import { V0ChatPanel } from './components/studio/V0ChatPanel';
 import { V0Canvas } from './components/studio/V0Canvas';
 
 import { ChatHistoryDrawer } from './components/studio/ChatHistoryDrawer';
+import { getSubdomain } from './utils/subdomain';
 
 function StudioWorkspace() {
   const navigate = useNavigate();
@@ -64,9 +65,33 @@ function PreviewRoute() {
   );
 }
 
+function SubdomainPortfolioWrapper({ slug }) {
+  const { setPortfolioId, fetchVersions, loadPortfolioSession } = usePortfolio();
+
+  useEffect(() => {
+    if (slug) {
+      setPortfolioId(slug);
+      fetchVersions(slug);
+      loadPortfolioSession(slug);
+    }
+  }, [slug, setPortfolioId, fetchVersions, loadPortfolioSession]);
+
+  return (
+    <div className="h-screen w-screen overflow-hidden bg-white text-zinc-900 select-none">
+      <V0Canvas />
+    </div>
+  );
+}
+
 function MainFlow() {
   const { isLoaded } = useUser();
   const navigate = useNavigate();
+  const subdomain = getSubdomain();
+
+  // If visitor is accessing via a user subdomain (e.g. alex.yourdomain.com or alex.localhost:5174)
+  if (subdomain) {
+    return <SubdomainPortfolioWrapper slug={subdomain} />;
+  }
 
   // If Clerk is still initializing, show a clean loader
   if (!isLoaded) {

@@ -71,10 +71,12 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   );
 });
 
-// Start Server
-app.listen(PORT, () => {
-  console.log(`🚀 Portfolify API server running on http://localhost:${PORT}`);
-  console.log(`⚡ AI Copilot Router ready (Default provider: ${process.env.DEFAULT_AI_PROVIDER || 'groq'})`);
-});
+// Start Server (only when running as standalone process, not in Vercel serverless)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Portfolify API server running on http://localhost:${PORT}`);
+    console.log(`⚡ AI Copilot Router ready (Default provider: ${process.env.DEFAULT_AI_PROVIDER || 'groq'})`);
+  });
+}
 
 export default app;
