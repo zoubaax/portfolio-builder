@@ -1,20 +1,7 @@
 import React, { useState } from 'react';
 import { usePortfolio } from '../../context/PortfolioContext';
-import {
-  RiSparkling2Fill,
-  RiComputerLine,
-  RiTabletLine,
-  RiSmartphoneLine,
-  RiArrowGoBackLine,
-  RiArrowGoForwardLine,
-  RiEdit2Line,
-  RiEyeLine,
-  RiUploadCloud2Line,
-  RiCheckLine,
-  RiLoader4Line,
-  RiExternalLinkLine,
-  RiCloseLine
-} from 'react-icons/ri';
+import { RiSparkling2Fill, RiComputerLine, RiTabletLine, RiSmartphoneLine, RiArrowGoBackLine, RiArrowGoForwardLine, RiEdit2Line, RiEyeLine, RiUploadCloud2Line, RiCheckLine, RiLoader4Line } from 'react-icons/ri';
+import { PublishModal } from './PublishModal';
 
 export const StudioHeader = () => {
   const {
@@ -36,7 +23,7 @@ export const StudioHeader = () => {
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(portfolio.meta?.title || 'Zoubaa Portfolio');
-  const [publishedUrl, setPublishedUrl] = useState(null);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
 
   const isLight = studioTheme === 'light';
 
@@ -53,14 +40,8 @@ export const StudioHeader = () => {
     }
   };
 
-  const handlePublish = async () => {
-    try {
-      const res = await savePortfolio(true);
-      const slug = res?.subdomainSlug || portfolio.meta?.slug || 'zoubaa';
-      setPublishedUrl(`https://${slug}.portfolify.dev`);
-    } catch (e) {
-      console.error(e);
-    }
+  const handlePublishWithSlug = async (slug) => {
+    return await savePortfolio(true, 'Published site update', slug);
   };
 
   return (
@@ -215,7 +196,7 @@ export const StudioHeader = () => {
 
         {/* Primary Glowing Action: Publish */}
         <button
-          onClick={handlePublish}
+          onClick={() => setIsPublishModalOpen(true)}
           disabled={saveStatus === 'saving'}
           className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-600 to-[#FF4500] hover:from-orange-500 hover:to-[#ff5722] text-white shadow-md shadow-[#FF4500]/25 transition-all hover:scale-102 active:scale-98 cursor-pointer"
         >
@@ -230,43 +211,14 @@ export const StudioHeader = () => {
         </button>
       </div>
 
-      {/* Published URL Toast Modal */}
-      {publishedUrl && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#121215] border border-white/15 rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-3 text-xl">
-              <RiCheckLine />
-            </div>
-            <h3 className="text-base font-bold text-white mb-1">Your Portfolio is Live!</h3>
-            <p className="text-xs text-gray-400 mb-4">
-              Your custom portfolio schema is deployed and publicly accessible.
-            </p>
-            <div className="flex items-center gap-2 p-2 rounded-xl bg-white/5 border border-white/10 mb-4">
-              <input
-                type="text"
-                readOnly
-                value={publishedUrl}
-                className="flex-1 bg-transparent border-0 outline-none text-xs text-zinc-300 font-mono px-2"
-              />
-              <a
-                href={publishedUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1 rounded-lg bg-[#FF4500] text-white text-xs font-bold flex items-center gap-1 hover:bg-[#ff5722]"
-              >
-                <span>Visit</span>
-                <RiExternalLinkLine className="w-3 h-3" />
-              </a>
-            </div>
-            <button
-              onClick={() => setPublishedUrl(null)}
-              className="text-xs text-gray-400 hover:text-white transition-colors cursor-pointer"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Interactive Publish & Subdomain Configuration Modal */}
+      <PublishModal
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        currentSlug={portfolio.meta?.slug || ''}
+        isPublished={isPublished}
+        onPublish={handlePublishWithSlug}
+      />
     </header>
   );
 };

@@ -52,3 +52,26 @@ export function getSubdomain(hostname = window.location?.hostname) {
 
   return null;
 }
+
+/**
+ * Constructs the canonical public URL for a given portfolio subdomain slug.
+ */
+export function getSubdomainUrl(slug) {
+  if (!slug) return 'https://portfolify.tech';
+  if (typeof window === 'undefined') return `https://${slug}.portfolify.tech`;
+
+  const host = window.location.hostname.toLowerCase();
+  if (host.includes('localhost') || host.includes('127.0.0.1')) {
+    const port = window.location.port ? `:${window.location.port}` : '';
+    return `http://${slug}.localhost${port}`;
+  }
+
+  // Detect base domain from current window location (e.g. portfolify.tech)
+  const parts = host.split('.');
+  if (parts.length >= 2) {
+    const baseDomain = parts.slice(-2).join('.');
+    return `https://${slug}.${baseDomain}`;
+  }
+
+  return `https://${slug}.portfolify.tech`;
+}

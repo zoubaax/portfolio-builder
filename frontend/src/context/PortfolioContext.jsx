@@ -268,6 +268,29 @@ export const PortfolioProvider = ({ children }) => {
     }
   }, [getAuthHeaders, fetchVersions, navigate]);
 
+  // Load public portfolio for a visitor subdomain slug
+  const loadPublicPortfolio = useCallback(async (slug) => {
+    if (!slug) return null;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/v1/portfolios/public/${encodeURIComponent(slug)}`);
+      const data = await res.json();
+      if (data.success && data.data) {
+        const item = data.data;
+        const schema = item.schemaData || item;
+        setPortfolio(schema);
+        if (item.id) {
+          setPortfolioId(item.id);
+        }
+        setIsPublished(true);
+        return item;
+      }
+      return null;
+    } catch (err) {
+      console.error('Failed to load public portfolio by slug:', err);
+      return null;
+    }
+  }, []);
+
   // Start a fresh, clean chat session
   const createNewSession = useCallback(() => {
     activeLoadingIdRef.current = null;
@@ -391,12 +414,12 @@ export const PortfolioProvider = ({ children }) => {
   }, [portfolioId, getAuthHeaders, fetchVersions, fetchUserSessions, navigate]);
 
   // Save or Update Portfolio to Neon DB
-  const savePortfolio = useCallback(async (publish = false, promptNote = '') => {
+  const savePortfolio = useCallback(async (publish = false, promptNote = '', customSlug = null) => {
     setSaveStatus('saving');
     try {
       const headers = await getAuthHeaders();
       const title = portfolio.meta?.title || 'Portfolio';
-      const rawSlug = portfolio.meta?.slug || `port-${Date.now().toString().slice(-4)}`;
+      const rawSlug = customSlug || portfolio.meta?.slug || `port-${Date.now().toString().slice(-4)}`;
       const cleanSlug = rawSlug
         .toLowerCase()
         .replace(/[^a-z0-9-]/g, '-')
@@ -404,17 +427,26 @@ export const PortfolioProvider = ({ children }) => {
         .replace(/^-|-$/g, '')
         .substring(0, 48) || `port-${Date.now().toString().slice(-6)}`;
 
-      let response;
       const currentChatHistory = chatMessagesRef.current || chatMessages;
+      const updatedPortfolio = {
+        ...portfolio,
+        meta: {
+          ...portfolio.meta,
+          slug: cleanSlug,
+        },
+      };
+
+      let response;
       if (portfolioId) {
         response = await fetch(`${API_BASE_URL}/api/v1/portfolios/${portfolioId}`, {
           method: 'PUT',
           headers,
           body: JSON.stringify({
-            schemaData: portfolio,
+            schemaData: updatedPortfolio,
             chatHistory: currentChatHistory,
             title,
             isPublished: publish,
+            subdomainSlug: cleanSlug,
             promptNote: promptNote || (publish ? 'Published site update' : 'Saved studio revision'),
           }),
         });
@@ -425,7 +457,7 @@ export const PortfolioProvider = ({ children }) => {
           body: JSON.stringify({
             title,
             subdomainSlug: cleanSlug,
-            schemaData: portfolio,
+            schemaData: updatedPortfolio,
             chatHistory: currentChatHistory,
           }),
         });
@@ -435,6 +467,13 @@ export const PortfolioProvider = ({ children }) => {
       if (result.success && result.data) {
         setPortfolioId(result.data.id);
         setIsPublished(result.data.isPublished);
+        setPortfolio((prev) => ({
+          ...prev,
+          meta: {
+            ...prev?.meta,
+            slug: result.data.subdomainSlug || cleanSlug,
+          },
+        }));
         setSaveStatus('saved');
         navigate(`/studio/${result.data.id}`, { replace: true });
         fetchVersions(result.data.id);
@@ -1594,6 +1633,7 @@ export const PortfolioProvider = ({ children }) => {
         setIsHistoryOpen,
         fetchUserSessions,
         loadPortfolioSession,
+        loadPublicPortfolio,
         createNewSession,
         deleteSession,
         renameSession,

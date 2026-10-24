@@ -20,6 +20,7 @@ import {
   RiDownloadLine
 } from 'react-icons/ri';
 import { ExportModal } from './ExportModal';
+import { PublishModal } from './PublishModal';
 
 export const V0Header = () => {
   const {
@@ -49,7 +50,7 @@ export const V0Header = () => {
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState(portfolio.meta?.title || 'my-portfolio');
-  const [publishedUrl, setPublishedUrl] = useState(null);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const currentVersion = historyIndex + 1;
@@ -68,14 +69,8 @@ export const V0Header = () => {
     }
   };
 
-  const handleDeploy = async () => {
-    try {
-      const res = await savePortfolio(true);
-      const slug = res?.subdomainSlug || portfolio.meta?.slug || 'zoubaa';
-      setPublishedUrl(`https://${slug}.portfolify.dev`);
-    } catch (e) {
-      console.error(e);
-    }
+  const handlePublishWithSlug = async (slug) => {
+    return await savePortfolio(true, 'Published site update', slug);
   };
 
   return (
@@ -293,7 +288,7 @@ export const V0Header = () => {
 
         {/* High-Contrast Solid White Vercel "Deploy" Button */}
         <button
-          onClick={handleDeploy}
+          onClick={() => setIsPublishModalOpen(true)}
           disabled={saveStatus === 'saving'}
           className="bg-white text-black font-semibold text-xs px-3.5 py-1.5 rounded-lg hover:bg-zinc-200 transition-all flex items-center gap-1.5 shadow-sm active:scale-95 cursor-pointer"
         >
@@ -317,44 +312,14 @@ export const V0Header = () => {
         onClose={() => setIsExportModalOpen(false)}
       />
 
-      {/* Published URL Toast Modal */}
-      {publishedUrl && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-md bg-[#09090b] border border-zinc-800 rounded-2xl p-6 shadow-2xl animate-in zoom-in-95 text-center">
-            <div className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center mx-auto mb-3 text-xl font-bold">
-              ✓
-            </div>
-            <h3 className="text-base font-bold text-white mb-1">Portfolio Publié avec Succès</h3>
-            <p className="text-xs text-zinc-400 mb-4 font-mono">
-              Votre portfolio est désormais en ligne et accessible mondialement.
-            </p>
-            <div className="flex items-center gap-2 p-2 rounded-xl bg-zinc-900 border border-zinc-800 mb-4">
-              <input
-                type="text"
-                readOnly
-                value={publishedUrl}
-                className="flex-1 bg-transparent border-0 outline-none text-xs text-zinc-200 font-mono px-2"
-              />
-              <a
-                href={publishedUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="px-3 py-1.5 rounded-lg bg-white text-black text-xs font-semibold flex items-center gap-1 hover:bg-zinc-200 transition-colors"
-              >
-                <span>Voir le site</span>
-                <RiExternalLinkLine className="w-3 h-3" />
-              </a>
-            </div>
-            <button
-              onClick={() => setPublishedUrl(null)}
-              className="text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer font-mono"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
-
+      {/* Interactive Publish & Subdomain Configuration Modal */}
+      <PublishModal
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        currentSlug={portfolio.meta?.slug || ''}
+        isPublished={isPublished}
+        onPublish={handlePublishWithSlug}
+      />
     </header>
   );
 };

@@ -19,6 +19,12 @@ const createPortfolioSchema = z.object({
 
 const updatePortfolioSchema = z.object({
   title: z.string().min(2).max(100).optional(),
+  subdomainSlug: z
+    .string()
+    .min(3)
+    .max(50)
+    .regex(/^[a-z0-9-]+$/, 'Subdomain slug can only contain lowercase letters, numbers, and hyphens')
+    .optional(),
   isPublished: z.boolean().optional(),
   promptNote: z.string().optional(),
   schemaData: z.record(z.any()).optional(),

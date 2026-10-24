@@ -34,6 +34,8 @@ import {
   RiCloseLine,
   RiFolder3Line,
 } from 'react-icons/ri';
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:5050' : '');
 import { ImagePickerModal } from '../common/ImagePickerModal';
 
 export const GithubProjectsTab = ({ onApplyComplete }) => {
@@ -137,7 +139,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
         return;
       }
       try {
-        const res = await fetch(`http://localhost:5050/api/v1/github/status?userId=${encodeURIComponent(user.id)}`);
+        const res = await fetch(`${API_BASE_URL}/api/v1/github/status?userId=${encodeURIComponent(user.id)}`);
         if (res.ok) {
           const json = await res.json();
           if (isMounted && json.success && json.data?.connected) {
@@ -204,7 +206,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     setError(null);
     try {
       const userId = user?.id || 'guest';
-      const authUrl = `http://localhost:5050/api/v1/github/authorize?userId=${encodeURIComponent(userId)}`;
+      const authUrl = `${API_BASE_URL}/api/v1/github/authorize?userId=${encodeURIComponent(userId)}`;
       const width = 600;
       const height = 750;
       const left = window.screen.width / 2 - width / 2;
@@ -233,7 +235,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     setIsLoading(true);
     setError(null);
     try {
-      await fetch('http://localhost:5050/api/v1/github/disconnect', {
+      await fetch(`${API_BASE_URL}/api/v1/github/disconnect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user?.id }),

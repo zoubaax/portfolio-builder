@@ -32,6 +32,8 @@ import { GithubProjectsTab } from './GithubProjectsTab';
 import { SkillsTab } from './SkillsTab';
 import { AiChatbotSettingsModal } from './AiChatbotSettingsModal';
 import { ExportModal } from './ExportModal';
+import { PublishModal } from './PublishModal';
+import { getSubdomainUrl } from '../../utils/subdomain';
 
 const QUICK_ACCENT_COLORS = [
   { name: 'Flame Orange', hex: '#FF4500' },
@@ -66,7 +68,7 @@ export const V0Canvas = () => {
     isPublished
   } = usePortfolio();
 
-  const [publishedUrl, setPublishedUrl] = useState(null);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [showColorPopover, setShowColorPopover] = useState(false);
   const [isAiBotModalOpen, setIsAiBotModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -118,14 +120,8 @@ export const V0Canvas = () => {
     }
   }, [viewMode, streamingCode]);
 
-  const handlePublish = async () => {
-    try {
-      const res = await savePortfolio(true);
-      const slug = res?.subdomainSlug || portfolio.meta?.slug || 'portfolio';
-      setPublishedUrl(`https://${slug}.portfolify.dev`);
-    } catch (e) {
-      console.error(e);
-    }
+  const handlePublishWithSlug = async (slugToPublish) => {
+    return await savePortfolio(true, 'Publish portfolio update', slugToPublish);
   };
 
   const handleCopyCode = () => {
@@ -250,7 +246,7 @@ export const V0Canvas = () => {
           <div className="h-3 w-px bg-zinc-300 mx-0.5" />
 
           <button
-            onClick={() => window.open(publishedUrl || '#', '_blank')}
+            onClick={() => window.open(getSubdomainUrl(portfolio.meta?.slug || 'portfolio'), '_blank')}
             className="text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer"
             title="Ouvrir dans une nouvelle fenêtre"
           >
@@ -310,7 +306,7 @@ export const V0Canvas = () => {
           </button>
 
           <button
-            onClick={handlePublish}
+            onClick={() => setIsPublishModalOpen(true)}
             disabled={saveStatus === 'saving'}
             className="px-3.5 py-1 rounded-lg bg-black hover:bg-zinc-800 text-white text-xs font-medium transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
           >
@@ -749,39 +745,14 @@ export const V0Canvas = () => {
 
       </div>
 
-      {/* Published URL Toast Modal */}
-      {publishedUrl && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-sm bg-white border border-zinc-200 rounded-2xl p-5 shadow-2xl animate-in zoom-in-95 text-center">
-            <h3 className="text-sm font-bold text-zinc-900 mb-1">Portfolio Publié !</h3>
-            <p className="text-xs text-zinc-500 mb-4">
-              Votre portfolio est désormais accessible en ligne.
-            </p>
-            <div className="flex items-center gap-2 p-2 rounded-xl bg-zinc-50 border border-zinc-200 mb-4">
-              <input
-                type="text"
-                readOnly
-                value={publishedUrl}
-                className="flex-1 bg-transparent border-0 outline-none text-xs text-zinc-700 font-mono px-1"
-              />
-              <a
-                href={publishedUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="px-2.5 py-1 rounded-md bg-black text-white text-xs font-medium hover:bg-zinc-800"
-              >
-                Visiter
-              </a>
-            </div>
-            <button
-              onClick={() => setPublishedUrl(null)}
-              className="text-xs text-zinc-400 hover:text-zinc-700 cursor-pointer"
-            >
-              Fermer
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Interactive Publish & Subdomain Configuration Modal */}
+      <PublishModal
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        currentSlug={portfolio.meta?.slug || ''}
+        isPublished={isPublished}
+        onPublish={handlePublishWithSlug}
+      />
 
       {/* AI Chatbot Settings Modal (BYOK & Multi-Provider config) */}
       <AiChatbotSettingsModal

@@ -55,7 +55,7 @@ export const portfolioController = {
     try {
       const userId = req.auth!.userId;
       const id = req.params.id as string;
-      const { schemaData, title, isPublished, promptNote, chatHistory } = req.body;
+      const { schemaData, title, isPublished, promptNote, chatHistory, subdomainSlug } = req.body;
 
       const updated = await portfolioService.updatePortfolio(id, userId, {
         schemaData,
@@ -63,6 +63,7 @@ export const portfolioController = {
         isPublished,
         promptNote,
         chatHistory,
+        subdomainSlug,
       });
 
       if (!updated) {

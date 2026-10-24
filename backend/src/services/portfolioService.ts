@@ -112,7 +112,7 @@ export const portfolioService = {
   async updatePortfolio(
     portfolioId: string,
     userId: string,
-    data: { schemaData?: any; title?: string; isPublished?: boolean; promptNote?: string; chatHistory?: any }
+    data: { schemaData?: any; title?: string; isPublished?: boolean; promptNote?: string; chatHistory?: any; subdomainSlug?: string }
   ) {
     // 1. Verify ownership
     const existing = await this.getPortfolioById(portfolioId, userId);
@@ -126,6 +126,7 @@ export const portfolioService = {
       .set({
         schemaData: data.schemaData ?? existing.schemaData,
         title: data.title ?? existing.title,
+        subdomainSlug: data.subdomainSlug ? data.subdomainSlug.toLowerCase().trim() : existing.subdomainSlug,
         chatHistory: data.chatHistory !== undefined ? data.chatHistory : existing.chatHistory,
         isPublished: data.isPublished ?? existing.isPublished,
         publishedAt: data.isPublished ? new Date() : existing.publishedAt,
