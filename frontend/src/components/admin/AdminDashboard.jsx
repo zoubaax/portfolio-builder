@@ -178,7 +178,7 @@ export function AdminDashboard() {
                 onChange={(e) => setKeyInput(e.target.value)}
                 placeholder="portfolify_admin_..."
                 autoFocus
-                className="w-full px-4 py-3 bg-[#0a0d16] border border-zinc-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl text-sm text-white placeholder-zinc-600 outline-none transition-all font-mono"
+                className="w-full px-4 py-3 bg-[#0a0d16] border border-zinc-800 rounded-xl text-sm text-white placeholder-zinc-600 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800 font-mono shadow-none"
               />
             </div>
 
