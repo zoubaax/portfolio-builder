@@ -11,6 +11,7 @@ import { ChatHistoryDrawer } from './components/studio/ChatHistoryDrawer';
 import { getSubdomain } from './utils/subdomain';
 import { PortfolioRenderer } from './components/portfolio/PortfolioRenderer';
 import { PortfolioChatWidget } from './components/portfolio/PortfolioChatWidget';
+import { AdminDashboard } from './components/admin/AdminDashboard';
 
 function StudioWorkspace() {
   const navigate = useNavigate();
@@ -171,6 +172,7 @@ function MainFlow() {
       <Route path="/studio" element={<StudioRoute />} />
       <Route path="/studio/:id" element={<StudioRoute />} />
       <Route path="/preview/:slug" element={<PreviewRoute />} />
+      <Route path="/admin" element={<AdminDashboard />} />
     </Routes>
   );
 }

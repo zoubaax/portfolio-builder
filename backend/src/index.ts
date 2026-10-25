@@ -6,6 +6,7 @@ import { clerkMiddleware } from '@clerk/express';
 import portfolioRoutes from './routes/portfolioRoutes.js';
 import aiRoutes from './routes/aiRoutes.js';
 import githubRoutes from './routes/githubRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import { sendError } from './utils/response.js';
 
 dotenv.config();
@@ -54,6 +55,7 @@ app.get('/api/v1/health', (req, res) => {
 app.use('/api/v1/portfolios', portfolioRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/github', githubRoutes);
+app.use('/api/v1/admin', adminRoutes);
 
 // 4. Global 404 Handler
 app.use((req, res) => {

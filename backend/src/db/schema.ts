@@ -74,3 +74,28 @@ export const portfolioVersionsRelations = relations(portfolioVersions, ({ one })
     references: [users.id],
   }),
 }));
+
+/**
+ * AI Token Logs Table
+ * Tracks all AI prompts, operations, models, and token consumption
+ */
+export const aiTokenLogs = pgTable('ai_token_logs', {
+  id: text('id').primaryKey(),
+  userId: text('user_id'),
+  operation: varchar('operation', { length: 50 }).notNull(), // 'stream-chat' | 'generate' | 'portfolio-chat' | 'image' | 'summarize'
+  provider: varchar('provider', { length: 50 }).notNull(), // 'nvidia' | 'openai' | 'mistral' | 'cloudflare' | 'groq'
+  model: varchar('model', { length: 150 }).notNull(),
+  promptTokens: integer('prompt_tokens').default(0).notNull(),
+  completionTokens: integer('completion_tokens').default(0).notNull(),
+  totalTokens: integer('total_tokens').default(0).notNull(),
+  durationMs: integer('duration_ms').default(0),
+  status: varchar('status', { length: 20 }).default('success'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const aiTokenLogsRelations = relations(aiTokenLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [aiTokenLogs.userId],
+    references: [users.id],
+  }),
+}));
