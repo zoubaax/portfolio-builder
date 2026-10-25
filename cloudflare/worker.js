@@ -36,6 +36,14 @@ export default {
     originUrl.protocol = "https:";
     originUrl.port = "";
 
+    // Forward client-side SPA routes (/admin, /studio, /onboarding, /preview/...)
+    // to "/" so Vercel serves index.html to allow React Router to mount client-side
+    const isApiRequest = url.pathname.startsWith("/api");
+    const isStaticAsset = url.pathname.includes(".");
+    if (!isApiRequest && !isStaticAsset && url.pathname !== "/") {
+      originUrl.pathname = "/";
+    }
+
     // 5. Clone and enrich request headers
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("Host", VERCEL_ORIGIN);

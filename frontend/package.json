@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && mkdir -p dist/admin dist/studio dist/onboarding dist/preview && cp dist/index.html dist/admin/index.html && cp dist/index.html dist/studio/index.html && cp dist/index.html dist/onboarding/index.html && cp dist/index.html dist/preview/index.html",
     "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
