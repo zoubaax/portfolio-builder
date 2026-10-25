@@ -118,12 +118,12 @@ export default {
       const rewriter = new HTMLRewriter()
         .on("title", {
           element(el) {
-            el.setInnerContent(escapedTitle);
+            el.setInnerContent(ogTitle);
           },
         })
         .on("head", {
           element(el) {
-            el.append(`
+            el.prepend(`
   <!-- Dynamic Open Graph / WhatsApp Preview Meta Tags -->
   <meta name="description" content="${escapedDesc}">
   <meta property="og:type" content="profile">
@@ -137,6 +137,10 @@ export default {
   <meta property="og:image:height" content="400">
   <meta property="og:image:alt" content="${escapedTitle}">
   <meta property="og:site_name" content="Portfolify">
+  <meta itemprop="name" content="${escapedTitle}">
+  <meta itemprop="description" content="${escapedDesc}">
+  <meta itemprop="image" content="${escapedImage}">
+  <link rel="image_src" href="${escapedImage}">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapedTitle}">
   <meta name="twitter:description" content="${escapedDesc}">
