@@ -11,6 +11,7 @@ import {
 import { doesPromptSpecifyColor, isPortfolioGenerationPrompt } from '../data/colorPalettes';
 import { fetchAiSuggestedPalettes } from '../services/aiPaletteService';
 import { CLEAN_LIGHT_PALETTES } from '../components/studio/ColorPaletteCard';
+import { getSubdomain } from '../utils/subdomain';
 
 const DEFAULT_WELCOME_MESSAGE = {
   id: 'msg-welcome',
@@ -160,7 +161,7 @@ export const PortfolioProvider = ({ children }) => {
   const [deviceView, setDeviceView] = useState('desktop'); // 'desktop' | 'tablet' | 'mobile'
   const [simulatedWidth, setSimulatedWidth] = useState(null); // null (100% desktop) or number in px (e.g. 390)
   const isMobileViewport = simulatedWidth !== null ? simulatedWidth < 768 : deviceView === 'mobile';
-  const [isEditMode, setIsEditMode] = useState(true); // Elementor-style visual edit mode vs pure preview
+  const [isEditMode, setIsEditMode] = useState(() => !getSubdomain()); // Read-only for visitor subdomains, edit mode for studio
   const [viewMode, setViewMode] = useState('preview'); // 'preview' | 'code' (v0 tab toggle)
   const [isChatCollapsed, setIsChatCollapsed] = useState(false); // v0 1-click fullscreen toggle
   const [activeTab, setActiveTab] = useState('chat'); // 'chat' | 'sections' | 'theme' | 'history'
@@ -271,6 +272,7 @@ export const PortfolioProvider = ({ children }) => {
   // Load public portfolio for a visitor subdomain slug
   const loadPublicPortfolio = useCallback(async (slug) => {
     if (!slug) return null;
+    setIsEditMode(false);
     try {
       const res = await fetch(`${API_BASE_URL}/api/v1/portfolios/public/${encodeURIComponent(slug)}`);
       const data = await res.json();
@@ -282,6 +284,7 @@ export const PortfolioProvider = ({ children }) => {
           setPortfolioId(item.id);
         }
         setIsPublished(true);
+        setIsEditMode(false);
         return item;
       }
       return null;

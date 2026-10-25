@@ -68,9 +68,13 @@ function PreviewRoute() {
 }
 
 function SubdomainPortfolioWrapper({ slug }) {
-  const { portfolio, loadPublicPortfolio } = usePortfolio();
+  const { portfolio, loadPublicPortfolio, setIsEditMode } = usePortfolio();
   const [loading, setLoading] = React.useState(true);
   const [notFound, setNotFound] = React.useState(false);
+
+  useEffect(() => {
+    setIsEditMode(false);
+  }, [setIsEditMode]);
 
   useEffect(() => {
     let isMounted = true;
@@ -123,7 +127,6 @@ function SubdomainPortfolioWrapper({ slug }) {
   return (
     <div className="min-h-screen w-full relative bg-[#0a0e17]">
       <PortfolioRenderer portfolio={portfolio} isPreview={false} />
-      <PortfolioChatWidget portfolio={portfolio} />
     </div>
   );
 }
