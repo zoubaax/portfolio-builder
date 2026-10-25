@@ -94,6 +94,16 @@ export default {
           ogDesc = hero.tagline || hero.bio || schema.meta?.description || ogDesc;
           if (hero.avatar && typeof hero.avatar === "string" && hero.avatar.startsWith("http")) {
             ogImage = hero.avatar;
+            // Resolve 301/302 redirects (e.g. github.com/*.png -> avatars.githubusercontent.com)
+            // WhatsApp crawler strictly drops images that respond with redirects!
+            try {
+              const imgCheck = await fetch(ogImage, { method: "HEAD", redirect: "follow" });
+              if (imgCheck.ok && imgCheck.url) {
+                ogImage = imgCheck.url;
+              }
+            } catch (imgErr) {
+              // Keep original if check fails
+            }
           }
         }
       } catch (metaErr) {
@@ -116,11 +126,16 @@ export default {
             el.append(`
   <!-- Dynamic Open Graph / WhatsApp Preview Meta Tags -->
   <meta name="description" content="${escapedDesc}">
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="profile">
   <meta property="og:url" content="${canonicalUrl}">
   <meta property="og:title" content="${escapedTitle}">
   <meta property="og:description" content="${escapedDesc}">
   <meta property="og:image" content="${escapedImage}">
+  <meta property="og:image:secure_url" content="${escapedImage}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="400">
+  <meta property="og:image:height" content="400">
+  <meta property="og:image:alt" content="${escapedTitle}">
   <meta property="og:site_name" content="Portfolify">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${escapedTitle}">
