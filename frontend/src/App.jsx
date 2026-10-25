@@ -95,6 +95,15 @@ function SubdomainPortfolioWrapper({ slug }) {
     };
   }, [slug, loadPublicPortfolio]);
 
+  useEffect(() => {
+    if (portfolio) {
+      const hero = portfolio.sections?.find((s) => s.type === 'hero')?.data;
+      const name = hero?.name || slug;
+      const title = hero?.title || 'Portfolio';
+      document.title = `${name} — ${title}`;
+    }
+  }, [portfolio, slug]);
+
   if (loading) {
     return (
       <div className="min-h-screen w-full flex flex-col items-center justify-center bg-[#0a0e17] text-white">
