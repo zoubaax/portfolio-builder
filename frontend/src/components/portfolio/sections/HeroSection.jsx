@@ -1,3 +1,5 @@
+import { GalacticNoirHero } from './GalacticNoirHero';
+import { ModernFullstackHero } from './ModernFullstackHero';
 import React, { useState } from 'react';
 import { ArrowUpRight, Terminal, Sparkles, Mail } from 'lucide-react';
 import { getSocialIcon } from '../../common/BrandIcons';
@@ -6,6 +8,7 @@ import { ImagePickerModal } from '../../common/ImagePickerModal';
 import { SocialLinksModal } from '../../common/SocialLinksModal';
 import { usePortfolio } from '../../../context/PortfolioContext';
 import { RiCameraLine, RiAddLine } from 'react-icons/ri';
+import { AdityaDevOpsHero } from './AdityaDevOpsHero';
 
 export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => {
   const { updateSectionField, isEditMode, isMobileViewport, effectiveAvatar, githubUsername } = usePortfolio();
@@ -20,6 +23,14 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
     : avatar;
 
   // 1. Split Portrait Variant
+    if (variant === 'galactic-noir') {
+    return <GalacticNoirHero data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'modern-fullstack') {
+    return <ModernFullstackHero data={data} sectionId={sectionId} />;
+  }
+
   if (variant === 'split-portrait') {
     return (
       <section className={`relative ${isMobileViewport ? 'py-8 px-4' : 'py-16 md:py-24 px-6 md:px-12'} max-w-6xl mx-auto`}>
@@ -201,6 +212,11 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
         />
       </section>
     );
+  }
+
+  // 2. DevOps Architect Variant (Exact replica of Aditya Seth Hero)
+  if (variant === 'devops-architect') {
+    return <AdityaDevOpsHero data={data} sectionId={sectionId} />;
   }
 
   // 2. Terminal Dev Variant

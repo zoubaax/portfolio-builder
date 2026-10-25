@@ -1,4 +1,7 @@
+@import "./components/portfolio/sections/galactic-noir-theme.css";
+@import "./components/portfolio/sections/modern-fullstack-theme.css";
 @import "tailwindcss";
+@import "./components/portfolio/sections/aditya-exact.css";
 
 @layer base {
   * {
