@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "template:ingest": "python ../scripts/ingest_portfolio.py"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.61.10",
