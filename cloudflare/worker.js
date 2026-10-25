@@ -57,7 +57,18 @@ export default {
     }
 
     try {
-      const response = await fetch(originUrl.toString(), fetchOptions);
+      let response = await fetch(originUrl.toString(), fetchOptions);
+
+      // SPA Fallback: If origin returns 404 for a client-side navigation route
+      // (not an API call and not a static asset with a file extension like .js, .css, .png, etc.)
+      if (response.status === 404 && !url.pathname.startsWith('/api') && !url.pathname.includes('.')) {
+        const spaUrl = new URL(originUrl.toString());
+        spaUrl.pathname = '/';
+        const spaRes = await fetch(spaUrl.toString(), fetchOptions);
+        if (spaRes.ok) {
+          response = spaRes;
+        }
+      }
 
       const contentType = response.headers.get("content-type") || "";
       const isHtmlRequest = contentType.includes("text/html") && (url.pathname === "/" || url.pathname === "");
