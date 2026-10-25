@@ -44,11 +44,11 @@ export const SectionWrapper = ({ section, index, isFirst, isLast, children }) =>
 
   // Available variants for quick switching on the handle bar
   const getVariants = () => {
-    if (section.type === 'hero') return ['split-portrait', 'terminal-dev', 'minimal-centered'];
-    if (section.type === 'projects') return ['bento-grid', 'card-grid', 'minimal-list'];
-    if (section.type === 'skills') return ['category-cards', 'pill-cloud'];
-    if (section.type === 'experience') return ['timeline', 'clean-cards'];
-    if (section.type === 'about') return ['bento', 'classic-story'];
+    if (section.type === 'hero') return ['split-portrait', 'devops-architect', 'terminal-dev', 'minimal-centered', 'modern-fullstack', 'galactic-noir'];
+    if (section.type === 'projects') return ['bento-grid', 'devops-architect', 'card-grid', 'minimal-list', 'modern-fullstack', 'galactic-noir'];
+    if (section.type === 'skills') return ['category-cards', 'devops-architect', 'pill-cloud', 'modern-fullstack', 'galactic-noir'];
+    if (section.type === 'experience') return ['timeline', 'devops-architect', 'clean-cards', 'modern-fullstack', 'galactic-noir'];
+    if (section.type === 'about') return ['bento', 'devops-architect', 'classic-story', 'modern-fullstack', 'galactic-noir'];
     if (section.type === 'contact') return ['minimal-card', 'split-box'];
     return [];
   };

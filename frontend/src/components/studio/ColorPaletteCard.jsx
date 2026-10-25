@@ -41,6 +41,7 @@ export const getOptionReactIcon = (opt) => {
     case '⚡':
     case 'react':
       return <RiLayoutMasonryLine className="w-3.5 h-3.5 text-amber-600 shrink-0" />;
+    case 'devops':
     case 'backend':
     case '☁️':
     case 'cloud':

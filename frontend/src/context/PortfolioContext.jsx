@@ -6,12 +6,14 @@ import {
   MOCK_DESIGNER_PORTFOLIO,
   MOCK_MINIMALIST_PORTFOLIO,
   THEME_PRESETS,
+  GLOBAL_TEMPLATES,
   createFreshPortfolio
 } from '../types/portfolio';
 import { doesPromptSpecifyColor, isPortfolioGenerationPrompt } from '../data/colorPalettes';
 import { fetchAiSuggestedPalettes } from '../services/aiPaletteService';
 import { CLEAN_LIGHT_PALETTES } from '../components/studio/ColorPaletteCard';
 import { getSubdomain } from '../utils/subdomain';
+import { detectRoleFromPrompt, detectFocusFromPrompt } from '../utils/promptAnalyzer';
 
 const DEFAULT_WELCOME_MESSAGE = {
   id: 'msg-welcome',
@@ -617,6 +619,34 @@ export const PortfolioProvider = ({ children }) => {
     });
   }, [pushState]);
 
+  // Apply a Global Template to generalize layout & theme across all sections
+  const applyGlobalTemplate = useCallback((templateId) => {
+    const targetTemplate = GLOBAL_TEMPLATES.find((t) => t.id === templateId);
+    if (!targetTemplate) return;
+
+    setPortfolio((current) => {
+      const newTheme = THEME_PRESETS[targetTemplate.themeId] || current.theme;
+      const updatedSections = (current.sections || []).map((sec) => {
+        const variantForType = targetTemplate.sectionVariants?.[sec.type];
+        if (variantForType) {
+          return { ...sec, variant: variantForType };
+        }
+        return sec;
+      });
+
+      const newState = {
+        ...current,
+        theme: newTheme,
+        sections: updatedSections,
+      };
+
+      pushState(newState);
+      return newState;
+    });
+
+    setViewMode('preview');
+  }, [pushState, setViewMode]);
+
   // Toggle Section Visibility
   const toggleSectionVisibility = useCallback((sectionId) => {
     setPortfolio((current) => {
@@ -878,6 +908,10 @@ export const PortfolioProvider = ({ children }) => {
         /^(i want|create|build|make|portfolio|design|show)/i.test(promptText.trim())
       );
 
+      // Semantic prompt analysis: Detect role/domain and focus priority
+      const roleAnalysis = detectRoleFromPrompt(promptText);
+      const focusAnalysis = detectFocusFromPrompt(promptText);
+
       const userMsg = {
         id: `msg-${Date.now()}`,
         role: 'user',
@@ -890,10 +924,20 @@ export const PortfolioProvider = ({ children }) => {
         activeStep: 1,
         originalPrompt: promptText,
         palette: null,
-        role: null,
-        focus: null,
+        role: roleAnalysis.detected ? roleAnalysis.roleLabel : null,
+        suggestedTemplate: roleAnalysis.detected ? roleAnalysis.suggestedTemplate : null,
+        roleId: roleAnalysis.detected ? roleAnalysis.roleId : null,
+        focus: focusAnalysis.detected ? focusAnalysis.focusLabel : null,
         activeMsgId: assistantMsgId,
       };
+
+      const step1Text = roleAnalysis.detected
+        ? (isEn
+            ? `Noted: **${roleAnalysis.roleLabel}**! What visual style and color tone would you prefer for your portfolio?`
+            : `Profil **${roleAnalysis.roleLabel}** bien pris en compte ! Quelle direction chromatique préférez-vous pour votre portfolio ?`)
+        : (isEn
+            ? "What visual style and color tone would you prefer for your portfolio?"
+            : "Quelle direction chromatique et esthétique préférez-vous pour votre portfolio ?");
 
       const step1Msg = {
         id: assistantMsgId,
@@ -901,9 +945,7 @@ export const PortfolioProvider = ({ children }) => {
         type: 'interactive_step',
         step: 1,
         stepType: 'color',
-        text: isEn
-          ? "What visual style and color tone would you prefer for your portfolio?"
-          : "Quelle direction chromatique et esthétique préférez-vous pour votre portfolio ?",
+        text: step1Text,
         questionMessage: isEn
           ? "Choose your visual style & palette:"
           : "Choisissez votre style visuel & couleurs :",
@@ -1322,6 +1364,9 @@ export const PortfolioProvider = ({ children }) => {
       } else if (lower.includes('orange') || lower.includes('ember') || lower.includes('#ff4500')) {
         fallbackPortfolio.theme = THEME_PRESETS['superdesign-ember'];
         replyText = options.summaryTitle || `Applied Superdesign Ember theme with flame orange accents for ${personName}!`;
+      } else if (lower.includes('devops') || lower.includes('architect') || lower.includes('cloud')) {
+        fallbackPortfolio.theme = THEME_PRESETS['devops-architect'];
+        replyText = options.summaryTitle || `Thème DevOps Architect appliqué avec succès pour ${personName} !`;
       } else if (lower.includes('cyan') || lower.includes('blue') || lower.includes('bleu')) {
         fallbackPortfolio.theme = THEME_PRESETS['cyber-dark'];
         replyText = options.summaryTitle || `Applied Cyber Dark theme with cyber cyan accents for ${personName}!`;
@@ -1446,10 +1491,9 @@ export const PortfolioProvider = ({ children }) => {
     };
 
     if (step === 1) {
-      // Step 1: Color / Theme selected -> Save and proceed to Step 2
+      // Step 1: Color / Theme selected -> Save palette
       const selectedPalette = typeof option === 'object' && option.bg ? option : CLEAN_LIGHT_PALETTES[0];
       setupStateRef.current.palette = selectedPalette;
-      setupStateRef.current.activeStep = 2;
 
       // Update palette in portfolio immediately
       setPortfolio((curr) => {
@@ -1474,6 +1518,52 @@ export const PortfolioProvider = ({ children }) => {
         return updated;
       });
 
+      // INTELLIGENT BYPASS: If the user ALREADY specified their role/domain in their initial prompt,
+      // DO NOT ask for their role or display the role selection list!
+      if (setupStateRef.current.role) {
+        setupStateRef.current.activeStep = 0;
+        const role = setupStateRef.current.role;
+        const suggestedTemplate = setupStateRef.current.suggestedTemplate;
+        const focus = setupStateRef.current.focus || (isEn ? 'Featured Projects & Architecture' : 'Projets & Architecture');
+        const original = setupStateRef.current.originalPrompt || (isEn ? 'Personal Portfolio' : 'Portfolio Personnel');
+
+        // Automatically apply global template matched to this role
+        if (suggestedTemplate) {
+          applyGlobalTemplate(suggestedTemplate);
+        }
+
+        const ackMsg = {
+          id: `msg-ack-${Date.now()}`,
+          role: 'assistant',
+          text: isEn
+            ? `✓ Role **${role}** detected from your prompt! Generating your custom portfolio directly...`
+            : `✓ Profil **${role}** détecté et validé ! Synthèse directe de votre portfolio sur-mesure...`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        };
+
+        setChatMessages((prev) => {
+          const next = [...prev, userMsg, ackMsg];
+          chatMessagesRef.current = next;
+          return next;
+        });
+
+        const enrichedPrompt = `${original} [Rôle: ${role}, Priorité: ${focus}, Thème Clair: ${selectedPalette.name}, Fond ${selectedPalette.bg}, Surface ${selectedPalette.surface}, Texte ${selectedPalette.textPrimary}, Accent ${selectedPalette.accent}]`;
+
+        sendChatMessage(enrichedPrompt, {
+          skipColorCheck: true,
+          assistantPlaceholder: isEn
+            ? `Synthesizing custom portfolio architecture for ${role}...`
+            : `Génération de votre portfolio ${role} avec la palette ${selectedPalette.name}...`,
+          summaryTitle: isEn
+            ? `✓ Portfolio generated for ${role} (${selectedPalette.name}) !`
+            : `✓ Portfolio généré pour ${role} (${selectedPalette.name}) !`,
+        });
+        return;
+      }
+
+      // Step 2 ONLY if role was NOT specified by user in prompt:
+      setupStateRef.current.activeStep = 2;
+
       const step2MsgId = `msg-step2-${Date.now()}`;
       setupStateRef.current.activeMsgId = step2MsgId;
 
@@ -1490,6 +1580,7 @@ export const PortfolioProvider = ({ children }) => {
           ? "Select your primary role or title:"
           : "Sélectionnez votre rôle ou spécialité :",
         options: [
+          { id: 'devops', iconKey: 'devops', name: isEn ? 'DevOps & Cloud Architect' : 'Ingénieur DevOps & Cloud' },
           { id: 'fullstack', iconKey: 'fullstack', name: isEn ? 'Full-Stack Developer' : 'Développeur Full-Stack' },
           { id: 'frontend', iconKey: 'frontend', name: isEn ? 'Frontend Engineer' : 'Ingénieur Frontend (React)' },
           { id: 'backend', iconKey: 'backend', name: isEn ? 'Backend & Cloud Engineer' : 'Développeur Backend & Cloud' },
@@ -1509,8 +1600,44 @@ export const PortfolioProvider = ({ children }) => {
     }
 
     if (step === 2) {
-      // Step 2: Role selected -> Save and proceed to Step 3
+      // Step 2: Role selected -> Save and proceed
       setupStateRef.current.role = optionLabel;
+
+      const optId = typeof option === 'object' ? option.id : null;
+      if (optId === 'devops' || /devops|cloud/i.test(optionLabel)) {
+        applyGlobalTemplate('devops-architect');
+      } else if (optId === 'designer' || /design/i.test(optionLabel)) {
+        applyGlobalTemplate('editorial-ivory');
+      }
+
+      // If focus was already detected in original prompt, skip Step 3 straight to synthesis!
+      if (setupStateRef.current.focus) {
+        setupStateRef.current.activeStep = 0;
+        const palette = setupStateRef.current.palette || CLEAN_LIGHT_PALETTES[0];
+        const role = optionLabel;
+        const focus = setupStateRef.current.focus;
+        const original = setupStateRef.current.originalPrompt || (isEn ? 'Personal Portfolio' : 'Portfolio Personnel');
+
+        const enrichedPrompt = `${original} [Rôle: ${role}, Priorité: ${focus}, Thème Clair: ${palette.name}, Fond ${palette.bg}, Surface ${palette.surface}, Texte ${palette.textPrimary}, Accent ${palette.accent}]`;
+
+        setChatMessages((prev) => {
+          const next = [...prev, userMsg];
+          chatMessagesRef.current = next;
+          return next;
+        });
+
+        sendChatMessage(enrichedPrompt, {
+          skipColorCheck: true,
+          assistantPlaceholder: isEn
+            ? `Synthesizing custom portfolio architecture for ${role}...`
+            : `Génération de votre portfolio ${role} avec la palette ${palette.name}...`,
+          summaryTitle: isEn
+            ? `✓ Portfolio generated for ${role} (${palette.name}) !`
+            : `✓ Portfolio généré pour ${role} (${palette.name}) !`,
+        });
+        return;
+      }
+
       setupStateRef.current.activeStep = 3;
 
       const step3MsgId = `msg-step3-${Date.now()}`;
@@ -1574,7 +1701,7 @@ export const PortfolioProvider = ({ children }) => {
           : `✓ Portfolio généré pour ${role} (${palette.name}) !`,
       });
     }
-  }, [pushState, sendChatMessage, setPortfolio]);
+  }, [pushState, sendChatMessage, setPortfolio, applyGlobalTemplate]);
 
   const handleConfirmPalette = useCallback((msgId, originalPrompt, selectedPalette) => {
     handleSelectStepOption(msgId, 1, selectedPalette);
@@ -1655,6 +1782,8 @@ export const PortfolioProvider = ({ children }) => {
         updateSection,
         updateSectionField,
         changeSectionVariant,
+        applyGlobalTemplate,
+        globalTemplates: GLOBAL_TEMPLATES,
         toggleSectionVisibility,
         moveSection,
         deleteSection,
