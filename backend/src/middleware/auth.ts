@@ -31,7 +31,7 @@ export const requireAuth = (req: AuthenticatedRequest, res: Response, next: Next
   // Allows testing when explicitly in development mode and no Clerk token is sent
   const devMockHeader = req.headers['x-user-id'] as string;
   if (process.env.NODE_ENV === 'development') {
-    const fallbackId = devMockHeader || 'dev_user_zoubaa';
+    const fallbackId = devMockHeader || 'dev_guest';
     req.auth = { userId: fallbackId };
     return next();
   }

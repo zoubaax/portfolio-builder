@@ -8,8 +8,8 @@ import { sendSuccess, sendError } from '../utils/response.js';
 
 const router = Router();
 
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || 'Ov23liFOZBhSyz3JttwM';
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '714d79169732186226347f1a9e849599616fffb7';
+const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID || '';
+const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '';
 const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5050}`;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
@@ -84,7 +84,22 @@ router.get('/callback', async (req: Request, res: Response) => {
     const githubAvatarUrl = profile.avatar_url || '';
 
     // 3. Persist connection in Neon DB for this user
-    const targetUserId = userId && userId !== 'guest' ? userId : 'dev_user_zoubaa';
+    if (!userId || userId === 'guest') {
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+          <body style="background: #090d16; color: #f87171; font-family: sans-serif; padding: 2rem; text-align: center;">
+            <h3>❌ Session requise</h3>
+            <p>Vous devez être connecté avec votre compte pour associer GitHub.</p>
+            <button onclick="window.close()" style="padding: 8px 16px; border-radius: 8px; background: #374151; color: white; border: none; cursor: pointer;">
+              Fermer
+            </button>
+          </body>
+        </html>
+      `);
+    }
+
+    const targetUserId = userId;
     try {
       await db
         .insert(users)
@@ -210,35 +225,20 @@ router.get('/status', async (req: Request, res: Response) => {
       } catch (e) {}
     }
 
-    const targetUserId = userId && userId !== 'guest' ? userId : 'dev_user_zoubaa';
-
-    let [userRecord] = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1);
-
-    if ((!userRecord || !userRecord.githubAccessToken) && targetUsername) {
-      const [byName] = await db.select().from(users).where(eq(users.githubUsername, targetUsername)).limit(1);
-      if (byName?.githubAccessToken) {
-        userRecord = byName;
-      }
+    if (!userId || userId === 'guest') {
+      return sendSuccess(res, {
+        connected: false,
+        username: null,
+        avatarUrl: null,
+      });
     }
 
-    if (!userRecord || !userRecord.githubAccessToken) {
-      const [devRecord] = await db.select().from(users).where(eq(users.id, 'dev_user_zoubaa')).limit(1);
-      if (devRecord?.githubAccessToken) {
-        userRecord = devRecord;
-      }
-    }
-
-    if (!userRecord || !userRecord.githubAccessToken) {
-      const [zoubaaRecord] = await db.select().from(users).where(eq(users.githubUsername, 'zoubaax')).limit(1);
-      if (zoubaaRecord?.githubAccessToken) {
-        userRecord = zoubaaRecord;
-      }
-    }
+    const [userRecord] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
     if (userRecord && userRecord.githubAccessToken) {
       return sendSuccess(res, {
         connected: true,
-        username: userRecord.githubUsername || 'zoubaax',
+        username: userRecord.githubUsername || null,
         avatarUrl: userRecord.githubAvatarUrl || '',
       });
     }
@@ -375,7 +375,10 @@ router.post('/export-repo', async (req: Request, res: Response) => {
       } catch (e) {}
     }
 
-    const targetUserId = userId && userId !== 'guest' ? userId : 'dev_user_zoubaa';
+    if (!userId || userId === 'guest') {
+      return sendError(res, 'UNAUTHORIZED', 'Connexion requise pour exporter un dépôt sur GitHub.', 401);
+    }
+
     const { repoName, description, isPrivate, files, personalAccessToken } = req.body;
 
     if (!repoName || typeof repoName !== 'string') {
@@ -390,17 +393,9 @@ router.post('/export-repo', async (req: Request, res: Response) => {
 
     if (!token) {
       // 1. Try target user record
-      const [userRecord] = await db.select().from(users).where(eq(users.id, targetUserId)).limit(1);
+      const [userRecord] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
       if (userRecord?.githubAccessToken) {
         token = userRecord.githubAccessToken;
-      }
-    }
-
-    if (!token && targetUserId !== 'dev_user_zoubaa') {
-      // 2. Fallback to dev user
-      const [devRecord] = await db.select().from(users).where(eq(users.id, 'dev_user_zoubaa')).limit(1);
-      if (devRecord?.githubAccessToken) {
-        token = devRecord.githubAccessToken;
       }
     }
 
@@ -414,7 +409,7 @@ router.post('/export-repo', async (req: Request, res: Response) => {
     }
 
     // If personalAccessToken was provided directly, save it in Neon DB so future exports don't need re-entry
-    if (personalAccessToken && targetUserId) {
+    if (personalAccessToken && userId) {
       try {
         const ghUserRes = await fetch('https://api.github.com/user', {
           headers: {
@@ -428,8 +423,8 @@ router.post('/export-repo', async (req: Request, res: Response) => {
           await db
             .insert(users)
             .values({
-              id: targetUserId,
-              email: `${targetUserId}@portfolify.dev`,
+              id: userId,
+              email: `${userId}@portfolify.dev`,
               username: ghUserData.login,
               githubUsername: ghUserData.login,
               githubAvatarUrl: ghUserData.avatar_url || '',
