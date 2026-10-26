@@ -42,8 +42,12 @@ export const ExportModal = ({ isOpen, onClose }) => {
   const checkGithubStatus = async () => {
     setIsCheckingGh(true);
     try {
-      const uid = user?.id || 'dev_user_zoubaa';
-      const targetUser = githubUsername || 'zoubaax';
+      const uid = user?.id || '';
+      const targetUser = githubUsername || '';
+      if (!uid) {
+        setGhStatus({ connected: false, username: null, avatarUrl: null });
+        return;
+      }
       const res = await fetch(
         `${API_BASE_URL}/api/v1/github/status?userId=${encodeURIComponent(uid)}&username=${encodeURIComponent(targetUser)}`
       );
@@ -78,7 +82,8 @@ export const ExportModal = ({ isOpen, onClose }) => {
 
   // Handle OAuth Popup
   const handleConnectOAuth = () => {
-    const uid = user?.id || 'dev_user_zoubaa';
+    const uid = user?.id || '';
+    if (!uid) return;
     window.open(
       `${API_BASE_URL}/api/v1/github/authorize?userId=${encodeURIComponent(uid)}`,
       'github_oauth_popup',
@@ -101,7 +106,8 @@ export const ExportModal = ({ isOpen, onClose }) => {
   // Handle Disconnect
   const handleDisconnect = async () => {
     try {
-      const uid = user?.id || 'dev_user_zoubaa';
+      const uid = user?.id || '';
+      if (!uid) return;
       await fetch(`${API_BASE_URL}/api/v1/github/disconnect`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -181,7 +187,12 @@ export const ExportModal = ({ isOpen, onClose }) => {
     setPushStatus('Création du dépôt sur GitHub...');
 
     try {
-      const uid = user?.id || 'dev_user_zoubaa';
+      const uid = user?.id || '';
+      if (!uid) {
+        setPushError('Session utilisateur requise.');
+        setIsPushing(false);
+        return;
+      }
       const res = await fetch(`${API_BASE_URL}/api/v1/github/export-repo`, {
         method: 'POST',
         headers: {

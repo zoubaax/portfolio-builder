@@ -107,7 +107,7 @@ export const V0Header = () => {
               className="group flex items-center gap-1.5 text-xs font-mono text-zinc-200 hover:text-white transition-colors cursor-pointer"
               title="Click to rename"
             >
-              <span>{portfolio.meta?.title || 'zoubaa-portfolio'}</span>
+              <span>{portfolio.meta?.title || 'mon-portfolio'}</span>
               <RiEdit2Line className="w-3 h-3 text-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
           )}

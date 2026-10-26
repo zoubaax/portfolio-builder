@@ -94,15 +94,39 @@ export const PortfolioProvider = ({ children }) => {
     user?.imageUrl ||
     '';
 
-  // Main portfolio state - initialized with fresh empty projects and user's profile image if available
-  const [portfolio, setPortfolio] = useState(() => createFreshPortfolio(user?.firstName || 'Guest', user?.imageUrl || ''));
-  const [portfolioId, setPortfolioId] = useState(null);
+  // LocalStorage Draft Hydration Helper
+  const getInitialPortfolio = () => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('portfolify_draft_portfolio') : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.theme && Array.isArray(parsed.sections) && parsed.sections.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse cached portfolio draft from localStorage:', e);
+    }
+    return createFreshPortfolio(user?.firstName || 'Guest', user?.imageUrl || '');
+  };
+
+  const getInitialPortfolioId = () => {
+    try {
+      return typeof window !== 'undefined' ? localStorage.getItem('portfolify_active_portfolio_id') || null : null;
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // Main portfolio state - initialized with cached draft or fresh portfolio
+  const [portfolio, setPortfolio] = useState(getInitialPortfolio);
+  const [portfolioId, setPortfolioId] = useState(getInitialPortfolioId);
   const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'saved' | 'error'
   const [isPublished, setIsPublished] = useState(false);
   const [versions, setVersions] = useState([]);
   
   // History for Undo / Redo
-  const [history, setHistory] = useState(() => [createFreshPortfolio(user?.firstName || 'Guest', user?.imageUrl || '')]);
+  const [history, setHistory] = useState(() => [getInitialPortfolio()]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
   // Automatic Avatar Synchronization:
@@ -135,8 +159,11 @@ export const PortfolioProvider = ({ children }) => {
   // Chat & Multi-session management state
   const [chatMessages, setChatMessages] = useState([DEFAULT_WELCOME_MESSAGE]);
   const chatMessagesRef = useRef([DEFAULT_WELCOME_MESSAGE]);
-  const portfolioIdRef = useRef(null);
+  const portfolioIdRef = useRef(getInitialPortfolioId());
   const activeLoadingIdRef = useRef(null);
+  const isInitialMountRef = useRef(true);
+  const autoSaveTimeoutRef = useRef(null);
+  const lastSavedJsonRef = useRef('');
   const setupStateRef = useRef({
     activeStep: 0,
     originalPrompt: '',
@@ -229,6 +256,7 @@ export const PortfolioProvider = ({ children }) => {
   // Load a specific portfolio & chat session from Neon DB
   const loadPortfolioSession = useCallback(async (id) => {
     if (!id) return;
+    if (portfolioIdRef.current === id && portfolio?.sections?.length > 0) return;
     activeLoadingIdRef.current = id;
     try {
       const headers = await getAuthHeaders();
@@ -238,7 +266,16 @@ export const PortfolioProvider = ({ children }) => {
       if (data.success && data.data) {
         const item = data.data;
         setPortfolioId(item.id);
+        portfolioIdRef.current = item.id;
+        try {
+          localStorage.setItem('portfolify_active_portfolio_id', item.id);
+        } catch (e) {}
+
         if (item.schemaData) {
+          try {
+            lastSavedJsonRef.current = JSON.stringify(item.schemaData);
+            localStorage.setItem('portfolify_draft_portfolio', JSON.stringify(item.schemaData));
+          } catch (e) {}
           setPortfolio(item.schemaData);
           setHistory([item.schemaData]);
           setHistoryIndex(0);
@@ -299,10 +336,17 @@ export const PortfolioProvider = ({ children }) => {
   // Start a fresh, clean chat session
   const createNewSession = useCallback(() => {
     activeLoadingIdRef.current = null;
+    try {
+      localStorage.removeItem('portfolify_draft_portfolio');
+      localStorage.removeItem('portfolify_active_portfolio_id');
+    } catch (e) {}
     navigate('/studio', { replace: true });
     setPortfolioId(null);
     portfolioIdRef.current = null;
     const fresh = createFreshPortfolio(firstName);
+    try {
+      lastSavedJsonRef.current = JSON.stringify(fresh);
+    } catch (e) {}
     setPortfolio(fresh);
     setHistory([fresh]);
     setHistoryIndex(0);
@@ -408,6 +452,9 @@ export const PortfolioProvider = ({ children }) => {
           const newId = data.data.id;
           setPortfolioId(newId);
           portfolioIdRef.current = newId;
+          try {
+            localStorage.setItem('portfolify_active_portfolio_id', newId);
+          } catch (e) {}
           navigate(`/studio/${newId}`, { replace: true });
           fetchVersions(newId);
           fetchUserSessions();
@@ -417,6 +464,59 @@ export const PortfolioProvider = ({ children }) => {
       console.error('Auto-persist session error:', err);
     }
   }, [portfolioId, getAuthHeaders, fetchVersions, fetchUserSessions, navigate]);
+
+  // Real Debounced Auto-Save & Instant LocalStorage Cache
+  useEffect(() => {
+    if (!portfolio || !portfolio.sections) return;
+
+    // 1. Immediately cache in localStorage for instant offline & page reload safety
+    try {
+      localStorage.setItem('portfolify_draft_portfolio', JSON.stringify(portfolio));
+    } catch (e) {
+      console.warn('LocalStorage draft cache failed:', e);
+    }
+
+    // 2. Skip server roundtrip on initial component mount
+    if (isInitialMountRef.current) {
+      isInitialMountRef.current = false;
+      try {
+        lastSavedJsonRef.current = JSON.stringify(portfolio);
+      } catch (e) {}
+      return;
+    }
+
+    // 3. Skip if no structural/content changes
+    const currentJson = JSON.stringify(portfolio);
+    if (currentJson === lastSavedJsonRef.current) {
+      return;
+    }
+
+    setSaveStatus('saving');
+
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+
+    autoSaveTimeoutRef.current = setTimeout(async () => {
+      try {
+        await persistSession(portfolio, chatMessagesRef.current, 'Auto-saved modification');
+        lastSavedJsonRef.current = currentJson;
+        setSaveStatus('saved');
+        setTimeout(() => {
+          setSaveStatus((prev) => (prev === 'saved' ? 'idle' : prev));
+        }, 2200);
+      } catch (err) {
+        console.warn('Auto-save persist error:', err);
+        setSaveStatus('error');
+      }
+    }, 1000);
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [portfolio, persistSession]);
 
   // Save or Update Portfolio to Neon DB
   const savePortfolio = useCallback(async (publish = false, promptNote = '', customSlug = null) => {
