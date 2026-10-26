@@ -41,7 +41,8 @@ export const PortfolioRenderer = ({ portfolio, isPreview = false }) => {
   const heroName = heroSection?.data?.name || meta?.title?.split('—')[0]?.trim() || 'Portfolio';
 
   return (
-    <div className="w-full min-h-full flex-1 flex flex-col relative transition-colors duration-300 selection:bg-(--theme-accent) selection:text-white"
+    <div className={`w-full min-h-full flex-1 flex flex-col relative transition-colors duration-300 selection:bg-(--theme-accent) selection:text-white theme-${portfolio.template || theme?.id || 'default'}`}
+         data-theme={portfolio.template || theme?.id || 'default'}
          style={{
            ...styleVariables,
            backgroundColor: 'var(--theme-bg)',
