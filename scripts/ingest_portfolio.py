@@ -38,7 +38,6 @@ def load_openai_key():
     candidates = [
         WORKSPACE_ROOT / "backend" / ".env",
         WORKSPACE_ROOT / ".env",
-        Path("D:/screenshot-to-code/.env"),
     ]
     for env_path in candidates:
         if env_path.exists():
@@ -76,10 +75,14 @@ def extract_site_data(url, temp_dir):
         page = context.new_page()
 
         try:
-            page.goto(url, wait_until="domcontentloaded", timeout=45000)
-            page.wait_for_timeout(3000)
-        except Exception as e:
-            print(f"⚠️ Avertissement lors du chargement : {e}")
+            page.goto(url, wait_until="networkidle", timeout=30000)
+            page.wait_for_timeout(2000)
+        except Exception:
+            try:
+                page.goto(url, wait_until="load", timeout=15000)
+                page.wait_for_timeout(2000)
+            except Exception as e:
+                print(f"⚠️ Avertissement lors du chargement : {e}")
 
         # Smooth scrolling to trigger AOS / Framer Motion / IntersectionObserver animations
         print("📜 Défilement automatique pour révéler les animations et polices...")
@@ -182,12 +185,21 @@ def extract_site_data(url, temp_dir):
                     rules.push(s.textContent.trim());
                 }
             });
+            for (let sheet of document.styleSheets) {
+                try {
+                    if (sheet.cssRules) {
+                        for (let r of sheet.cssRules) {
+                            rules.push(r.cssText);
+                        }
+                    }
+                } catch (e) {}
+            }
             return rules.join('\\n');
         }""")
 
         # Transpile real DOM sections directly into React 19 JSX components with parameterized props
         print("🏗️ Transpilation fidèle des sections réelles du site en JSX React 19...")
-        raw_components = page.evaluate("""() => {
+        raw_components = page.evaluate("""(siteUrl) => {
             const toCamel = (s) => s.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
             const styleToJsx = (styleStr) => {
                 if (!styleStr) return '';
@@ -198,8 +210,47 @@ def extract_site_data(url, temp_dir):
                     const v = parts.slice(1).join(':').trim();
                     if (!k || !v) return null;
                     const prop = toCamel(k);
-                    // Strip nested quotes from font names or content values
-                    const cleanVal = v.replace(/["']/g, '');
+                    let cleanVal = v.replace(/["']/g, '');
+                    // Unfreeze animations hidden before scroll
+                    if (prop === 'opacity' && (cleanVal === '0' || parseFloat(cleanVal) < 0.2)) {
+                        cleanVal = '1';
+                    }
+                    if (prop === 'visibility' && cleanVal === 'hidden') {
+                        cleanVal = 'visible';
+                    }
+                    if (prop === 'transform' && (cleanVal.includes('translateY') || cleanVal.includes('scale(0)'))) {
+                        cleanVal = 'none';
+                    }
+                    // Auto-normalize oversized typography & heights for UX responsiveness
+                    if (prop === 'fontSize') {
+                        const pxMatch = cleanVal.match(/^(\\d+(?:\\.\\d+)?)px$/);
+                        if (pxMatch && parseFloat(pxMatch[1]) >= 34) {
+                            const px = parseFloat(pxMatch[1]);
+                            if (px >= 48) {
+                                cleanVal = 'clamp(1.75rem, 6vw, 3.5rem)';
+                            } else {
+                                cleanVal = 'clamp(1.35rem, 4.5vw, 2.25rem)';
+                            }
+                        } else if (cleanVal.includes('clamp') && (cleanVal.includes('3.') || cleanVal.includes('4.') || cleanVal.includes('5.') || cleanVal.includes('6.'))) {
+                            cleanVal = 'clamp(1.85rem, 6vw, 3.75rem)';
+                        }
+                    }
+                    if (prop === 'height' && parseInt(cleanVal) >= 420) {
+                        cleanVal = `min(${cleanVal}, 70vh)`;
+                    }
+                    // Resolve relative URLs in inline styles
+                    if (cleanVal.includes('url(')) {
+                        cleanVal = cleanVal.replace(/url\\(\\s*['"]?([^'")]+)['"]?\\s*\\)/g, (match, path) => {
+                            if (!path.startsWith('http://') && !path.startsWith('https://') && !path.startsWith('data:') && !path.startsWith('//')) {
+                                try {
+                                    return `url("${new URL(path, siteUrl).href}")`;
+                                } catch (e) {
+                                    return match;
+                                }
+                            }
+                            return match;
+                        });
+                    }
                     return `"${prop}": "${cleanVal}"`;
                 }).filter(Boolean);
                 if (!entries.length) return '';
@@ -225,85 +276,348 @@ def extract_site_data(url, temp_dir):
                 'stroke-linecap': 'strokeLinecap',
                 'stroke-linejoin': 'strokeLinejoin'
             };
-            
-            const nodeToJSX = (el, secType, depth = 0) => {
+
+            const getSocialPlatform = (href, cls, title, aria) => {
+                const text = `${href || ''} ${cls || ''} ${title || ''} ${aria || ''}`.toLowerCase();
+                if (text.includes('github.com') || text.includes('github')) return 'github';
+                if (text.includes('linkedin.com') || text.includes('linkedin')) return 'linkedin';
+                if (text.includes('twitter.com') || text.includes('x.com')) return 'twitter';
+                if (text.includes('mailto:') || text.includes('email') || text.includes('mail')) return 'email';
+                if (text.includes('whatsapp') || text.includes('wa.me')) return 'whatsapp';
+                if (text.includes('instagram.com')) return 'instagram';
+                if (text.includes('discord.gg') || text.includes('discord')) return 'discord';
+                if (text.includes('youtube.com')) return 'youtube';
+                return null;
+            };
+
+            let heroAvatarFound = false;
+            let projectGridMatched = false;
+            let expMatched = false;
+            let aboutBioReplaced = false;
+
+            const nodeToJSX = (el, secType, depth = 0, isLoopItem = false, loopVar = '', isLoopItemRoot = false) => {
                 if (el.nodeType === 3) {
                     const t = el.textContent.trim();
                     if (!t) return '';
                     return t.replace(/[{}]/g, '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 }
                 if (el.nodeType !== 1) return '';
-                
                 const tag = el.tagName.toLowerCase();
                 if (['script', 'noscript', 'iframe', 'canvas', 'video', 'audio'].includes(tag)) return '';
-                
-                if (tag === 'svg') {
-                    return `<span className="inline-flex items-center">✦</span>`;
-                }
-                
-                let attrs = '';
-                // Safely extract className
+
                 let cls = '';
                 if (typeof el.className === 'string') cls = el.className;
                 else if (el.className && typeof el.className.baseVal === 'string') cls = el.className.baseVal;
                 else cls = el.getAttribute('class') || '';
-                
-                if (cls && !cls.includes('[object')) attrs += ` className="${cls}"`;
-                
-                if (depth === 0) {
-                    attrs += ` id={sectionId}`;
-                } else if (el.id) {
-                    attrs += ` id="${el.id}"`;
+
+                // Social Link Detection with real BrandIcons (Never leak author social profile URLs)
+                if (tag === 'a') {
+                    const href = el.getAttribute('href') || '';
+                    const platform = getSocialPlatform(href, cls, el.getAttribute('title'), el.getAttribute('aria-label'));
+                    if (platform) {
+                        const cleanCls = cls && !cls.includes('[object') ? ` className="${cls}"` : '';
+                        return `<a href={data?.socials?.${platform} || "#"} target="_blank" rel="noreferrer" onClick={(e) => { if (isEditMode) { e.preventDefault(); setIsSocialModalOpen(true); } }}${cleanCls} title="${platform}">{getSocialIcon("${platform}", "w-5 h-5")}</a>`;
+                    }
+                    if (href.includes('resume') || el.textContent.toLowerCase().includes('resume') || el.textContent.toLowerCase().includes('résumé')) {
+                        const cleanCls = cls && !cls.includes('[object') ? ` className="${cls}"` : '';
+                        return `<a href={data?.resumeUrl || "#"} target="_blank" rel="noreferrer"${cleanCls}>{Array.from(el.childNodes).map(c => nodeToJSX(c, secType, depth + 1, isLoopItem, loopVar, false)).filter(Boolean).join(' ')}</a>`;
+                    }
+                    if (href.includes('archive')) {
+                        const cleanCls = cls && !cls.includes('[object') ? ` className="${cls}"` : '';
+                        return `<a href={data?.githubUrl || "#projects"}${cleanCls}>{Array.from(el.childNodes).map(c => nodeToJSX(c, secType, depth + 1, isLoopItem, loopVar, false)).filter(Boolean).join(' ')}</a>`;
+                    }
                 }
-                
+
+                // Interactive Avatar / Profile Photo in Hero
+                if (secType === 'hero' && tag === 'img') {
+                    const rawSrc = el.getAttribute('src') || '';
+                    const alt = (el.getAttribute('alt') || '').toLowerCase();
+                    const isProfileOrAvatar = alt.includes('avatar') || alt.includes('profile') || alt.includes('author') || rawSrc.includes('profile') || rawSrc.includes('avatar') || !heroAvatarFound;
+                    if (isProfileOrAvatar) {
+                        heroAvatarFound = true;
+                        let absSrc = rawSrc;
+                        if (rawSrc && !rawSrc.startsWith('http://') && !rawSrc.startsWith('https://') && !rawSrc.startsWith('data:') && !rawSrc.startsWith('//')) {
+                            try { absSrc = new URL(rawSrc, siteUrl).href; } catch (e) {}
+                        }
+                        const fallbackUrl = absSrc || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80";
+                        const cleanCls = cls && !cls.includes('[object') ? ` className="${cls} object-cover"` : ' className="object-cover"';
+                        const styleAttr = el.getAttribute('style');
+                        const styleProp = styleAttr ? styleToJsx(styleAttr) : '';
+                        return `<div className="relative group/avatar cursor-pointer inline-block" onClick={() => isEditMode && setIsImagePickerOpen(true)}><img${cleanCls}${styleProp} src={displayAvatar || "${fallbackUrl}"} alt={data?.name || "Avatar"} />{isEditMode && (<div className="absolute inset-0 bg-black/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center rounded-inherit z-20"><RiCameraLine className="w-6 h-6 text-white" /></div>)}</div>`;
+                    }
+                }
+
+                if (tag === 'svg') return `<span className="inline-flex items-center">✦</span>`;
+
+                // Neutralize external form submission endpoints
+                if (tag === 'form') {
+                    return `<form id={sectionId} onSubmit={(e) => e.preventDefault()} className="${cls}">${Array.from(el.childNodes).map(c => nodeToJSX(c, secType, depth + 1, isLoopItem, loopVar, false)).filter(Boolean).join(' ')}</form>`;
+                }
+
+                // Dynamic Project Cards Loop Container (Single-Item Templating)
+                if (secType === 'projects' && !isLoopItem && !projectGridMatched && el.children.length >= 1) {
+                    const childrenArray = Array.from(el.children);
+                    const areCards = childrenArray.some(c => {
+                        const cCls = (c.className || '').toLowerCase();
+                        return cCls.includes('card') || cCls.includes('proj') || cCls.includes('item') || c.tagName === 'LI' || c.querySelector('h3, h4');
+                    });
+                    if (areCards) {
+                        projectGridMatched = true;
+                        let containerAttrs = '';
+                        if (cls && !cls.includes('[object')) containerAttrs += ` className="${cls}"`;
+                        const styleAttr = el.getAttribute('style');
+                        if (styleAttr) containerAttrs += styleToJsx(styleAttr);
+                        
+                        const firstCard = el.children[0];
+                        const cardJsx = nodeToJSX(firstCard, secType, depth + 1, true, 'project', true);
+                        return `<${tag}${containerAttrs}>{\\nprojectList.map((project, idx) => (\\n  ${cardJsx}\\n))\\n}</${tag}>`;
+                    }
+                }
+
+                // Dynamic Experience Work Item Container (Single-Item Templating on OL/UL or Cards)
+                if (secType === 'experience' && !isLoopItem && !expMatched && el.children.length >= 1) {
+                    const isList = (tag === 'ol' || tag === 'ul') || Array.from(el.children).some(c => {
+                        const cCls = (c.className || '').toLowerCase();
+                        return cCls.includes('mb-') || cCls.includes('card') || cCls.includes('item') || c.tagName === 'LI' || c.querySelector('h3');
+                    });
+                    if (isList) {
+                        expMatched = true;
+                        let containerAttrs = '';
+                        if (cls && !cls.includes('[object')) containerAttrs += ` className="${cls}"`;
+                        const styleAttr = el.getAttribute('style');
+                        if (styleAttr) containerAttrs += styleToJsx(styleAttr);
+
+                        const firstItem = el.children[0];
+                        const itemJsx = nodeToJSX(firstItem, secType, depth + 1, true, 'exp', true);
+                        return `<${tag}${containerAttrs}>{\\nexpList.map((exp, idx) => (\\n  ${itemJsx}\\n))\\n}</${tag}>`;
+                    }
+                }
+
+                let attrs = '';
+                if (isLoopItemRoot) {
+                    attrs += ` key={${loopVar}?.id || idx}`;
+                }
+                if (depth === 0) {
+                    let sectionClass = cls
+                        .replace(/\bpy-\d+\b/g, '')
+                        .replace(/\bpx-\d+\b/g, '')
+                        .replace(/\bmin-h-screen\b/g, '')
+                        .trim();
+                    attrs += ` className={\`relative \${isMobileViewport ? 'py-8 px-4' : 'py-20 md:py-28 px-6 md:px-12'} overflow-hidden max-w-full ${sectionClass}\`}`;
+                    attrs += ` id={sectionId}`;
+                } else {
+                    if (cls && !cls.includes('[object')) {
+                        let safeCls = cls.replace(/\bgrid-cols-([2-6])\b(?![a-zA-Z0-9_-])/g, (match, n) => {
+                            const num = parseInt(n);
+                            if (num === 2) return 'grid-cols-1 md:grid-cols-2';
+                            if (num === 3) return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3';
+                            if (num >= 4) return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
+                            return match;
+                        });
+                        attrs += ` className="${safeCls}"`;
+                    }
+                    if (el.id && !isLoopItem) attrs += ` id="${el.id}"`;
+                }
+
                 const styleAttr = el.getAttribute('style');
                 if (styleAttr) attrs += styleToJsx(styleAttr);
-                
+
                 for (let i = 0; i < el.attributes.length; i++) {
                     const a = el.attributes[i];
                     const rawName = a.name.toLowerCase();
                     if (!['class', 'id', 'style'].includes(rawName) && !rawName.startsWith('on')) {
+                        let val = a.value.trim();
+                        const lowerVal = val.toLowerCase();
+                        if (lowerVal.startsWith('javascript:') || lowerVal.startsWith('vbscript:') || lowerVal.startsWith('data:text/html')) continue;
+                        if ((rawName === 'src' || rawName === 'href' || rawName === 'poster') && !val.startsWith('http://') && !val.startsWith('https://') && !val.startsWith('data:') && !val.startsWith('#') && !val.startsWith('mailto:') && !val.startsWith('tel:') && !val.startsWith('//')) {
+                            try { val = new URL(val, siteUrl).href; } catch (e) {}
+                        }
+                        if (rawName === 'srcset') {
+                            val = val.split(',').map(part => {
+                                const pieces = part.trim().split(/\\s+/);
+                                const urlPart = pieces[0];
+                                const descriptor = pieces.slice(1).join(' ');
+                                if (urlPart && !urlPart.startsWith('http://') && !urlPart.startsWith('https://') && !urlPart.startsWith('data:') && !urlPart.startsWith('//')) {
+                                    try {
+                                        const abs = new URL(urlPart, siteUrl).href;
+                                        return descriptor ? `${abs} ${descriptor}` : abs;
+                                    } catch (e) { return part; }
+                                }
+                                return part;
+                            }).join(', ');
+                        }
                         const jsxName = attrMap[rawName] || rawName;
-                        const safeVal = a.value.replace(/"/g, '&quot;').replace(/[{}]/g, '');
+                        const safeVal = val.replace(/"/g, '&quot;').replace(/[{}]/g, '');
                         attrs += ` ${jsxName}="${safeVal}"`;
                     }
                 }
-                
-                if (selfClosing.has(tag)) return `<${tag}${attrs} />`;
-                
-                // Parameterize key headings
-                if (secType === 'hero' && (tag === 'h1' || (cls && cls.includes('hero-role')) || (depth <= 2 && tag === 'h2'))) {
-                    const text = el.textContent.trim().replace(/[{}"']/g, '');
-                    return `<${tag}${attrs}><EditableText value={data?.name || '${text || "Your Name"}'} as="${tag}" /></${tag}>`;
+
+                // Automatic Responsive & UX fail-safes
+                if (['h1', 'h2', 'h3', 'h4', 'h5'].includes(tag)) {
+                    if (attrs.includes('className="')) {
+                        attrs = attrs.replace('className="', 'className="break-words max-w-full ');
+                    } else {
+                        attrs += ' className="break-words max-w-full"';
+                    }
                 }
-                if (['about', 'skills', 'projects', 'experience'].includes(secType) && (tag === 'h2' || tag === 'h3') && depth <= 3) {
+                if (tag === 'img' && !attrs.includes('max-w-full')) {
+                    if (attrs.includes('className="')) {
+                        attrs = attrs.replace('className="', 'className="max-w-full h-auto ');
+                    } else {
+                        attrs += ' className="max-w-full h-auto"';
+                    }
+                }
+                if (isLoopItemRoot && !attrs.includes('max-w-full')) {
+                    if (attrs.includes('className="')) {
+                        attrs = attrs.replace('className="', 'className="max-w-full break-words ');
+                    } else {
+                        attrs += ' className="max-w-full break-words"';
+                    }
+                }
+
+                if (selfClosing.has(tag)) return `<${tag}${attrs} />`;
+
+                // Bindings inside Project Card
+                if (isLoopItem && loopVar === 'project') {
+                    if (tag === 'img') {
+                        const cleanCls = cls && !cls.includes('[object') ? ` className="${cls} aspect-video object-cover"` : ' className="aspect-video object-cover"';
+                        return `<img${cleanCls} src={project?.imageUrl || project?.image || "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=640&q=80"} alt={project?.title || "Project"} loading="lazy" />`;
+                    }
+                    if (tag === 'a') {
+                        const cleanCls = cls && !cls.includes('[object') ? ` className="${cls}"` : '';
+                        return `<a href={project?.liveUrl || project?.githubUrl || "#"} target="_blank" rel="noreferrer"${cleanCls}>${Array.from(el.childNodes).map(c => nodeToJSX(c, secType, depth + 1, isLoopItem, loopVar, false)).filter(Boolean).join(' ')}</a>`;
+                    }
+                    if (['h2', 'h3', 'h4', 'h5'].includes(tag)) {
+                        return `<${tag}${attrs}><EditableText value={project?.title || project?.name || 'Project Title'} as="${tag}" /></${tag}>`;
+                    }
+                    if (tag === 'p' && el.textContent.length > 20) {
+                        return `<${tag}${attrs}>{project?.description || project?.desc || ''}</${tag}>`;
+                    }
+                    if (el.children.length >= 2 && Array.from(el.children).every(c => c.tagName === 'SPAN' || c.tagName === 'LI')) {
+                        const firstBadge = el.children[0];
+                        let badgeAttrs = firstBadge.className ? ` className="${firstBadge.className}"` : '';
+                        const bStyle = firstBadge.getAttribute('style');
+                        if (bStyle) badgeAttrs += styleToJsx(bStyle);
+                        return `<${tag}${attrs}>{((Array.isArray(project?.tags) && project.tags.length > 0) ? project.tags : (Array.isArray(project?.technologies) ? project.technologies : [])).map((tag, tIdx) => (\\n  <span key={tIdx}${badgeAttrs}>{tag}</span>\\n))}</${tag}>`;
+                    }
+                }
+
+                // Bindings inside Experience Card
+                if (isLoopItem && loopVar === 'exp') {
+                    if (tag === 'a') {
+                        const cleanCls = cls && !cls.includes('[object') ? ` className="${cls}"` : '';
+                        return `<a href={exp?.companyUrl || "#"} target="_blank" rel="noreferrer"${cleanCls}>${Array.from(el.childNodes).map(c => nodeToJSX(c, secType, depth + 1, isLoopItem, loopVar, false)).filter(Boolean).join(' ')}</a>`;
+                    }
+                    if (['h2', 'h3', 'h4'].includes(tag)) {
+                        return `<${tag}${attrs}><EditableText value={exp?.role || 'Software Engineer'} as="${tag}" /></${tag}>`;
+                    }
+                    if (tag === 'span' && (el.textContent.includes('20') || el.textContent.includes('Present') || el.textContent.includes('—'))) {
+                        return `<${tag}${attrs}>{exp?.period || '2024 — Present'}</${tag}>`;
+                    }
+                    if (tag === 'p' && el.className.includes('font-semibold')) {
+                        return `<${tag}${attrs}>{exp?.company || 'Company'}</${tag}>`;
+                    }
+                    if (tag === 'p' && el.textContent.length > 25) {
+                        return `<${tag}${attrs}>{exp?.description || ''}</${tag}>`;
+                    }
+                    if (el.children.length >= 2 && Array.from(el.children).every(c => c.tagName === 'SPAN' || c.tagName === 'LI')) {
+                        const firstBadge = el.children[0];
+                        let badgeAttrs = firstBadge.className ? ` className="${firstBadge.className}"` : '';
+                        const bStyle = firstBadge.getAttribute('style');
+                        if (bStyle) badgeAttrs += styleToJsx(bStyle);
+                        return `<${tag}${attrs}>{((Array.isArray(exp?.technologies) && exp.technologies.length > 0) ? exp.technologies : (Array.isArray(exp?.tags) ? exp.tags : [])).map((tech, tIdx) => (\\n  <span key={tIdx}${badgeAttrs}>{tech}</span>\\n))}</${tag}>`;
+                    }
+                }
+
+                // Parameterize Hero key headings, role, and tagline
+                if (secType === 'hero') {
+                    if (tag === 'h1') {
+                        return `<${tag}${attrs}><EditableText value={data?.name || 'Your Name'} as="h1" /></${tag}>`;
+                    }
+                    if (tag === 'h2') {
+                        return `<${tag}${attrs}><EditableText value={data?.title || data?.role || 'Full Stack Engineer'} as="h2" /></${tag}>`;
+                    }
+                    if (cls && cls.includes('hero-role')) {
+                        return `<${tag}${attrs}><EditableText value={data?.tagline || 'BUILDER'} as="${tag}" /></${tag}>`;
+                    }
+                    if (tag === 'p' && el.textContent.length > 25) {
+                        return `<${tag}${attrs}><EditableText value={data?.tagline || data?.bio?.[0] || 'Building intelligent systems at the intersection of full-stack engineering and machine learning.'} as="p" /></${tag}>`;
+                    }
+                }
+
+                // Parameterize About bio (first paragraph receives bio, subsequent ones are suppressed)
+                if (secType === 'about' && tag === 'p') {
+                    if (!aboutBioReplaced && el.textContent.length > 20) {
+                        aboutBioReplaced = true;
+                        return `<${tag}${attrs}><EditableText value={bioText} as="p" /></${tag}>`;
+                    } else {
+                        return '';
+                    }
+                }
+
+                // Parameterize section headings
+                if (['about', 'skills', 'projects', 'experience'].includes(secType) && (tag === 'h2' || tag === 'h3') && depth <= 3 && !isLoopItem) {
                     const text = el.textContent.trim().replace(/[{}"']/g, '');
                     return `<${tag}${attrs}><EditableText value={data?.heading || '${text || "Section"}'} as="${tag}" /></${tag}>`;
                 }
-                
-                const children = Array.from(el.childNodes)
-                    .map(c => nodeToJSX(c, secType, depth + 1))
+
+                let children = Array.from(el.childNodes)
+                    .map(c => nodeToJSX(c, secType, depth + 1, isLoopItem, loopVar, false))
                     .filter(Boolean)
                     .join(' ');
-                    
+
+                // In Skills: Inject dynamic categories grid inside the workflow container
+                if (secType === 'skills' && cls.includes('rounded-2xl') && el.querySelector('p')?.textContent.includes('WORKFLOW')) {
+                    const dynamicSkillsGrid = `
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+  {categories.map((cat, cIdx) => (
+    <div key={cat.id || cIdx} className="rounded-xl p-4" style={{ "background": "rgba(255, 255, 255, 0.02)", "border": "1px solid var(--border)" }}>
+      <h4 className="text-xs font-bold tracking-widest uppercase mb-2.5" style={{ "color": "var(--cyan, #00d9ff)", "fontFamily": "DM Mono, monospace" }}>
+        {cat.name}
+      </h4>
+      <div className="flex flex-wrap gap-1.5">
+        {(cat.skills || []).map((skill, sIdx) => (
+          <span key={sIdx} className="text-xs px-2 py-0.5 rounded-full" style={{ "background": "rgba(0, 217, 255, 0.06)", "color": "rgba(0, 217, 255, 0.9)", "border": "1px solid rgba(0, 217, 255, 0.18)", "fontFamily": "DM Mono, monospace" }}>
+            {typeof skill === 'string' ? skill : (skill.name || '')}
+          </span>
+        ))}
+      </div>
+    </div>
+  ))}
+</div>`;
+                    children += dynamicSkillsGrid;
+                }
+
                 return `<${tag}${attrs}>${children}</${tag}>`;
             };
-            
-            // Collect candidates
-            let candidates = Array.from(document.querySelectorAll('section, main > div, article, header, div[id*="hero"], div[id*="about"], div[id*="project"], div[id*="skill"], div[id*="exp"]'))
+
+            // Collect leaf section candidates
+            let allCandidates = Array.from(document.querySelectorAll('section, main > div, article, header, div[id*="hero"], div[id*="about"], div[id*="project"], div[id*="skill"], div[id*="exp"]'))
                 .filter(s => s.textContent.trim().length > 30);
-            
+
+            let candidates = allCandidates.filter(el => !allCandidates.some(other => other !== el && el.contains(other)));
             if (!candidates.length) {
-                candidates = Array.from(document.querySelectorAll('body > div > div, body > div'))
-                    .filter(s => s.textContent.trim().length > 30);
+                candidates = Array.from(document.querySelectorAll('section, body > div > div, body > div')).filter(s => s.textContent.trim().length > 30);
+                candidates = candidates.filter(el => !candidates.some(other => other !== el && el.contains(other)));
             }
 
+            const usedEls = new Set();
             const findSection = (keywords, fallbackIdx) => {
                 for (const el of candidates) {
+                    if (usedEls.has(el)) continue;
                     const id = (el.id || '').toLowerCase();
                     const cls = (typeof el.className === 'string' ? el.className : '').toLowerCase();
-                    const text = (el.textContent || '').slice(0, 150).toLowerCase();
-                    if (keywords.some(k => id.includes(k) || cls.includes(k) || text.includes(k))) {
+                    const h = el.querySelector('h1, h2, h3');
+                    const hText = (h ? h.textContent : '').toLowerCase();
+                    const textSample = (el.textContent || '').slice(0, 150).toLowerCase();
+                    if (keywords.some(k => id.includes(k) || cls.includes(k) || hText.includes(k) || textSample.includes(k))) {
+                        usedEls.add(el);
+                        return el;
+                    }
+                }
+                for (const el of candidates) {
+                    if (!usedEls.has(el)) {
+                        usedEls.add(el);
                         return el;
                     }
                 }
@@ -312,28 +626,38 @@ def extract_site_data(url, temp_dir):
 
             const matched = {
                 hero: findSection(['hero', 'intro', 'banner', 'header'], 0),
-                about: findSection(['about', 'bio', 'profile', 'story', 'who'], 1),
-                skills: findSection(['skill', 'stack', 'tech', 'tool', 'expertise'], 2),
-                projects: findSection(['project', 'work', 'showcase', 'portfolio', 'featured'], 3),
-                experience: findSection(['experience', 'career', 'history', 'timeline', 'journey'], 4),
+                projects: findSection(['project', 'work', 'showcase', 'portfolio', 'featured'], 1),
+                about: findSection(['about', 'bio', 'who i am', 'who', 'profile', 'story'], 2),
+                experience: findSection(['experience', 'education', 'career', 'history', 'timeline', 'journey'], 3),
+                skills: findSection(['skill', 'stack', 'tech', 'tool', 'expertise', 'workflow', 'identity'], 4),
             };
-            
+
             const results = {};
             ['hero', 'about', 'skills', 'projects', 'experience'].forEach((key) => {
                 const secEl = matched[key];
                 if (secEl) {
-                    results[key] = nodeToJSX(secEl, key);
+                    let jsx = nodeToJSX(secEl, key);
+                    // GUARANTEE: Every Hero MUST contain an interactive profile photo / avatar at the top
+                    if (key === 'hero' && !heroAvatarFound) {
+                        const avatarSnippet = `\\n<div className="mb-6 flex justify-center sm:justify-start">\\n  <div className="relative group/avatar cursor-pointer inline-block" onClick={() => isEditMode && setIsImagePickerOpen(true)}>\\n    <img className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-2 shadow-xl transition-all duration-300 group-hover/avatar:scale-105" style={{ "borderColor": "var(--cyan, var(--theme-accent, #00d9ff))" }} src={displayAvatar || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"} alt={data?.name || "Avatar"} />\\n    {isEditMode && (\\n      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center rounded-full z-20">\\n        <RiCameraLine className="w-6 h-6 text-white" />\\n      </div>\\n    )}\\n  </div>\\n</div>`;
+                        const firstClose = jsx.indexOf('>');
+                        if (firstClose !== -1) {
+                            jsx = jsx.slice(0, firstClose + 1) + avatarSnippet + jsx.slice(firstClose + 1);
+                        }
+                    }
+                    results[key] = jsx;
                 } else {
                     results[key] = `<section id={sectionId} className="py-20 px-6 max-w-5xl mx-auto"><h2><EditableText value={data?.heading || "Section"} as="h2" /></h2></section>`;
                 }
             });
-            
+
             return results;
-        }""")
+        }""", url)
 
         browser.close()
 
     return {
+        "url": url,
         "title": title,
         "description": meta_desc,
         "computed_styles": computed_styles,
@@ -465,7 +789,105 @@ Generate a JSON response (VALID RAW JSON ONLY, NO MARKDOWN BACKTICKS, NO PREAMBL
         jsx_body = raw_comps.get(sec_key, "")
         if not jsx_body:
             jsx_body = f'<section id={{sectionId}} className="py-20 px-6 max-w-5xl mx-auto"><h2><EditableText value={{data?.heading || "{sec_key.capitalize()}"}} as="h2" /></h2></section>'
-        components[sec_key] = f"export const TempComponent = ({{ data = {{}}, sectionId }}) => {{\n  const {{ updateSectionField }} = usePortfolio();\n  return (\n    {jsx_body}\n  );\n}};"
+        
+        if sec_key == 'hero':
+            modals_code = """
+      {isImagePickerOpen && (
+        <ImagePickerModal
+          isOpen={isImagePickerOpen}
+          onClose={() => setIsImagePickerOpen(false)}
+          onSave={(url) => updateSectionField(sectionId, 'avatar', url)}
+          currentImage={displayAvatar}
+        />
+      )}
+      {isSocialModalOpen && (
+        <SocialLinksModal
+          isOpen={isSocialModalOpen}
+          onClose={() => setIsSocialModalOpen(false)}
+          socials={data?.socials || {}}
+          onSave={(newSocials) => updateSectionField(sectionId, 'socials', newSocials)}
+        />
+      )}"""
+            components[sec_key] = f"""export const TempComponent = ({{ data = {{}}, sectionId }}) => {{
+  const {{ updateSectionField, isEditMode, effectiveAvatar, githubUsername, isMobileViewport }} = usePortfolio();
+  const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
+  const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
+  const isUnsplash = !data?.avatar || data.avatar.includes('unsplash.com');
+  const displayAvatar = isUnsplash
+    ? (effectiveAvatar || (githubUsername ? `https://github.com/${{githubUsername}}.png` : ''))
+    : data.avatar;
+  return (
+    <>
+      {jsx_body}
+{modals_code}
+    </>
+  );
+}};"""
+        elif sec_key == 'projects':
+            fb_proj = json.dumps(data.get("mockData", {}).get("projects", {}).get("items", [
+                {"title": "CommodityChain", "description": "Real-time commodity intelligence platform with live prices, AI-driven insights, interactive charts, correlation analytics, and India-focused macroeconomic data for traders.", "tags": ["Next.js 14", "FastAPI", "WebSockets", "D3.js"]},
+                {"title": "Dollar Hegemony", "description": "ML-driven study of USD dominance using a custom Dollar Supremacy Index built from macro indicators, with XGBoost + stacked LSTM + Temporal Transformer ensemble.", "tags": ["Python", "XGBoost", "LSTM", "MLOps"]},
+                {"title": "India Banking Dashboard", "description": "Financial analytics dashboard comparing 10 Indian banks across FY 2020–2024 — tracks NPA recovery, profit growth, ROA/ROE with AI-generated sector insights.", "tags": ["React", "FastAPI", "Groq LLaMA", "Docker"]}
+            ]), indent=2)
+            components[sec_key] = f"""export const TempComponent = ({{ data = {{}}, sectionId }}) => {{
+  const {{ updateSectionField, isEditMode, isMobileViewport }} = usePortfolio();
+  const fallbackProjects = {fb_proj};
+  const projectList = (Array.isArray(data?.projects) && data.projects.length > 0)
+    ? data.projects
+    : (Array.isArray(data?.items) && data.items.length > 0 ? data.items : fallbackProjects);
+  return (
+    {jsx_body}
+  );
+}};"""
+        elif sec_key == 'experience':
+            fb_exp = json.dumps(data.get("mockData", {}).get("experience", {}).get("items", [
+                {"role": "Backend & API Design Intern", "company": "AuthBridge Technologies", "period": "DEC 20, 2025 — FEB 26, 2026", "description": "Worked on backend API architecture, auth flows, and system design for enterprise-grade identity & access management solutions.", "technologies": ["Node.js", "REST APIs", "OAuth2", "System Design", "JWT", "PostgreSQL"]}
+            ]), indent=2)
+            components[sec_key] = f"""export const TempComponent = ({{ data = {{}}, sectionId }}) => {{
+  const {{ updateSectionField, isEditMode, isMobileViewport }} = usePortfolio();
+  const fallbackExp = {fb_exp};
+  const expList = (Array.isArray(data?.items) && data.items.length > 0)
+    ? data.items
+    : (Array.isArray(data?.experience) && data.experience.length > 0 ? data.experience : fallbackExp);
+  return (
+    {jsx_body}
+  );
+}};"""
+        elif sec_key == 'about':
+            components[sec_key] = f"""export const TempComponent = ({{ data = {{}}, sectionId }}) => {{
+  const {{ updateSectionField, isEditMode, isMobileViewport }} = usePortfolio();
+  const fallbackBio = "I'm a software engineer building at the intersection of full-stack systems and machine learning. I care deeply about clean architecture, meaningful products, and open-source collaboration.";
+  const bioText = Array.isArray(data?.bio) ? data.bio.join('\\n\\n') : (data?.bio || data?.description || fallbackBio);
+  return (
+    {jsx_body}
+  );
+}};"""
+        elif sec_key == 'skills':
+            fb_skills = json.dumps(data.get("mockData", {}).get("skills", {}).get("categories", [
+                {"name": "Frontend", "skills": ["React", "Next.js", "Tailwind CSS", "TypeScript"]},
+                {"name": "Backend & Systems", "skills": ["Python", "FastAPI", "Node.js", "PostgreSQL", "WebSockets"]},
+                {"name": "ML & Data", "skills": ["PyTorch", "XGBoost", "LSTM", "D3.js"]},
+                {"name": "Tools & DevOps", "skills": ["Docker", "Git", "Linux", "CI/CD"]}
+            ]), indent=2)
+            components[sec_key] = f"""export const TempComponent = ({{ data = {{}}, sectionId }}) => {{
+  const {{ updateSectionField, isEditMode, isMobileViewport, setViewMode }} = usePortfolio();
+  const fallbackCategories = {fb_skills};
+  const categories = (Array.isArray(data?.categories) && data.categories.length > 0)
+    ? data.categories
+    : (Array.isArray(data?.skills) && data.skills.length > 0
+        ? [{{ name: "Technologies", skills: data.skills }}]
+        : fallbackCategories);
+  return (
+    {jsx_body}
+  );
+}};"""
+        else:
+            components[sec_key] = f"""export const TempComponent = ({{ data = {{}}, sectionId }}) => {{
+  const {{ updateSectionField, isEditMode, isMobileViewport }} = usePortfolio();
+  return (
+    {jsx_body}
+  );
+}};"""
 
     data["components"] = components
     data["css"] = site_data.get("extracted_css", "")
@@ -499,24 +921,19 @@ def sanitize_component_code(raw_code, comp_name):
     body_lines = []
     for line in lines:
         stripped = line.strip()
-        if stripped.startswith("import ") and ("react" in stripped.lower() or "editabletext" in stripped.lower() or "useportfolio" in stripped.lower()):
+        if stripped.startswith("import ") and any(k in stripped.lower() for k in ["react", "editabletext", "useportfolio", "brandicons", "imagepicker", "sociallinks", "ricameraline"]):
             continue
         body_lines.append(line)
 
-    header = """import React from 'react';
+    header = """import React, { useState } from 'react';
 import { EditableText } from '../../common/EditableText';
 import { usePortfolio } from '../../../context/PortfolioContext';
+import { getSocialIcon } from '../../common/BrandIcons';
+import { ImagePickerModal } from '../../common/ImagePickerModal';
+import { SocialLinksModal } from '../../common/SocialLinksModal';
+import { RiCameraLine } from 'react-icons/ri';
 """
-    full_body = "\n".join(body_lines)
-    if "updateSectionField" in full_body and "usePortfolio(" not in full_body:
-        full_body = re.sub(
-            rf"(export\s+const\s+{comp_name}\s*=\s*\([^\)]*\)\s*=>\s*\{{)",
-            r"\1\n  const { updateSectionField } = usePortfolio();",
-            full_body,
-            count=1
-        )
-
-    return header + "\n" + full_body
+    return header + "\n" + "\n".join(body_lines)
 
 def inject_template_into_project(gen_data, site_data, template_slug, pascal_name):
     """
@@ -553,17 +970,99 @@ def inject_template_into_project(gen_data, site_data, template_slug, pascal_name
             file_path.write_text(clean_code, encoding="utf-8")
             print(f"   ✓ Créé & Sécurisé : frontend/src/components/portfolio/sections/{filename}")
 
-    # 2. Write Scoped CSS with Google Fonts @import & Scoped Selectors
+    # 2. Write Clean, Strictly Scoped CSS with Google Fonts @import & Component Classes
     font_imports = ""
     for link in site_data.get("computed_styles", {}).get("fontLinks", []):
         if link not in font_imports:
             font_imports += f"@import url('{link}');\n"
 
+    # A. Strip any dangerous cursor hiding rules immediately
+    safe_css = re.sub(r'cursor\s*:\s*(?:none|hidden)\s*;?', '', css)
+
+    # B. Extract all @keyframes rules to hoist them globally
+    keyframes = re.findall(r'@keyframes\s+[\w-]+\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', safe_css)
+    kf_block = "\n\n".join(keyframes)
+
+    # C. Scoped variables and custom component classes
+    palette = theme.get("palette", {})
+    scoped_vars = f"""[data-theme="{template_slug}"], .theme-{template_slug} {{
+  --bg: {palette.get('bg', '#0a0d14')};
+  --bg-card: {palette.get('surface', 'rgba(255, 255, 255, 0.03)')};
+  --text-primary: {palette.get('textPrimary', '#f8fafc')};
+  --text-secondary: {palette.get('textSecondary', '#94a3b8')};
+  --text-muted: #64748b;
+  --cyan: {palette.get('accent', '#00d9ff')};
+  --cyan-muted: {palette.get('accentGlow', 'rgba(0, 217, 255, 0.15)')};
+  --border: {palette.get('border', 'rgba(255, 255, 255, 0.08)')};
+  --shadow-glow: 0 0 20px {palette.get('accentGlow', 'rgba(0, 217, 255, 0.25)')};
+  --glass-bg: rgba(10, 13, 20, 0.7);
+  --glass-blur: 16px;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}}
+
+[data-theme="{template_slug}"] *, .theme-{template_slug} * {{
+  box-sizing: border-box;
+}}
+
+[data-theme="{template_slug}"] img, .theme-{template_slug} img {{
+  max-width: 100%;
+  height: auto;
+}}"""
+
+    custom_rules = f"""
+[data-theme="{template_slug}"] .proj-card,
+.theme-{template_slug} .proj-card {{
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}}
+
+[data-theme="{template_slug}"] .proj-card:hover,
+.theme-{template_slug} .proj-card:hover {{
+  transform: translateY(-4px);
+  border-color: rgba(0, 217, 255, 0.35) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 217, 255, 0.15);
+}}
+
+[data-theme="{template_slug}"] .dot-pill,
+.theme-{template_slug} .dot-pill {{
+  transition: all 0.35s ease;
+}}
+
+[data-theme="{template_slug}"] .hero-role,
+.theme-{template_slug} .hero-role {{
+  background: linear-gradient(90deg, #f59e0b, #00d9ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: block;
+}}
+
+[data-theme="{template_slug}"] .stars-bg,
+.theme-{template_slug} .stars-bg {{
+  background-image: radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.3) 0px, transparent 100%),
+                    radial-gradient(1px 1px at 80% 10%, rgba(255, 255, 255, 0.2) 0px, transparent 100%),
+                    radial-gradient(1px 1px at 50% 60%, rgba(255, 255, 255, 0.15) 0px, transparent 100%);
+}}
+
+[data-theme="{template_slug}"] .glass,
+.theme-{template_slug} .glass {{
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border);
+}}
+
+[data-theme="{template_slug}"] .cyan-glow,
+.theme-{template_slug} .cyan-glow {{
+  text-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
+}}
+"""
+
     css_filename = f"{template_slug}-theme.css"
     css_file_path = sections_dir / css_filename
-    css_content = f"/* Auto-generated Scoped Styles for {theme.get('name', template_slug)} */\n{font_imports}\n{css}\n"
+    css_content = f"/* Auto-generated Scoped Styles for {theme.get('name', template_slug)} */\n{font_imports}\n\n{kf_block}\n\n{scoped_vars}\n\n{custom_rules}\n"
     css_file_path.write_text(css_content, encoding="utf-8")
-    print(f"   ✓ Créé : frontend/src/components/portfolio/sections/{css_filename} (avec polices réelles)")
+    print(f"   ✓ Créé : frontend/src/components/portfolio/sections/{css_filename} (avec polices réelles et CSS scopé)")
 
     # Inject @import in index.css if not present
     index_css_content = index_css_file.read_text(encoding="utf-8")
