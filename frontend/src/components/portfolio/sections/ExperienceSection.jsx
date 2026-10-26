@@ -1,3 +1,4 @@
+import { MidnightCodeExperience } from './MidnightCodeExperience';
 import { GalacticNoirExperience } from './GalacticNoirExperience';
 import { ModernFullstackExperience } from './ModernFullstackExperience';
 import React from 'react';
@@ -7,7 +8,11 @@ import { usePortfolio } from '../../../context/PortfolioContext';
 import { AdityaDevOpsExperience } from './AdityaDevOpsExperience';
 
 export const ExperienceSection = ({ data, variant = 'timeline', sectionId }) => {
-    if (variant === 'galactic-noir') {
+      if (variant === 'midnight-code') {
+    return <MidnightCodeExperience data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'galactic-noir') {
     return <GalacticNoirExperience data={data} sectionId={sectionId} />;
   }
 

@@ -166,7 +166,7 @@ export const TemplatesTab = ({ onApplyComplete }) => {
                         <div className="w-14 h-14 rounded-full border-2 border-sky-400 p-0.5 bg-slate-900 shrink-0 shadow-lg">
                           <img 
                             src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80" 
-                            alt="Aditya" 
+                            alt="Preview" 
                             className="w-full h-full object-cover rounded-full" 
                           />
                         </div>
@@ -175,10 +175,10 @@ export const TemplatesTab = ({ onApplyComplete }) => {
                             Hello, I am
                           </span>
                           <h4 className="text-lg font-black text-white leading-none">
-                            Aditya Seth
+                            DevOps Engineer
                           </h4>
                           <div className="text-[11px] font-mono text-slate-300 flex items-center gap-1">
-                            <span>DevOps & Cloud Architect</span>
+                            <span>Cloud & Platform Architect</span>
                             <span className="w-1.5 h-3 bg-sky-400 animate-pulse" />
                           </div>
                         </div>

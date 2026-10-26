@@ -78,7 +78,7 @@ export const AdityaDevOpsHero = ({ data, sectionId }) => {
         <div className="relative">
           <EditableText
             as="h1"
-            value={name || "Aditya Seth"}
+            value={name || "Your Name"}
             onSave={(val) => updateSectionField(sectionId, 'name', val)}
             singleLine
             className="text-5xl sm:text-7xl md:text-8xl font-black tracking-tight"

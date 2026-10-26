@@ -10,15 +10,15 @@ import {
 import { getSocialIcon } from './BrandIcons';
 
 export const AVAILABLE_PLATFORMS = [
-  { id: 'github', name: 'GitHub', type: 'social', placeholder: 'ex: aminenahli ou https://github.com/...', prefix: 'https://github.com/' },
-  { id: 'linkedin', name: 'LinkedIn', type: 'social', placeholder: 'ex: aminenahli ou URL du profil', prefix: 'https://linkedin.com/in/' },
-  { id: 'x', name: 'X / Twitter', type: 'social', placeholder: 'ex: @aminenahli ou URL du profil', prefix: 'https://x.com/' },
-  { id: 'whatsapp', name: 'WhatsApp', type: 'messaging', placeholder: 'ex: +212612345678 (avec indicatif)', prefix: 'https://wa.me/' },
-  { id: 'email', name: 'Email', type: 'contact', placeholder: 'ex: contact@aminenahli.dev', prefix: 'mailto:' },
-  { id: 'telegram', name: 'Telegram', type: 'messaging', placeholder: 'ex: aminenahli ou https://t.me/...', prefix: 'https://t.me/' },
-  { id: 'instagram', name: 'Instagram', type: 'social', placeholder: 'ex: aminenahli ou URL du profil', prefix: 'https://instagram.com/' },
+  { id: 'github', name: 'GitHub', type: 'social', placeholder: 'ex: username ou https://github.com/...', prefix: 'https://github.com/' },
+  { id: 'linkedin', name: 'LinkedIn', type: 'social', placeholder: 'ex: username ou URL du profil', prefix: 'https://linkedin.com/in/' },
+  { id: 'x', name: 'X / Twitter', type: 'social', placeholder: 'ex: @username ou URL du profil', prefix: 'https://x.com/' },
+  { id: 'whatsapp', name: 'WhatsApp', type: 'messaging', placeholder: 'ex: +1234567890 (avec indicatif)', prefix: 'https://wa.me/' },
+  { id: 'email', name: 'Email', type: 'contact', placeholder: 'ex: contact@example.dev', prefix: 'mailto:' },
+  { id: 'telegram', name: 'Telegram', type: 'messaging', placeholder: 'ex: username ou https://t.me/...', prefix: 'https://t.me/' },
+  { id: 'instagram', name: 'Instagram', type: 'social', placeholder: 'ex: username ou URL du profil', prefix: 'https://instagram.com/' },
   { id: 'discord', name: 'Discord', type: 'messaging', placeholder: 'ex: pseudo ou discord.gg/invite', prefix: 'https://discord.gg/' },
-  { id: 'phone', name: 'Téléphone', type: 'contact', placeholder: 'ex: +212 6 XX XX XX XX', prefix: 'tel:' },
+  { id: 'phone', name: 'Téléphone', type: 'contact', placeholder: 'ex: +1 (555) 000-0000', prefix: 'tel:' },
   { id: 'youtube', name: 'YouTube', type: 'media', placeholder: 'ex: @chaine ou URL de la chaîne', prefix: 'https://youtube.com/' },
   { id: 'website', name: 'Site Web Personnel', type: 'web', placeholder: 'ex: https://monportfolio.dev', prefix: 'https://' },
 ];

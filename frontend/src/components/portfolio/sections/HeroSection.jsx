@@ -1,3 +1,4 @@
+import { MidnightCodeHero } from './MidnightCodeHero';
 import { GalacticNoirHero } from './GalacticNoirHero';
 import { ModernFullstackHero } from './ModernFullstackHero';
 import React, { useState } from 'react';
@@ -23,7 +24,11 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
     : avatar;
 
   // 1. Split Portrait Variant
-    if (variant === 'galactic-noir') {
+      if (variant === 'midnight-code') {
+    return <MidnightCodeHero data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'galactic-noir') {
     return <GalacticNoirHero data={data} sectionId={sectionId} />;
   }
 
@@ -244,25 +249,43 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
 
           {/* Terminal Content */}
           <div className="p-6 md:p-10 space-y-6 font-mono">
-            <div>
-              <p className="text-xs opacity-60 mb-1" style={{ color: 'var(--theme-text-secondary)' }}>
-                $ whoami
-              </p>
-              <EditableText
-                as="h1"
-                value={name}
-                onSave={(val) => updateSectionField(sectionId, 'name', val)}
-                singleLine
-                className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight block"
-                style={{ color: 'var(--theme-text-primary)', fontFamily: 'var(--theme-heading-font)' }}
-              />
-              <div className="flex items-center gap-1 mt-1 text-lg font-semibold" style={{ color: 'var(--theme-accent)' }}>
-                <span>//</span>
-                <EditableText
-                  value={title}
-                  onSave={(val) => updateSectionField(sectionId, 'title', val)}
-                  singleLine
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div
+                className="relative group/avatar cursor-pointer inline-block shrink-0"
+                onClick={() => isEditMode && setIsImagePickerOpen(true)}
+              >
+                <img
+                  src={displayAvatar}
+                  alt={name}
+                  className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border-2 shadow-md filter saturate-[1.05]"
+                  style={{ borderColor: 'var(--theme-accent)' }}
                 />
+                {isEditMode && (
+                  <div className="absolute inset-0 rounded-xl bg-black/60 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center text-white transition-opacity z-20">
+                    <RiCameraLine className="w-5 h-5 text-white" />
+                  </div>
+                )}
+              </div>
+              <div className="flex-1">
+                <p className="text-xs opacity-60 mb-1" style={{ color: 'var(--theme-text-secondary)' }}>
+                  $ whoami
+                </p>
+                <EditableText
+                  as="h1"
+                  value={name}
+                  onSave={(val) => updateSectionField(sectionId, 'name', val)}
+                  singleLine
+                  className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight block"
+                  style={{ color: 'var(--theme-text-primary)', fontFamily: 'var(--theme-heading-font)' }}
+                />
+                <div className="flex items-center gap-1 mt-1 text-lg font-semibold" style={{ color: 'var(--theme-accent)' }}>
+                  <span>//</span>
+                  <EditableText
+                    value={title}
+                    onSave={(val) => updateSectionField(sectionId, 'title', val)}
+                    singleLine
+                  />
+                </div>
               </div>
             </div>
 
@@ -332,6 +355,16 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
           </div>
         </div>
 
+        {/* Avatar Image Picker Modal */}
+        <ImagePickerModal
+          isOpen={isImagePickerOpen}
+          onClose={() => setIsImagePickerOpen(false)}
+          currentImage={displayAvatar}
+          initialGithubUser={githubUsername || ''}
+          onSave={(newImg) => updateSectionField(sectionId, 'avatar', newImg)}
+          title="Changer la photo de profil"
+        />
+
         {/* Social & Contact Links Modal */}
         <SocialLinksModal
           isOpen={isSocialModalOpen}
@@ -346,6 +379,25 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
   // 3. Minimal Centered Variant (Editorial / Swiss)
   return (
     <section className="relative py-20 md:py-32 px-6 max-w-4xl mx-auto text-center">
+      <div className="flex justify-center mb-6">
+        <div
+          className="relative group/avatar cursor-pointer inline-block"
+          onClick={() => isEditMode && setIsImagePickerOpen(true)}
+        >
+          <img
+            src={displayAvatar}
+            alt={name}
+            className="w-24 h-24 sm:w-28 sm:h-28 rounded-full object-cover border-2 shadow-xl filter saturate-[1.05] transition-all duration-300 group-hover/avatar:scale-105"
+            style={{ borderColor: 'var(--theme-accent)' }}
+          />
+          {isEditMode && (
+            <div className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center text-white transition-opacity z-20">
+              <RiCameraLine className="w-6 h-6 text-white" />
+            </div>
+          )}
+        </div>
+      </div>
+
       {badge && (
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium border mb-6"
              style={{
@@ -441,6 +493,16 @@ export const HeroSection = ({ data, variant = 'split-portrait', sectionId }) => 
           )}
         </div>
       )}
+
+      {/* Avatar Image Picker Modal */}
+      <ImagePickerModal
+        isOpen={isImagePickerOpen}
+        onClose={() => setIsImagePickerOpen(false)}
+        currentImage={displayAvatar}
+        initialGithubUser={githubUsername || ''}
+        onSave={(newImg) => updateSectionField(sectionId, 'avatar', newImg)}
+        title="Changer la photo de profil"
+      />
 
       {/* Social & Contact Links Modal */}
       <SocialLinksModal

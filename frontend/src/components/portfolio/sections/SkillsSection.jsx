@@ -1,3 +1,4 @@
+import { MidnightCodeSkills } from './MidnightCodeSkills';
 import { GalacticNoirSkills } from './GalacticNoirSkills';
 import { ModernFullstackSkills } from './ModernFullstackSkills';
 import React from 'react';
@@ -7,7 +8,11 @@ import { usePortfolio } from '../../../context/PortfolioContext';
 import { AdityaDevOpsSkills } from './AdityaDevOpsSkills';
 
 export const SkillsSection = ({ data, variant = 'category-cards', sectionId }) => {
-    if (variant === 'galactic-noir') {
+      if (variant === 'midnight-code') {
+    return <MidnightCodeSkills data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'galactic-noir') {
     return <GalacticNoirSkills data={data} sectionId={sectionId} />;
   }
 

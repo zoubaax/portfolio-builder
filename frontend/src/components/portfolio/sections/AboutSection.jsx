@@ -1,3 +1,4 @@
+import { MidnightCodeAbout } from './MidnightCodeAbout';
 import { GalacticNoirAbout } from './GalacticNoirAbout';
 import { ModernFullstackAbout } from './ModernFullstackAbout';
 import React from 'react';
@@ -9,7 +10,11 @@ import { AdityaDevOpsAbout } from './AdityaDevOpsAbout';
 export const AboutSection = ({ data, variant = 'bento', sectionId }) => {
   const { updateSectionField, updateSection, isMobileViewport } = usePortfolio();
 
-    if (variant === 'galactic-noir') {
+      if (variant === 'midnight-code') {
+    return <MidnightCodeAbout data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'galactic-noir') {
     return <GalacticNoirAbout data={data} sectionId={sectionId} />;
   }
 

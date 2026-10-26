@@ -15,7 +15,7 @@ export const AdityaDevOpsSkills = ({ data, sectionId }) => {
     {
       title: 'Cloud Architecture & Multi-Cloud',
       icon: 'cloud',
-      desc: 'Google Associate Cloud Engineer, Microsoft Azure, and Oracle Cloud certified. Architected multi-cloud production infrastructure.',
+      desc: 'Enterprise multi-cloud architecture, infrastructure as code, and resilient production cluster design.',
       skills: ['AWS', 'GCP', 'Azure', 'Terraform', 'Kubernetes']
     },
     {

@@ -1,3 +1,4 @@
+import { MidnightCodeProjects } from './MidnightCodeProjects';
 import { GalacticNoirProjects } from './GalacticNoirProjects';
 import { ModernFullstackProjects } from './ModernFullstackProjects';
 import React, { useState } from 'react';
@@ -10,7 +11,11 @@ import { RiCameraLine } from 'react-icons/ri';
 import { AdityaDevOpsProjects } from './AdityaDevOpsProjects';
 
 export const ProjectsSection = ({ data, variant = 'bento-grid', sectionId }) => {
-    if (variant === 'galactic-noir') {
+      if (variant === 'midnight-code') {
+    return <MidnightCodeProjects data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'galactic-noir') {
     return <GalacticNoirProjects data={data} sectionId={sectionId} />;
   }
 

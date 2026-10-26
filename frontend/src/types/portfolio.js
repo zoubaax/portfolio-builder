@@ -4,6 +4,31 @@
  */
 
 export const THEME_PRESETS = {
+  'midnight-code': {
+    id: 'midnight-code',
+    name: 'Midnight Code',
+    description: 'A sleek and modern design with a focus on clarity and elegance.',
+    palette: {
+          "bg": "rgb(15, 23, 42)",
+          "surface": "",
+          "surfaceHover": "#1f2937",
+          "surfaceCard": "",
+          "textPrimary": "rgb(226, 232, 240)",
+          "textSecondary": "rgb(148, 163, 184)",
+          "accent": "rgba(0, 0, 0, 0)",
+          "accentHover": "#00b4d8",
+          "accentGlow": "rgba(0, 217, 255, 0.25)",
+          "border": "0px solid rgb(229, 231, 235)",
+          "borderHover": "rgba(255,255,255,0.2)"
+    },
+    typography: {
+          "headingFont": "__inter_20b187, __inter_Fallback_20b187, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+          "bodyFont": "\"Times New Roman\"",
+          "monoFont": "'JetBrains Mono', monospace",
+          "radius": "0px"
+    }
+  },
+
   'galactic-noir': {
     id: 'galactic-noir',
     name: 'Galactic Noir',
@@ -226,6 +251,32 @@ export const THEME_PRESETS = {
 
 export const GLOBAL_TEMPLATES = [
   {
+      "id": "midnight-code",
+      "name": "Midnight Code",
+      "category": "Minimaliste & \u00c9pur\u00e9",
+      "description": "A sleek and modern design with a focus on clarity and elegance.",
+      "themeId": "midnight-code",
+      "badges": [
+          "Dark Mode",
+          "Minimalist Layout",
+          "Professional Typography",
+          "Clean Aesthetic"
+      ],
+      "previewColors": [
+          "rgb(15, 23, 42)",
+          "rgb(226, 232, 240)",
+          "rgba(0, 0, 0, 0)"
+      ],
+      "sectionVariants": {
+          "hero": "midnight-code",
+          "about": "midnight-code",
+          "skills": "midnight-code",
+          "projects": "midnight-code",
+          "experience": "midnight-code",
+          "contact": "minimal-card"
+      }
+  },
+  {
       "id": "galactic-noir",
       "name": "Galactic Noir",
       "category": "Innovant & Cr\u00e9atif",
@@ -272,7 +323,7 @@ export const GLOBAL_TEMPLATES = [
     id: 'devops-architect',
     name: 'DevOps & Cloud Architect',
     category: 'DevOps & Cloud',
-    description: 'Réplique exacte du portfolio d’Aditya Seth avec animations néon, typewriter, cartes 3D flip et double-colonne carrière.',
+    description: 'Portfolio d’ingénieur DevOps avec animations néon, typewriter, cartes 3D flip et double-colonne carrière.',
     themeId: 'devops-architect',
     badges: ['Typewriter Hero', '4 Stat Cards', '3D Flip Skills', 'Lightbar Projects'],
     previewColors: ['#0a0d14', '#191919', '#38bdf8'],
@@ -819,6 +870,139 @@ export const MOCK_DEVOPS_PORTFOLIO = {
 };
 
 export const TEMPLATE_MOCKS = {
+  'midnight-code': {
+      "meta": {
+          "title": "Midnight Code Portfolio",
+          "slug": "midnight-code",
+          "description": "A sleek and modern design with a focus on clarity and elegance."
+      },
+      "theme": {
+          "id": "midnight-code",
+          "palette": {
+              "bg": "rgb(15, 23, 42)",
+              "surface": "",
+              "surfaceHover": "#1f2937",
+              "surfaceCard": "",
+              "textPrimary": "rgb(226, 232, 240)",
+              "textSecondary": "rgb(148, 163, 184)",
+              "accent": "rgba(0, 0, 0, 0)",
+              "accentHover": "#00b4d8",
+              "accentGlow": "rgba(0, 217, 255, 0.25)",
+              "border": "0px solid rgb(229, 231, 235)",
+              "borderHover": "rgba(255,255,255,0.2)"
+          },
+          "typography": {
+              "headingFont": "__inter_20b187, __inter_Fallback_20b187, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, \"Helvetica Neue\", Arial, \"Noto Sans\", sans-serif, \"Apple Color Emoji\", \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Noto Color Emoji\"",
+              "bodyFont": "\"Times New Roman\"",
+              "monoFont": "'JetBrains Mono', monospace",
+              "radius": "0px"
+          }
+      },
+      "sections": [
+          {
+              "id": "sec-hero",
+              "type": "hero",
+              "variant": "midnight-code",
+              "visible": true,
+              "data": {
+                  "name": "Developer Name",
+                  "title": "Software Engineer",
+                  "tagline": "Building intelligent systems with clean code.",
+                  "badge": "Open to Work",
+                  "primaryCta": {
+                      "text": "Explore Works",
+                      "url": "#projects"
+                  }
+              }
+          },
+          {
+              "id": "sec-about",
+              "type": "about",
+              "variant": "midnight-code",
+              "visible": true,
+              "data": {
+                  "heading": "About Me",
+                  "subheading": "WHO I AM",
+                  "bio": [
+                      "Passionate engineer focusing on robust full-stack architecture."
+                  ],
+                  "stats": [
+                      {
+                          "value": "5+",
+                          "label": "Years Exp"
+                      }
+                  ]
+              }
+          },
+          {
+              "id": "sec-skills",
+              "type": "skills",
+              "variant": "midnight-code",
+              "visible": true,
+              "data": {
+                  "heading": "Skills & Stack",
+                  "categories": [
+                      {
+                          "name": "Core Stack",
+                          "skills": [
+                              "React",
+                              "TypeScript",
+                              "Node.js",
+                              "Python"
+                          ]
+                      }
+                  ]
+              }
+          },
+          {
+              "id": "sec-projects",
+              "type": "projects",
+              "variant": "midnight-code",
+              "visible": true,
+              "data": {
+                  "heading": "Featured Works",
+                  "items": [
+                      {
+                          "title": "Project Alpha",
+                          "description": "High performance scalable web application.",
+                          "tags": [
+                              "React",
+                              "Tailwind"
+                          ],
+                          "demoUrl": "#"
+                      }
+                  ]
+              }
+          },
+          {
+              "id": "sec-experience",
+              "type": "experience",
+              "variant": "midnight-code",
+              "visible": true,
+              "data": {
+                  "heading": "Experience",
+                  "items": [
+                      {
+                          "role": "Lead Engineer",
+                          "company": "Tech Corp",
+                          "period": "2023 - Present",
+                          "description": "Architecture & delivery."
+                      }
+                  ]
+              }
+          },
+          {
+              "id": "sec-contact",
+              "type": "contact",
+              "variant": "minimal-card",
+              "visible": true,
+              "data": {
+                  "email": "hello@example.com",
+                  "heading": "Get In Touch"
+              }
+          }
+      ]
+  },
   'galactic-noir': {
       "meta": {
           "title": "Galactic Noir Portfolio",
@@ -1259,7 +1443,7 @@ export const createFreshPortfolio = (userName = 'Mon Portfolio', defaultAvatar =
           { value: '3+', label: "Années d'expérience" },
           { value: '100%', label: 'Engagement' },
         ],
-        location: 'Maroc',
+        location: 'Remote / Worldwide',
       },
     },
     {
@@ -1314,7 +1498,7 @@ export const createFreshPortfolio = (userName = 'Mon Portfolio', defaultAvatar =
         subheading: 'CONTACT',
         text: 'N’hésitez pas à m’écrire pour toute opportunité, collaboration ou échange technique.',
         email: 'contact@example.com',
-        location: 'Maroc',
+        location: 'Remote / Worldwide',
         buttonText: 'Envoyer un Message',
       },
     },

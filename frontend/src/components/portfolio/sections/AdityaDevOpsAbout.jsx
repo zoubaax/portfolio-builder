@@ -12,9 +12,9 @@ export const AdityaDevOpsAbout = ({ data, sectionId }) => {
   const displayAvatar = avatar || effectiveAvatar || (githubUsername ? `https://github.com/${githubUsername}.png` : 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=500&auto=format&fit=crop&q=80');
 
   const defaultStats = [
-    { value: '2800+', label: 'Students Mentored' },
-    { value: '15+', label: 'Cloud Initiatives' },
-    { value: '8+', label: 'Hackathons Hosted' },
+    { value: '5+', label: 'Years Experience' },
+    { value: '30+', label: 'Projects Shipped' },
+    { value: '100%', label: 'Commitment' },
     { value: '99.9%', label: 'Infrastructure Uptime' }
   ];
 
@@ -76,7 +76,7 @@ export const AdityaDevOpsAbout = ({ data, sectionId }) => {
             ) : (
               <EditableText
                 as="p"
-                value={bio || "Driven by an endless curiosity for solving complex distributed systems problems. Journey in tech spans competitive programming, multi-cloud infrastructure, and production ML pipelines."}
+                value={bio || "Driven by an endless curiosity for building reliable, high-performance systems and intuitive digital experiences. Passionate about modern architecture, cloud technologies, and continuous engineering."}
                 onSave={(val) => updateSectionField(sectionId, 'bio', val)}
                 className="block"
               />

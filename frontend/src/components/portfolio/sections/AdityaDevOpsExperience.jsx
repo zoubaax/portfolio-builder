@@ -12,32 +12,40 @@ export const AdityaDevOpsExperience = ({ data, sectionId }) => {
 
   const defaultEducation = [
     {
-      title: 'MTech CSE - Distributed Systems',
-      subtitle: 'Techno India University | 2025 - Present',
-      desc: 'Research in distributed consensus algorithms, high-throughput cloud messaging, and AI orchestration.'
+      title: 'MSc Computer Science - Distributed Systems',
+      subtitle: 'University of Technology | 2023 - Present',
+      desc: 'Research in distributed consensus algorithms, high-throughput cloud messaging, and container orchestration.'
     },
     {
-      title: 'BTech (Hons) - Computer Science & Engineering',
-      subtitle: 'Techno Main Salt Lake | 2021 - 2025',
-      desc: 'Lead of GDG On-Campus & Technical Lead. Scaled developer community to 1950+ members through hands-on Cloud and DevOps workshops.'
+      title: 'BSc Computer Science & Engineering',
+      subtitle: 'Institute of Technology | 2019 - 2023',
+      desc: 'Active leadership in developer communities, cloud architecture, and DevOps workshops.'
     }
   ];
 
   const defaultExperience = [
     {
-      title: 'Software & AI Initiatives Lead',
-      subtitle: 'Techno India Group | 2024 - Present',
-      desc: 'Architecting enterprise cloud infrastructure, multi-agent AI simulations, and production CI/CD automation pipelines.'
+      title: 'Senior Cloud & Platform Engineer',
+      subtitle: 'Cloud Solutions Inc. | 2023 - Present',
+      desc: 'Architecting enterprise cloud infrastructure, Kubernetes clusters, and production CI/CD automation pipelines.'
     },
     {
-      title: 'Research Engineer',
-      subtitle: 'IIT Roorkee | 2023 - 2024',
-      desc: 'Designed high-concurrency microservices, benchmarked ML models on GPU clusters, and published system design artifacts.'
+      title: 'Systems & DevOps Engineer',
+      subtitle: 'Global Tech Labs | 2021 - 2023',
+      desc: 'Designed high-concurrency microservices, benchmarked cloud architectures, and maintained observability pipelines.'
     }
   ];
 
-  // If items exist, partition them or display gracefully
-  const expItems = items.length > 0 ? items : defaultExperience;
+  // Dynamically resolve education and experience
+  const eduItems = (Array.isArray(data?.education) && data.education.length > 0)
+    ? data.education
+    : defaultEducation;
+
+  const expItems = items.length > 0 
+    ? items 
+    : (Array.isArray(data?.experience) && data.experience.length > 0 
+        ? data.experience 
+        : defaultExperience);
 
   return (
     <section id="resume" className={`${isMobileViewport ? 'py-12 px-4' : 'py-20 px-6 md:px-12'} max-w-6xl mx-auto`}>
@@ -70,17 +78,42 @@ export const AdityaDevOpsExperience = ({ data, sectionId }) => {
           </div>
 
           <div className="space-y-4">
-            {defaultEducation.map((edu, idx) => (
+            {eduItems.map((edu, idx) => (
               <div
                 key={idx}
                 className="aditya-b-box aditya-exp-card p-6"
               >
-                <h4 className="text-base font-bold text-white mb-2">{edu.title}</h4>
+                <h4 className="text-base font-bold text-white mb-2">
+                  <EditableText
+                    value={edu.title}
+                    onSave={(val) => {
+                      const newEdu = [...eduItems];
+                      newEdu[idx] = { ...newEdu[idx], title: val };
+                      updateSectionField(sectionId, 'education', newEdu);
+                    }}
+                    singleLine
+                  />
+                </h4>
                 <div className="inline-block px-2.5 py-1 rounded text-xs font-mono font-medium text-sky-300 bg-sky-500/10 border border-sky-400/20 mb-3">
-                  {edu.subtitle}
+                  <EditableText
+                    value={edu.subtitle}
+                    onSave={(val) => {
+                      const newEdu = [...eduItems];
+                      newEdu[idx] = { ...newEdu[idx], subtitle: val };
+                      updateSectionField(sectionId, 'education', newEdu);
+                    }}
+                    singleLine
+                  />
                 </div>
                 <p className="text-xs sm:text-sm text-slate-300 font-light leading-relaxed">
-                  {edu.desc}
+                  <EditableText
+                    value={edu.desc}
+                    onSave={(val) => {
+                      const newEdu = [...eduItems];
+                      newEdu[idx] = { ...newEdu[idx], desc: val };
+                      updateSectionField(sectionId, 'education', newEdu);
+                    }}
+                  />
                 </p>
               </div>
             ))}
