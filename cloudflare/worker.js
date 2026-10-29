@@ -14,6 +14,40 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;');
 }
 
+/**
+ * Validates external image URLs to prevent Server-Side Request Forgery (SSRF)
+ * Blocks private IP ranges, localhost, AWS/cloud metadata services, and non-HTTPS protocols.
+ */
+function isSafePublicImageUrl(urlStr) {
+  if (!urlStr || typeof urlStr !== 'string') return false;
+  try {
+    const parsed = new URL(urlStr);
+    if (parsed.protocol !== 'https:') return false;
+
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '0.0.0.0' ||
+      host === '169.254.169.254' ||
+      host === '::1' ||
+      host.endsWith('.local') ||
+      host.endsWith('.internal') ||
+      /^10\./.test(host) ||
+      /^192\.168\./.test(host) ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(host) ||
+      /^169\.254\./.test(host) ||
+      !host.includes('.')
+    ) {
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -84,8 +118,10 @@ export default {
       // If not a tenant subdomain or not the root HTML page, return response directly
       if (!tenantSlug || !isHtmlRequest) {
         const responseHeaders = new Headers(response.headers);
-        responseHeaders.set("Access-Control-Allow-Origin", "*");
-        responseHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        if (!responseHeaders.has("Access-Control-Allow-Origin")) {
+          responseHeaders.set("Access-Control-Allow-Origin", "*");
+          responseHeaders.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+        }
 
         return new Response(response.body, {
           status: response.status,
@@ -111,13 +147,12 @@ export default {
           const userTitle = hero.title || "Portfolio";
           ogTitle = `${userName} — ${userTitle}`;
           ogDesc = hero.tagline || hero.bio || schema.meta?.description || ogDesc;
-          if (hero.avatar && typeof hero.avatar === "string" && hero.avatar.startsWith("http")) {
+          if (hero.avatar && typeof hero.avatar === "string" && isSafePublicImageUrl(hero.avatar)) {
             ogImage = hero.avatar;
-            // Resolve 301/302 redirects (e.g. github.com/*.png -> avatars.githubusercontent.com)
-            // WhatsApp crawler strictly drops images that respond with redirects!
+            // Resolve 301/302 redirects safely (SSRF protected)
             try {
               const imgCheck = await fetch(ogImage, { method: "HEAD", redirect: "follow" });
-              if (imgCheck.ok && imgCheck.url) {
+              if (imgCheck.ok && imgCheck.url && isSafePublicImageUrl(imgCheck.url)) {
                 ogImage = imgCheck.url;
               }
             } catch (imgErr) {

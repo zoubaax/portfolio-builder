@@ -20,16 +20,38 @@ app.use(helmet({
 }));
 
 const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:5174',
+  process.env.FRONTEND_URL || 'http://localhost:5173',
   'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+  'https://portfolify.tech',
+  'https://portfoliobuilder-omega.vercel.app',
 ];
+
+const isOriginAllowed = (origin: string): boolean => {
+  if (allowedOrigins.includes(origin)) return true;
+  // Allow tenant subdomains e.g. https://alex.portfolify.tech
+  if (/\.portfolify\.tech$/i.test(origin)) return true;
+  // Allow local development subdomains
+  if (/\.localhost:(5173|5174)$/i.test(origin)) return true;
+  // Allow Vercel preview deployments
+  if (/^https:\/\/portfolio-builder-[a-z0-9-]+-.*\.vercel\.app$/i.test(origin)) return true;
+  // In development environment only, allow local ports
+  if (process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
+    if (/^http:\/\/localhost:\d+$/.test(origin) || /^http:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
+      return true;
+    }
+  }
+  return false;
+};
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.localhost:5174')) {
+    if (!origin || isOriginAllowed(origin)) {
       callback(null, true);
     } else {
-      callback(null, true); // Allow dev origins
+      callback(null, false);
     }
   },
   credentials: true,

@@ -23,17 +23,20 @@ export function parseGitHubUsername(input = '') {
 /**
  * Fetch repositories for a GitHub user (using OAuth token if available, fallback to public API)
  */
-export async function fetchUserRepos(username, userId = '') {
+export async function fetchUserRepos(username, authHeadersOrUserId = '') {
   const cleanUser = parseGitHubUsername(username);
 
   // 1. Try backend endpoint first (uses OAuth access token if linked for 5000 req/hr & private repos)
-  if (userId || cleanUser) {
+  if (authHeadersOrUserId || cleanUser) {
     try {
       const params = new URLSearchParams();
-      if (userId) params.append('userId', userId);
       if (cleanUser) params.append('username', cleanUser);
 
-      const bRes = await fetch(`${API_BASE_URL}/api/v1/github/repos?${params.toString()}`);
+      const headers = typeof authHeadersOrUserId === 'object' && authHeadersOrUserId !== null
+        ? authHeadersOrUserId
+        : {};
+
+      const bRes = await fetch(`${API_BASE_URL}/api/v1/github/repos?${params.toString()}`, { headers });
       if (bRes.ok) {
         const json = await bRes.json();
         if (json.success && Array.isArray(json.data)) {
@@ -218,13 +221,15 @@ export async function fetchRepoReadmeDetails(owner, repo) {
 /**
  * Synthesizes a clean, high-impact title, description, tags, and metric from repository README using LLM
  */
-export async function summarizeProjectAi({ name, owner, language, topics = [], rawDescription = '', readmeContent = '' }) {
+export async function summarizeProjectAi({ name, owner, language, topics = [], rawDescription = '', readmeContent = '' }, authHeaders = null) {
   try {
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(authHeaders || {}),
+    };
     const res = await fetch(`${API_BASE_URL}/api/v1/ai/summarize-project`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({
         name,
         owner,
@@ -258,12 +263,14 @@ export async function summarizeProjectAi({ name, owner, language, topics = [], r
 /**
  * Calls backend to generate AI image for a project via FLUX.1-schnell
  */
-export async function generateProjectImageAi({ title, description, tags = [], currentImageUrl, prompt }) {
+export async function generateProjectImageAi({ title, description, tags = [], currentImageUrl, prompt }, authHeaders = null) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(authHeaders || {}),
+  };
   const res = await fetch(`${API_BASE_URL}/api/v1/ai/generate-project-image`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify({
       title,
       description,

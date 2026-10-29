@@ -28,9 +28,10 @@ export const requireAuth = (req: AuthenticatedRequest, res: Response, next: Next
   }
 
   // 2. Development & Testing Fallback
-  // Allows testing when explicitly in development mode and no Clerk token is sent
+  // Strictly permitted only in local development environment (never in Vercel or production)
+  const isLocalDev = process.env.NODE_ENV === 'development' && !process.env.VERCEL;
   const devMockHeader = req.headers['x-user-id'] as string;
-  if (process.env.NODE_ENV === 'development') {
+  if (isLocalDev) {
     const fallbackId = devMockHeader || 'dev_guest';
     req.auth = { userId: fallbackId };
     return next();

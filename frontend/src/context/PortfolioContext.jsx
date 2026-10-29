@@ -59,6 +59,19 @@ export const PortfolioProvider = ({ children }) => {
     connected: false,
   });
 
+  const getAuthHeaders = useCallback(async () => {
+    let token = null;
+    try {
+      if (getToken) token = await getToken();
+    } catch (e) {}
+
+    return {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(userId ? { 'x-user-id': userId } : { 'x-user-id': 'guest_user' }),
+    };
+  }, [getToken, userId]);
+
   // Query linked GitHub account status from backend Neon DB
   useEffect(() => {
     let isMounted = true;
@@ -66,7 +79,8 @@ export const PortfolioProvider = ({ children }) => {
       const uid = user?.id || userId;
       if (!uid) return;
       try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/github/status?userId=${encodeURIComponent(uid)}`);
+        const headers = await getAuthHeaders();
+        const res = await fetch(`${API_BASE_URL}/api/v1/github/status`, { headers });
         if (res.ok) {
           const json = await res.json();
           if (isMounted && json.success && json.data?.connected) {
@@ -81,7 +95,7 @@ export const PortfolioProvider = ({ children }) => {
     return () => {
       isMounted = false;
     };
-  }, [user?.id, userId]);
+  }, [user?.id, userId, getAuthHeaders]);
 
   // Detected GitHub username from connected OAuth or Clerk account
   const detectedGithubUsername =
@@ -200,19 +214,6 @@ export const PortfolioProvider = ({ children }) => {
   const [streamingCode, setStreamingCode] = useState('');
   const [currentPrompt, setCurrentPrompt] = useState('');
   const [hasGeneratedFirstPortfolio, setHasGeneratedFirstPortfolio] = useState(false);
-
-  const getAuthHeaders = useCallback(async () => {
-    let token = null;
-    try {
-      if (getToken) token = await getToken();
-    } catch (e) {}
-
-    return {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(userId ? { 'x-user-id': userId } : { 'x-user-id': 'guest_user' }),
-    };
-  }, [getToken, userId]);
 
   // Fetch Version Snapshots from Neon DB
   const fetchVersions = useCallback(async (id = portfolioId) => {
@@ -1906,6 +1907,7 @@ export const PortfolioProvider = ({ children }) => {
         savePortfolio,
         fetchVersions,
         rollbackToVersion,
+        getAuthHeaders,
         githubUsername: detectedGithubUsername,
         githubAvatarUrl: effectiveAvatar,
         effectiveAvatar,

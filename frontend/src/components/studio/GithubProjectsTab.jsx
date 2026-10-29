@@ -49,8 +49,14 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     portfolio,
     updateSection,
     updateSectionField,
+    getAuthHeaders,
   } = usePortfolio();
   const isLight = studioTheme === 'light';
+
+  const resolveHeaders = useCallback(async () => {
+    if (getAuthHeaders) return await getAuthHeaders();
+    return { 'Content-Type': 'application/json' };
+  }, [getAuthHeaders]);
 
   // State for direct Neon DB linked GitHub account
   const [linkedAccount, setLinkedAccount] = useState({ connected: false, username: null, avatarUrl: null });
@@ -139,7 +145,8 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
         return;
       }
       try {
-        const res = await fetch(`${API_BASE_URL}/api/v1/github/status?userId=${encodeURIComponent(user.id)}`);
+        const headers = await resolveHeaders();
+        const res = await fetch(`${API_BASE_URL}/api/v1/github/status`, { headers });
         if (res.ok) {
           const json = await res.json();
           if (isMounted && json.success && json.data?.connected) {
@@ -157,11 +164,19 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     return () => {
       isMounted = false;
     };
-  }, [user?.id]);
+  }, [user?.id, resolveHeaders]);
 
-  // 2. Listen for OAuth popup postMessage success
+  // 2. Listen for OAuth popup postMessage success with origin validation
   useEffect(() => {
     const handleOAuthMessage = (event) => {
+      const allowedOrigins = [
+        window.location.origin,
+        API_BASE_URL.startsWith('http') ? new URL(API_BASE_URL).origin : window.location.origin,
+      ];
+      if (!allowedOrigins.includes(event.origin)) {
+        return;
+      }
+
       if (event.data?.type === 'GITHUB_OAUTH_SUCCESS') {
         const { username, avatarUrl } = event.data;
         setLinkedAccount({ connected: true, username, avatarUrl });
@@ -183,7 +198,8 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     setSelectedRepoIds(new Set());
 
     try {
-      const data = await fetchUserRepos(userToFetch, user?.id);
+      const headers = await resolveHeaders();
+      const data = await fetchUserRepos(userToFetch, headers);
       setRepos(data);
     } catch (err) {
       setError(err.message || 'Impossible de récupérer les dépôts.');
@@ -235,10 +251,10 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
     setIsLoading(true);
     setError(null);
     try {
+      const headers = await resolveHeaders();
       await fetch(`${API_BASE_URL}/api/v1/github/disconnect`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.id }),
+        headers,
       });
       setLinkedAccount({ connected: false, username: null, avatarUrl: null });
       setRepos([]);
@@ -279,12 +295,13 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
         ? [matchingRepo.language, ...(matchingRepo.topics || [])].filter(Boolean)
         : [];
 
+      const headers = await resolveHeaders();
       const newImageUrl = await generateProjectImageAi({
         title: proj.title,
         description: readmeSnippet || proj.description,
         tags,
         currentImageUrl: proj.image,
-      });
+      }, headers);
 
       if (newImageUrl && updateSection) {
         updateSection('sec-projects', (prevData) => {
@@ -434,12 +451,13 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
       : [proj.language, ...(proj.topics || [])].filter(Boolean);
 
     try {
+      const headers = await resolveHeaders();
       const imgUrl = await generateProjectImageAi({
         title: displayTitle,
         description: proj.readmeSnippet || summary.description || proj.description,
         tags,
         prompt: summary.imagePrompt,
-      });
+      }, headers);
       const updatedImages = { ...currentImages, [proj.name]: imgUrl };
       await generateImagesAndFinalize(enrichedProjects, updatedImages, index + 1);
     } catch (err) {
@@ -477,6 +495,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
 
       // 2. Synthesize clean titles, descriptions, tags, and metrics via LLM in parallel
       setApplyStep('Synthèse intelligente par IA (résumés, tags, métriques)...');
+      const headers = await resolveHeaders();
       const enrichedProjects = await Promise.all(
         readmes.map(async ({ repo, readmeSnippet, githubImage }) => {
           const summary = await summarizeProjectAi({
@@ -486,7 +505,7 @@ export const GithubProjectsTab = ({ onApplyComplete }) => {
             topics: repo.topics || [],
             rawDescription: repo.description,
             readmeContent: readmeSnippet,
-          });
+          }, headers);
 
           return {
             ...repo,

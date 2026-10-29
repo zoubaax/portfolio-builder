@@ -1,10 +1,19 @@
 import { Router, Request, Response } from 'express';
 import { getAuth } from '@clerk/express';
 import { requireAuth, AuthenticatedRequest } from '../middleware/auth.js';
+import { validateBody } from '../middleware/validate.js';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { sendSuccess, sendError } from '../utils/response.js';
+import {
+  createOAuthState,
+  verifyOAuthState,
+  encryptSecret,
+  decryptSecret,
+  escapeHtml,
+} from '../utils/crypto.js';
+import { z } from 'zod';
 
 const router = Router();
 
@@ -13,43 +22,98 @@ const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET || '';
 const BACKEND_URL = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 5050}`;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
+const exportRepoSchema = z.object({
+  repoName: z.string().min(1).max(100).regex(/^[a-zA-Z0-9._-]+$/, 'Nom de dépôt invalide'),
+  description: z.string().max(500).optional(),
+  isPrivate: z.boolean().optional(),
+  files: z.record(z.string().min(1).max(300), z.string()),
+  personalAccessToken: z.string().max(256).optional(),
+});
+
 /**
  * 1. GET /api/v1/github/authorize
- * Redirects user to official GitHub OAuth authorization page
+ * Initiates GitHub OAuth with cryptographically signed HMAC state parameter (OAuth CSRF defense)
  */
 router.get('/authorize', (req: Request, res: Response) => {
-  const userId = (req.query.userId as string) || 'guest';
+  let userId = (req.query.userId as string) || '';
+
+  // Attempt to extract session from Clerk token if present
+  try {
+    const auth = getAuth(req);
+    if (auth?.userId) userId = auth.userId;
+  } catch (e) {}
+
+  if (!userId || userId === 'guest') {
+    return res.status(401).send(`
+      <!DOCTYPE html>
+      <html>
+        <body style="background: #090d16; color: #f87171; font-family: sans-serif; padding: 2rem; text-align: center;">
+          <h3>❌ Session requise</h3>
+          <p>Veuillez vous connecter avant d'associer un compte GitHub.</p>
+          <button onclick="window.close()" style="padding: 8px 16px; border-radius: 8px; background: #374151; color: white; border: none; cursor: pointer;">
+            Fermer
+          </button>
+        </body>
+      </html>
+    `);
+  }
+
   const callbackUrl = `${BACKEND_URL}/api/v1/github/callback`;
+  const secureState = createOAuthState(userId);
   const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&redirect_uri=${encodeURIComponent(
     callbackUrl
-  )}&scope=read:user,repo&state=${encodeURIComponent(userId)}`;
+  )}&scope=read:user,repo&state=${encodeURIComponent(secureState)}`;
 
   return res.redirect(githubAuthUrl);
 });
 
 /**
  * 2. GET /api/v1/github/callback
- * Exchanges code for access token, fetches profile, and links to user record in Neon DB
+ * Exchanges code for access token, validates cryptographic state, stores encrypted token in DB
  */
 router.get('/callback', async (req: Request, res: Response) => {
   const code = req.query.code as string;
-  const userId = (req.query.state as string) || '';
+  const rawState = req.query.state as string;
 
   if (!code) {
     return res.status(400).send(`
-      <script>
-        alert("Erreur: Code d'autorisation manquant de GitHub.");
-        window.close();
-      </script>
+      <!DOCTYPE html>
+      <html>
+        <body style="background: #090d16; color: #f87171; font-family: sans-serif; padding: 2rem; text-align: center;">
+          <h3>❌ Code d'autorisation manquant</h3>
+          <button onclick="window.close()" style="padding: 8px 16px; border-radius: 8px; background: #374151; color: white; border: none; cursor: pointer;">
+            Fermer
+          </button>
+        </body>
+      </html>
     `);
   }
+
+  // Cryptographic State Verification (OAuth CSRF & State Tampering Prevention)
+  const verifiedState = verifyOAuthState(rawState);
+  if (!verifiedState || !verifiedState.userId || verifiedState.userId === 'guest') {
+    return res.status(403).send(`
+      <!DOCTYPE html>
+      <html>
+        <body style="background: #090d16; color: #f87171; font-family: sans-serif; padding: 2rem; text-align: center;">
+          <h3>❌ Échec de validation de sécurité (CSRF / État expiré)</h3>
+          <p>Le jeton de session OAuth est invalide ou a expiré. Veuillez relancer l'autorisation depuis Portfolify.</p>
+          <button onclick="window.close()" style="padding: 8px 16px; border-radius: 8px; background: #374151; color: white; border: none; cursor: pointer;">
+            Fermer
+          </button>
+        </body>
+      </html>
+    `);
+  }
+
+  const targetUserId = verifiedState.userId;
 
   try {
     // 1. Exchange code for access token
     const tokenRes = await fetch('https://github.com/login/oauth/access_token', {
       method: 'POST',
       headers: {
-        'Accept': 'application/json',
+        Accept: 'application/json',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -69,9 +133,9 @@ router.get('/callback', async (req: Request, res: Response) => {
     // 2. Fetch authenticated GitHub user profile
     const profileRes = await fetch('https://api.github.com/user', {
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         'User-Agent': 'Portfolify-Studio-App',
-        'Accept': 'application/vnd.github.v3+json',
+        Accept: 'application/vnd.github.v3+json',
       },
     });
 
@@ -80,26 +144,12 @@ router.get('/callback', async (req: Request, res: Response) => {
     }
 
     const profile = (await profileRes.json()) as any;
-    const githubUsername = profile.login;
-    const githubAvatarUrl = profile.avatar_url || '';
+    const githubUsername = String(profile.login || '');
+    const githubAvatarUrl = String(profile.avatar_url || '');
 
-    // 3. Persist connection in Neon DB for this user
-    if (!userId || userId === 'guest') {
-      return res.status(400).send(`
-        <!DOCTYPE html>
-        <html>
-          <body style="background: #090d16; color: #f87171; font-family: sans-serif; padding: 2rem; text-align: center;">
-            <h3>❌ Session requise</h3>
-            <p>Vous devez être connecté avec votre compte pour associer GitHub.</p>
-            <button onclick="window.close()" style="padding: 8px 16px; border-radius: 8px; background: #374151; color: white; border: none; cursor: pointer;">
-              Fermer
-            </button>
-          </body>
-        </html>
-      `);
-    }
+    // 3. Encrypt and persist connection in Neon DB for this authenticated tenant
+    const encryptedToken = encryptSecret(accessToken);
 
-    const targetUserId = userId;
     try {
       await db
         .insert(users)
@@ -109,14 +159,14 @@ router.get('/callback', async (req: Request, res: Response) => {
           username: githubUsername,
           githubUsername,
           githubAvatarUrl,
-          githubAccessToken: accessToken,
+          githubAccessToken: encryptedToken,
         })
         .onConflictDoUpdate({
           target: users.id,
           set: {
             githubUsername,
             githubAvatarUrl,
-            githubAccessToken: accessToken,
+            githubAccessToken: encryptedToken,
             updatedAt: new Date(),
           },
         });
@@ -124,7 +174,11 @@ router.get('/callback', async (req: Request, res: Response) => {
       console.warn('[GitHub OAuth DB Save Warning]:', dbErr);
     }
 
-    // 4. Return modern popup communication window
+    // Sanitize values for safe HTML injection
+    const escapedUsername = escapeHtml(githubUsername);
+    const escapedAvatar = escapeHtml(githubAvatarUrl);
+
+    // 4. Return popup communication window (Token is NEVER broadcasted to frontend; targetOrigin is locked)
     return res.send(`
       <!DOCTYPE html>
       <html>
@@ -165,23 +219,22 @@ router.get('/callback', async (req: Request, res: Response) => {
         </head>
         <body>
           <div class="card">
-            ${githubAvatarUrl ? `<img class="avatar" src="${githubAvatarUrl}" alt="${githubUsername}" />` : ''}
+            ${escapedAvatar ? `<img class="avatar" src="${escapedAvatar}" alt="${escapedUsername}" />` : ''}
             <h3>✓ Compte GitHub Connecté !</h3>
-            <p>@${githubUsername} lié avec succès.</p>
+            <p>@${escapedUsername} lié avec succès.</p>
           </div>
           <script>
             try {
               if (window.opener) {
                 window.opener.postMessage({
                   type: 'GITHUB_OAUTH_SUCCESS',
-                  username: '${githubUsername}',
-                  avatarUrl: '${githubAvatarUrl}',
-                  token: '${accessToken}'
-                }, '*');
+                  username: ${JSON.stringify(githubUsername)},
+                  avatarUrl: ${JSON.stringify(githubAvatarUrl)}
+                }, ${JSON.stringify(FRONTEND_URL)});
                 setTimeout(() => window.close(), 800);
               } else {
                 setTimeout(() => {
-                  window.location.href = '${FRONTEND_URL}/studio';
+                  window.location.href = ${JSON.stringify(`${FRONTEND_URL}/studio`)};
                 }, 1000);
               }
             } catch (e) {
@@ -191,7 +244,6 @@ router.get('/callback', async (req: Request, res: Response) => {
         </body>
       </html>
     `);
-
   } catch (err: any) {
     console.error('GitHub OAuth Callback error:', err);
     return res.status(500).send(`
@@ -199,7 +251,7 @@ router.get('/callback', async (req: Request, res: Response) => {
       <html>
         <body style="background: #090d16; color: #f87171; font-family: sans-serif; padding: 2rem; text-align: center;">
           <h3>❌ Erreur lors de la liaison GitHub</h3>
-          <p>${err.message || 'Échec de la validation OAuth'}</p>
+          <p>${escapeHtml(err.message || 'Échec de la validation OAuth')}</p>
           <button onclick="window.close()" style="padding: 8px 16px; border-radius: 8px; background: #374151; color: white; border: none; cursor: pointer;">
             Fermer
           </button>
@@ -211,27 +263,11 @@ router.get('/callback', async (req: Request, res: Response) => {
 
 /**
  * 3. GET /api/v1/github/status
- * Returns current user's linked GitHub account status from Neon DB
+ * Returns current authenticated user's linked GitHub account status from Neon DB
  */
-router.get('/status', async (req: Request, res: Response) => {
+router.get('/status', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    let userId = (req.query.userId as string) || (req.headers['x-user-id'] as string);
-    const targetUsername = (req.query.username as string) || '';
-
-    if (!userId) {
-      try {
-        const auth = getAuth(req);
-        if (auth?.userId) userId = auth.userId;
-      } catch (e) {}
-    }
-
-    if (!userId || userId === 'guest') {
-      return sendSuccess(res, {
-        connected: false,
-        username: null,
-        avatarUrl: null,
-      });
-    }
+    const userId = req.auth!.userId;
 
     const [userRecord] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
 
@@ -255,21 +291,11 @@ router.get('/status', async (req: Request, res: Response) => {
 
 /**
  * 4. POST /api/v1/github/disconnect
- * Disconnects linked GitHub account
+ * Disconnects linked GitHub account with tenant isolation
  */
-router.post('/disconnect', async (req: Request, res: Response) => {
+router.post('/disconnect', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    let userId = (req.body?.userId as string) || (req.headers['x-user-id'] as string);
-    if (!userId) {
-      try {
-        const auth = getAuth(req);
-        if (auth?.userId) userId = auth.userId;
-      } catch (e) {}
-    }
-
-    if (!userId) {
-      return sendError(res, 'UNAUTHORIZED', 'UserId required to disconnect', 400);
-    }
+    const userId = req.auth!.userId;
 
     await db
       .update(users)
@@ -289,11 +315,22 @@ router.post('/disconnect', async (req: Request, res: Response) => {
 
 /**
  * 5. GET /api/v1/github/repos
- * Returns repositories for the user, using accessToken if linked, or public API
+ * Returns repositories for the authenticated user (using decrypted accessToken if linked, or public API)
  */
 router.get('/repos', async (req: Request, res: Response) => {
   try {
-    const userId = (req.query.userId as string) || (req.headers['x-user-id'] as string);
+    // Attempt verified session extraction
+    let userId: string | null = null;
+    try {
+      const auth = getAuth(req);
+      if (auth?.userId) userId = auth.userId;
+    } catch (e) {}
+
+    // Local dev mode fallback
+    if (!userId && process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
+      userId = (req.headers['x-user-id'] as string) || null;
+    }
+
     const targetUsername = (req.query.username as string) || '';
 
     let accessToken: string | null = null;
@@ -301,8 +338,8 @@ router.get('/repos', async (req: Request, res: Response) => {
 
     if (userId) {
       const [userRecord] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
-      if (userRecord) {
-        accessToken = userRecord.githubAccessToken || null;
+      if (userRecord?.githubAccessToken) {
+        accessToken = decryptSecret(userRecord.githubAccessToken);
         if (!username) username = userRecord.githubUsername || '';
       }
     }
@@ -312,7 +349,7 @@ router.get('/repos', async (req: Request, res: Response) => {
     }
 
     const headers: Record<string, string> = {
-      'Accept': 'application/vnd.github.v3+json',
+      Accept: 'application/vnd.github.v3+json',
       'User-Agent': 'Portfolify-Studio-App',
     };
     if (accessToken) {
@@ -362,40 +399,31 @@ router.get('/repos', async (req: Request, res: Response) => {
 
 /**
  * 6. POST /api/v1/github/export-repo
- * Creates a brand new GitHub repository on the user's connected account
- * and pushes the full standalone React 19 + Tailwind v4 project files.
+ * Creates a brand new GitHub repository on the user's connected account with tenant verification
  */
-router.post('/export-repo', async (req: Request, res: Response) => {
+router.post('/export-repo', requireAuth, validateBody(exportRepoSchema), async (req: AuthenticatedRequest, res: Response) => {
   try {
-    let userId = (req.body.userId as string) || (req.headers['x-user-id'] as string);
-    if (!userId) {
-      try {
-        const auth = getAuth(req);
-        if (auth?.userId) userId = auth.userId;
-      } catch (e) {}
-    }
-
-    if (!userId || userId === 'guest') {
-      return sendError(res, 'UNAUTHORIZED', 'Connexion requise pour exporter un dépôt sur GitHub.', 401);
-    }
-
+    const userId = req.auth!.userId;
     const { repoName, description, isPrivate, files, personalAccessToken } = req.body;
 
-    if (!repoName || typeof repoName !== 'string') {
-      return sendError(res, 'VALIDATION_ERROR', 'Repository name is required', 400);
-    }
-
-    if (!files || typeof files !== 'object' || Object.keys(files).length === 0) {
-      return sendError(res, 'VALIDATION_ERROR', 'Project files map is required', 400);
+    // Path traversal defense: disallow relative directory escapes and root paths
+    for (const filePath of Object.keys(files)) {
+      if (
+        filePath.includes('..') ||
+        filePath.startsWith('/') ||
+        filePath.startsWith('\\') ||
+        /^[a-zA-Z]:/.test(filePath)
+      ) {
+        return sendError(res, 'VALIDATION_ERROR', `Chemin de fichier invalide ou interdit: ${filePath}`, 400);
+      }
     }
 
     let token = personalAccessToken ? String(personalAccessToken).trim() : null;
 
     if (!token) {
-      // 1. Try target user record
       const [userRecord] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
       if (userRecord?.githubAccessToken) {
-        token = userRecord.githubAccessToken;
+        token = decryptSecret(userRecord.githubAccessToken);
       }
     }
 
@@ -408,7 +436,7 @@ router.post('/export-repo', async (req: Request, res: Response) => {
       );
     }
 
-    // If personalAccessToken was provided directly, save it in Neon DB so future exports don't need re-entry
+    // If PAT provided, encrypt and save to database
     if (personalAccessToken && userId) {
       try {
         const ghUserRes = await fetch('https://api.github.com/user', {
@@ -420,6 +448,7 @@ router.post('/export-repo', async (req: Request, res: Response) => {
         });
         if (ghUserRes.ok) {
           const ghUserData = (await ghUserRes.json()) as any;
+          const encToken = encryptSecret(token);
           await db
             .insert(users)
             .values({
@@ -428,14 +457,14 @@ router.post('/export-repo', async (req: Request, res: Response) => {
               username: ghUserData.login,
               githubUsername: ghUserData.login,
               githubAvatarUrl: ghUserData.avatar_url || '',
-              githubAccessToken: token,
+              githubAccessToken: encToken,
             })
             .onConflictDoUpdate({
               target: users.id,
               set: {
                 githubUsername: ghUserData.login,
                 githubAvatarUrl: ghUserData.avatar_url || '',
-                githubAccessToken: token,
+                githubAccessToken: encToken,
                 updatedAt: new Date(),
               },
             });
@@ -462,7 +491,7 @@ router.post('/export-repo', async (req: Request, res: Response) => {
         name: cleanRepoName,
         description: description || 'Personal developer portfolio generated with Portfolify Studio',
         private: Boolean(isPrivate),
-        auto_init: true, // initializes with default commit so branch exists
+        auto_init: true,
       }),
     });
 
@@ -483,8 +512,7 @@ router.post('/export-repo', async (req: Request, res: Response) => {
     // Small delay to ensure git ref is ready after auto_init
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    // 2. Commit files sequentially using contents API
-    // This is 100% reliable and doesn't suffer from tree sha races
+    // 2. Commit files sequentially
     const fileEntries = Object.entries(files) as [string, string][];
 
     for (const [filePath, content] of fileEntries) {
@@ -492,7 +520,6 @@ router.post('/export-repo', async (req: Request, res: Response) => {
         const base64Content = Buffer.from(content, 'utf-8').toString('base64');
         const url = `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`;
 
-        // Check if file already exists (e.g. README.md from auto_init)
         let fileSha: string | undefined;
         try {
           const checkRes = await fetch(url, { headers });

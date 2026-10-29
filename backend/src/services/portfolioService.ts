@@ -3,6 +3,18 @@ import { portfolios, portfolioVersions, users } from '../db/schema.js';
 import { eq, and, desc, sql } from 'drizzle-orm';
 
 /**
+ * Strips secret API keys and private fields from portfolio schemas before public distribution
+ */
+export function sanitizePublicSchema(schema: any): any {
+  if (!schema || typeof schema !== 'object') return schema;
+  const copy = JSON.parse(JSON.stringify(schema));
+  if (copy.aiChatbot && copy.aiChatbot.apiKey) {
+    delete copy.aiChatbot.apiKey;
+  }
+  return copy;
+}
+
+/**
  * Portfolio Service Layer
  * Strictly enforces tenant isolation on all database operations
  */
@@ -59,7 +71,12 @@ export const portfolioService = {
       .where(and(eq(portfolios.subdomainSlug, slug), eq(portfolios.isPublished, true)))
       .limit(1);
 
-    return results[0] || null;
+    if (!results[0]) return null;
+
+    return {
+      ...results[0],
+      schemaData: sanitizePublicSchema(results[0].schemaData),
+    };
   },
 
   /**

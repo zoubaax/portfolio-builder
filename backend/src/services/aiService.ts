@@ -854,11 +854,35 @@ export async function chatWithPortfolioAi(
   // Extract custom or portfolio settings
   const botConfig = portfolio?.aiChatbot || {};
   const provider = options.provider || botConfig.provider || 'openai';
-  const apiKey = options.apiKey || botConfig.apiKey;
+  const apiKey = (options.apiKey || botConfig.apiKey)?.trim();
   const requestedModel = options.model || botConfig.model;
+  const hasUserKey = Boolean(apiKey);
+
+  const ALLOWED_MODELS: Record<string, string[]> = {
+    openai: ['gpt-4o-mini', 'gpt-4o'],
+    gemini: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash'],
+    groq: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant'],
+    nvidia: ['meta/llama-3.2-11b-vision-instruct', 'meta/llama-3.1-70b-instruct'],
+  };
+
+  const DEFAULT_MODELS: Record<string, string> = {
+    openai: 'gpt-4o-mini',
+    gemini: 'gemini-1.5-flash',
+    groq: 'llama-3.3-70b-versatile',
+    nvidia: process.env.NVIDIA_MODEL || 'meta/llama-3.2-11b-vision-instruct',
+  };
+
+  // Enforce economical default model when server platform key is used (prevents Denial of Wallet)
+  let targetModel = DEFAULT_MODELS[provider] || 'gpt-4o-mini';
+  if (hasUserKey && requestedModel) {
+    const allowed = ALLOWED_MODELS[provider] || [];
+    if (allowed.includes(requestedModel)) {
+      targetModel = requestedModel;
+    }
+  }
 
   let client: OpenAI;
-  let modelName = 'gpt-4o-mini';
+  let modelName = targetModel;
 
   if (provider === 'gemini') {
     // Google Gemini via OpenAI-compatible endpoint
@@ -866,25 +890,21 @@ export async function chatWithPortfolioAi(
       apiKey: apiKey || process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY || '',
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     });
-    modelName = requestedModel || 'gemini-1.5-flash';
   } else if (provider === 'groq') {
     client = new OpenAI({
       apiKey: apiKey || process.env.GROQ_API_KEY || '',
       baseURL: 'https://api.groq.com/openai/v1',
     });
-    modelName = requestedModel || 'llama-3.3-70b-versatile';
   } else if (provider === 'nvidia') {
     client = new OpenAI({
       apiKey: apiKey || process.env.NVIDIA_API_KEY || '',
       baseURL: 'https://integrate.api.nvidia.com/v1',
     });
-    modelName = requestedModel || process.env.NVIDIA_MODEL || 'meta/llama-3.2-11b-vision-instruct';
   } else {
     // Default to OpenAI
     client = new OpenAI({
       apiKey: apiKey || process.env.OPENAI_API_KEY || '',
     });
-    modelName = requestedModel || 'gpt-4o-mini';
   }
 
   // Extract key information from portfolio schema

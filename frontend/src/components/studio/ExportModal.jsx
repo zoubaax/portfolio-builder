@@ -25,8 +25,13 @@ import {
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (import.meta.env.DEV ? 'http://localhost:5050' : '');
 
 export const ExportModal = ({ isOpen, onClose }) => {
-  const { portfolio, githubUsername } = usePortfolio();
+  const { portfolio, githubUsername, getAuthHeaders } = usePortfolio();
   const { user } = useUser();
+
+  const resolveHeaders = async () => {
+    if (getAuthHeaders) return await getAuthHeaders();
+    return { 'Content-Type': 'application/json' };
+  };
 
   const [activeTab, setActiveTab] = useState('zip'); // 'zip' | 'github' | 'code'
   const [isZipping, setIsZipping] = useState(false);
@@ -43,14 +48,12 @@ export const ExportModal = ({ isOpen, onClose }) => {
     setIsCheckingGh(true);
     try {
       const uid = user?.id || '';
-      const targetUser = githubUsername || '';
       if (!uid) {
         setGhStatus({ connected: false, username: null, avatarUrl: null });
         return;
       }
-      const res = await fetch(
-        `${API_BASE_URL}/api/v1/github/status?userId=${encodeURIComponent(uid)}&username=${encodeURIComponent(targetUser)}`
-      );
+      const headers = await resolveHeaders();
+      const res = await fetch(`${API_BASE_URL}/api/v1/github/status`, { headers });
       if (res.ok) {
         const json = await res.json();
         if (json.success && json.data) {
@@ -108,10 +111,10 @@ export const ExportModal = ({ isOpen, onClose }) => {
     try {
       const uid = user?.id || '';
       if (!uid) return;
+      const headers = await resolveHeaders();
       await fetch(`${API_BASE_URL}/api/v1/github/disconnect`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: uid }),
+        headers,
       });
       localStorage.removeItem('gh_export_pat');
       localStorage.removeItem('gh_export_token');
@@ -193,14 +196,11 @@ export const ExportModal = ({ isOpen, onClose }) => {
         setIsPushing(false);
         return;
       }
+      const headers = await resolveHeaders();
       const res = await fetch(`${API_BASE_URL}/api/v1/github/export-repo`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': uid,
-        },
+        headers,
         body: JSON.stringify({
-          userId: uid,
           repoName: repoName.trim(),
           description: repoDesc.trim(),
           isPrivate,
