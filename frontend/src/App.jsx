@@ -31,8 +31,9 @@ function StudioWorkspace() {
 
 function StudioRoute() {
   const { id } = useParams();
-  const { loadPortfolioSession, fetchUserSessions } = usePortfolio();
+  const { loadPortfolioSession, fetchUserSessions, portfolioId } = usePortfolio();
   const loadedIdRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchUserSessions();
@@ -44,8 +45,12 @@ function StudioRoute() {
       loadPortfolioSession(id);
     } else if (!id) {
       loadedIdRef.current = null;
+      const cachedId = portfolioId || (typeof window !== 'undefined' ? localStorage.getItem('portfolify_active_portfolio_id') : null);
+      if (cachedId) {
+        navigate(`/studio/${cachedId}`, { replace: true });
+      }
     }
-  }, [id, loadPortfolioSession]);
+  }, [id, loadPortfolioSession, portfolioId, navigate]);
 
   return <StudioWorkspace />;
 }

@@ -206,7 +206,7 @@ export const ImagePickerModal = ({ isOpen, onClose, currentImage, onSave, title 
                     type="text"
                     value={githubUser}
                     onChange={(e) => setGithubUser(e.target.value)}
-                    placeholder="ex: aminenahli"
+                    placeholder="ex: torvalds"
                     className={`w-full pl-7 pr-3 py-2 text-xs rounded-lg border outline-none font-mono transition-all ${
                       isLight
                         ? 'bg-white focus:border-zinc-900 border-zinc-200 text-zinc-900'

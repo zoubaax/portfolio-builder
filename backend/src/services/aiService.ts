@@ -79,7 +79,7 @@ You manipulate structured portfolio JSON adhering to the Portfolify Schema.
 
 Schema Definitions:
 1. meta: { title: string, slug: string, description: string }
-2. theme: { id: string ('cyber-dark' | 'bento-violet' | 'minimal-editorial' | 'nordic-teal'), name: string, palette: { bg: string, surface: string, accent: string, textPrimary?: string, textSecondary?: string, border?: string } }
+2. theme: { id: string ('cyber-dark' | 'bento-violet' | 'minimal-editorial' | 'nordic-teal' | 'devops-architect' | 'superdesign-ember' | 'emerald-matrix'), name: string, palette: { bg: string, surface: string, accent: string, textPrimary?: string, textSecondary?: string, border?: string } }
 3. sections: Array of section objects:
    - hero: { id: 'sec-hero', type: 'hero', variant: 'split-portrait' | 'terminal-dev' | 'minimal-centered', visible: boolean, data: { badge?: string, name: string, title: string, tagline: string, avatar?: string, primaryCta?: { text: string, link: string }, secondaryCta?: { text: string, link: string }, socials?: Array<{ platform: string, url: string }> } }
    - about: { id: 'sec-about', type: 'about', variant: 'bento' | 'classic-story', visible: boolean, data: { heading: string, subheading?: string, bio: string[] | string, stats?: Array<{ value: string, label: string }>, location?: string } }

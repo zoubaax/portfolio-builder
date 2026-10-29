@@ -26,10 +26,12 @@ import {
   RiGithubFill,
   RiStackLine,
   RiRobot2Line,
-  RiDownloadLine
+  RiDownloadLine,
+  RiLayoutMasonryLine
 } from 'react-icons/ri';
 import { GithubProjectsTab } from './GithubProjectsTab';
 import { SkillsTab } from './SkillsTab';
+import { TemplatesTab } from './TemplatesTab';
 import { AiChatbotSettingsModal } from './AiChatbotSettingsModal';
 import { ExportModal } from './ExportModal';
 import { PublishModal } from './PublishModal';
@@ -178,7 +180,21 @@ export const V0Canvas = () => {
             )}
           </button>
 
-          {/* GitHub Projects Tab (Only visible after first generation) */}
+          {/* Global Templates Tab (Always accessible) */}
+          <button
+            onClick={() => setViewMode('templates')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+              viewMode === 'templates'
+                ? 'bg-zinc-100 text-zinc-900 font-semibold border border-zinc-300 shadow-xs'
+                : 'text-zinc-500 hover:text-zinc-800'
+            }`}
+            title="Choisir et explorer les templates globaux"
+          >
+            <RiLayoutMasonryLine className="w-3.5 h-3.5 text-zinc-800" />
+            <span>Templates</span>
+          </button>
+
+          {/* GitHub Projects & Skills Tabs (Visible after first generation) */}
           {hasGeneratedFirstPortfolio && (
             <>
               <button
@@ -740,6 +756,15 @@ export const V0Canvas = () => {
         {viewMode === 'skills' && (
           <div className="w-full h-full flex flex-col flex-1 overflow-hidden">
             <SkillsTab onApplyComplete={() => setViewMode('preview')} />
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* TAB 5: GLOBAL TEMPLATES GALLERY MODE                                     */}
+        {/* ========================================================================= */}
+        {viewMode === 'templates' && (
+          <div className="w-full h-full flex flex-col flex-1 overflow-hidden">
+            <TemplatesTab onApplyComplete={() => setViewMode('preview')} />
           </div>
         )}
 

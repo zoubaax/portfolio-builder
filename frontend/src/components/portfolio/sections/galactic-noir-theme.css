@@ -1,0 +1,90 @@
+/* Auto-generated Scoped Styles for Galactic Noir */
+
+/* Theme Design Tokens */
+[data-theme="galactic-noir"], .theme-galactic-noir {
+  --bg: #0a0d14;
+  --bg-card: rgba(255, 255, 255, 0.03);
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --cyan: #00d9ff;
+  --cyan-muted: rgba(0, 217, 255, 0.15);
+  --border: rgba(255, 255, 255, 0.08);
+  --shadow-glow: 0 0 20px rgba(0, 217, 255, 0.25);
+  --glass-bg: rgba(10, 13, 20, 0.7);
+  --glass-blur: 16px;
+  max-width: 100%;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+[data-theme="galactic-noir"] *, .theme-galactic-noir * {
+  box-sizing: border-box;
+}
+
+[data-theme="galactic-noir"] img, .theme-galactic-noir img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Animations */
+@keyframes liqRip {
+  100% { transform: scale(24); opacity: 0; }
+}
+
+@keyframes navBreathe {
+  0%, 100% { opacity: 0.15; }
+  50% { opacity: 0.55; }
+}
+
+@keyframes navRippleExpand {
+  0% { transform: translate(-50%, -50%) scale(0); opacity: 0.55; }
+  60% { opacity: 0.2; }
+  100% { transform: translate(-50%, -50%) scale(4.5); opacity: 0; }
+}
+
+/* Scoped Component Classes */
+[data-theme="galactic-noir"] .proj-card,
+.theme-galactic-noir .proj-card {
+  transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+[data-theme="galactic-noir"] .proj-card:hover,
+.theme-galactic-noir .proj-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0, 217, 255, 0.35) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 217, 255, 0.15);
+}
+
+[data-theme="galactic-noir"] .dot-pill,
+.theme-galactic-noir .dot-pill {
+  transition: all 0.35s ease;
+}
+
+[data-theme="galactic-noir"] .hero-role,
+.theme-galactic-noir .hero-role {
+  background: linear-gradient(90deg, #f59e0b, #00d9ff);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: block;
+}
+
+[data-theme="galactic-noir"] .stars-bg,
+.theme-galactic-noir .stars-bg {
+  background-image: radial-gradient(1px 1px at 20% 30%, rgba(255, 255, 255, 0.3) 0px, transparent 100%),
+                    radial-gradient(1px 1px at 80% 10%, rgba(255, 255, 255, 0.2) 0px, transparent 100%),
+                    radial-gradient(1px 1px at 50% 60%, rgba(255, 255, 255, 0.15) 0px, transparent 100%);
+}
+
+[data-theme="galactic-noir"] .glass,
+.theme-galactic-noir .glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border);
+}
+
+[data-theme="galactic-noir"] .cyan-glow,
+.theme-galactic-noir .cyan-glow {
+  text-shadow: 0 0 20px rgba(0, 217, 255, 0.4);
+}

@@ -22,7 +22,7 @@ export const StudioHeader = () => {
   } = usePortfolio();
 
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [titleValue, setTitleValue] = useState(portfolio.meta?.title || 'Zoubaa Portfolio');
+  const [titleValue, setTitleValue] = useState(portfolio.meta?.title || 'Mon Portfolio');
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
 
   const isLight = studioTheme === 'light';
@@ -75,7 +75,7 @@ export const StudioHeader = () => {
               className="group flex items-center gap-1.5 text-xs font-bold text-white hover:text-[#FF4500] transition-colors cursor-pointer"
               title="Click to rename portfolio"
             >
-              <span>{portfolio.meta?.title || 'Zoubaa Portfolio'}</span>
+              <span>{portfolio.meta?.title || 'Mon Portfolio'}</span>
               <RiEdit2Line className="w-3 h-3 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
             </button>
           )}

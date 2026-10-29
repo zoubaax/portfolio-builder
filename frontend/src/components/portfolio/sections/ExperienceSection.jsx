@@ -1,9 +1,28 @@
+import { MidnightCodeExperience } from './MidnightCodeExperience';
+import { GalacticNoirExperience } from './GalacticNoirExperience';
+import { ModernFullstackExperience } from './ModernFullstackExperience';
 import React from 'react';
 import { Briefcase, Building2 } from 'lucide-react';
 import { EditableText } from '../../common/EditableText';
 import { usePortfolio } from '../../../context/PortfolioContext';
+import { AdityaDevOpsExperience } from './AdityaDevOpsExperience';
 
 export const ExperienceSection = ({ data, variant = 'timeline', sectionId }) => {
+      if (variant === 'midnight-code') {
+    return <MidnightCodeExperience data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'galactic-noir') {
+    return <GalacticNoirExperience data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'modern-fullstack') {
+    return <ModernFullstackExperience data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'devops-architect') {
+    return <AdityaDevOpsExperience data={data} sectionId={sectionId} />;
+  }
   const { updateSectionField } = usePortfolio();
   const { heading, subheading, items = [] } = data || {};
 

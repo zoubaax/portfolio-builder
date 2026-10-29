@@ -1,9 +1,28 @@
+import { MidnightCodeSkills } from './MidnightCodeSkills';
+import { GalacticNoirSkills } from './GalacticNoirSkills';
+import { ModernFullstackSkills } from './ModernFullstackSkills';
 import React from 'react';
 import { Layers, Cpu, Code2, Globe } from 'lucide-react';
 import { RiStackLine } from 'react-icons/ri';
 import { usePortfolio } from '../../../context/PortfolioContext';
+import { AdityaDevOpsSkills } from './AdityaDevOpsSkills';
 
-export const SkillsSection = ({ data, variant = 'category-cards' }) => {
+export const SkillsSection = ({ data, variant = 'category-cards', sectionId }) => {
+      if (variant === 'midnight-code') {
+    return <MidnightCodeSkills data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'galactic-noir') {
+    return <GalacticNoirSkills data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'modern-fullstack') {
+    return <ModernFullstackSkills data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'devops-architect') {
+    return <AdityaDevOpsSkills data={data} sectionId={sectionId} />;
+  }
   const { isMobileViewport, isEditMode, setViewMode } = usePortfolio();
   const { heading, subheading, categories = [] } = data || {};
 

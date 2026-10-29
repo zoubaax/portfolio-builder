@@ -1,10 +1,30 @@
+import { MidnightCodeAbout } from './MidnightCodeAbout';
+import { GalacticNoirAbout } from './GalacticNoirAbout';
+import { ModernFullstackAbout } from './ModernFullstackAbout';
 import React from 'react';
 import { MapPin, Sparkles } from 'lucide-react';
 import { EditableText } from '../../common/EditableText';
 import { usePortfolio } from '../../../context/PortfolioContext';
+import { AdityaDevOpsAbout } from './AdityaDevOpsAbout';
 
 export const AboutSection = ({ data, variant = 'bento', sectionId }) => {
   const { updateSectionField, updateSection, isMobileViewport } = usePortfolio();
+
+      if (variant === 'midnight-code') {
+    return <MidnightCodeAbout data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'galactic-noir') {
+    return <GalacticNoirAbout data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'modern-fullstack') {
+    return <ModernFullstackAbout data={data} sectionId={sectionId} />;
+  }
+
+  if (variant === 'devops-architect') {
+    return <AdityaDevOpsAbout data={data} sectionId={sectionId} />;
+  }
   const { heading, subheading, bio, stats, location } = data || {};
 
   const handleBioChange = (newText, index) => {
