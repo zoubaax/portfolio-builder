@@ -1,0 +1,26 @@
+# ==============================================================================
+# Portfolify Infrastructure & Observability Variables Template
+# Copy this file to "terraform.tfvars" and fill in your actual credentials.
+# (terraform.tfvars is strictly ignored by git to protect your secrets)
+# ==============================================================================
+
+# 1. Cloudflare Settings
+cloudflare_api_token  = "your_cloudflare_api_token_here"
+cloudflare_account_id = "your_cloudflare_account_id_here"
+cloudflare_zone_id    = "your_cloudflare_zone_id_here"
+domain_name           = "portfolify.tech"
+vercel_cname_target   = "cname.vercel-dns.com"
+vercel_origin_host    = "portfoliobuilder-omega.vercel.app"
+
+# 2. Grafana Cloud Settings
+grafana_url  = "https://your-org.grafana.net"
+grafana_auth = "your_grafana_service_account_token_here"
+
+# 3. Neon PostgreSQL Database (for Grafana AI Telemetry Dashboard)
+# Extracted from your backend DATABASE_URL:
+# postgresql://<user>:<password>@<host>/<database>?sslmode=require
+neon_host     = "ep-xyz.eu-central-1.aws.neon.tech:5432"
+neon_database = "neondb"
+neon_user     = "neondb_owner"
+neon_password = "your_neon_db_password_here"
+

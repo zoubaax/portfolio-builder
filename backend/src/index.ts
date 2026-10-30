@@ -8,6 +8,7 @@ import aiRoutes from './routes/aiRoutes.js';
 import githubRoutes from './routes/githubRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import { sendError } from './utils/response.js';
+import { metricsMiddleware, generatePrometheusMetrics } from './utils/metrics.js';
 
 dotenv.config();
 
@@ -60,10 +61,13 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// 2. Clerk Authentication Middleware (Attaches auth info to req)
+// 2. Metrics & Telemetry Middleware (Prometheus format)
+app.use(metricsMiddleware);
+
+// 3. Clerk Authentication Middleware (Attaches auth info to req)
 app.use(clerkMiddleware());
 
-// 3. Health & Diagnostic Check
+// 4. Health & Prometheus Metrics Endpoints
 app.get('/api/v1/health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -71,6 +75,11 @@ app.get('/api/v1/health', (req, res) => {
     service: 'Portfolify Backend API',
     version: '1.0.0',
   });
+});
+
+app.get('/api/v1/metrics', (req, res) => {
+  res.setHeader('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+  res.send(generatePrometheusMetrics());
 });
 
 // 3. API V1 Routes
